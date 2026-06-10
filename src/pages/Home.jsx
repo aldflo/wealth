@@ -3,35 +3,29 @@ import wealthLogo from "../assets/wealthlogo.jpeg";
 import { Link } from "react-router-dom";
 
 function Home() {
-
   return (
-
-    <div className="w-full min-h-screen bg-[#0a0a0a] overflow-hidden">
+    <div className="w-full min-h-screen bg-[#0a0a0a] overflow-x-hidden">
 
       {/* NAVBAR */}
       <Navbar />
 
       {/* HERO */}
-      <section className="relative w-full h-[550px] md:h-[650px] overflow-hidden">
+      <section className="relative w-full h-[520px] md:h-[650px] overflow-hidden">
 
         {/* IMAGEN DE FONDO */}
         <img
           src={wealthLogo}
           alt="Wealth"
-          className="absolute inset-0 w-full h-full object-contain object-[80%] bg-black scale-95 brightness-110 contrast-125 saturate-125"
+          className="absolute inset-0 w-full h-full object-contain md:object-contain object-center md:object-[80%] bg-black scale-95 brightness-110 contrast-125 saturate-125"
         />
 
-        {/* OVERLAY SUAVE */}
+        {/* OVERLAYS */}
         <div className="absolute inset-0 bg-black/25"></div>
-
-        {/* EFECTO DORADO */}
         <div className="absolute inset-0 bg-[#c89b3c]/10 mix-blend-soft-light"></div>
-
-        {/* DEGRADADO */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20"></div>
 
-        {/* LINEAS DORADAS */}
-        <div className="absolute inset-0 overflow-hidden">
+        {/* LINEAS DORADAS (solo desktop para no saturar móvil) */}
+        <div className="absolute inset-0 overflow-hidden hidden md:block">
 
           <div className="absolute w-[180%] h-[5px] bg-[#c89b3c] rotate-[27deg] top-[16%] -left-52 opacity-90"></div>
 
@@ -46,13 +40,12 @@ function Home() {
         {/* CONTENIDO */}
         <div className="relative z-20 h-full flex items-center">
 
-          <div className="max-w-7xl mx-auto w-full px-6">
+          <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
 
             <div className="max-w-2xl">
 
-
-
-              <h1 className="text-white text-5xl md:text-6xl font-extrabold leading-tight mb-6 drop-shadow-2xl">
+              {/* TITULO (solo responsive en tamaño, mismo texto) */}
+              <h1 className="text-white text-3xl sm:text-4xl md:text-6xl font-extrabold leading-tight mb-6 drop-shadow-2xl">
 
                 Construcción, innovación
                 <span className="text-[#c89b3c]">
@@ -61,7 +54,8 @@ function Home() {
 
               </h1>
 
-              <p className="text-zinc-300 text-lg md:text-xl leading-relaxed mb-10 max-w-xl">
+              {/* TEXTO (igual, solo tamaño adaptable) */}
+              <p className="text-zinc-300 text-sm sm:text-base md:text-xl leading-relaxed mb-10 max-w-xl">
 
                 En Wealth unimos experiencia en construcción,
                 inmobiliaria, aluminio y soluciones arquitectónicas,
@@ -71,11 +65,12 @@ function Home() {
 
               </p>
 
-              <div className="flex flex-wrap gap-5">
+              {/* BOTONES */}
+              <div className="flex flex-col sm:flex-row gap-4 sm:gap-5">
 
                 <Link
                   to="/proyectos"
-                  className="bg-[#c89b3c] hover:bg-[#d6ab4c] text-black px-8 py-4 rounded-full font-bold transition duration-300 shadow-2xl"
+                  className="bg-[#c89b3c] hover:bg-[#d6ab4c] text-black px-6 py-3 md:px-8 md:py-4 rounded-full font-bold transition duration-300 shadow-2xl text-center"
                 >
                   Explorar Proyectos
                 </Link>
@@ -84,7 +79,7 @@ function Home() {
                   href="https://wa.me/529811574778"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="border border-[#c89b3c] text-white hover:bg-[#c89b3c] hover:text-black px-8 py-4 rounded-full font-semibold transition duration-300"
+                  className="border border-[#c89b3c] text-white hover:bg-[#c89b3c] hover:text-black px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold transition duration-300 text-center"
                 >
                   Solicitar Cotización
                 </a>
@@ -100,12 +95,12 @@ function Home() {
       </section>
 
       {/* SECCION INFO */}
-      <section className="bg-[#111111] py-20 px-6">
+      <section className="bg-[#111111] py-16 md:py-20 px-4 sm:px-6">
 
-        <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
 
           {/* CARD 1 */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 hover:border-[#c89b3c] transition duration-300 shadow-xl hover:-translate-y-2">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8 hover:border-[#c89b3c] transition duration-300 shadow-xl hover:-translate-y-2">
 
             <h2 className="text-white text-2xl font-bold mb-4">
               Inmobiliaria
@@ -120,7 +115,7 @@ function Home() {
           </div>
 
           {/* CARD 2 */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 hover:border-[#c89b3c] transition duration-300 shadow-xl hover:-translate-y-2">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8 hover:border-[#c89b3c] transition duration-300 shadow-xl hover:-translate-y-2">
 
             <h2 className="text-white text-2xl font-bold mb-4">
               Construcciones
@@ -135,7 +130,7 @@ function Home() {
           </div>
 
           {/* CARD 3 */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 hover:border-[#c89b3c] transition duration-300 shadow-xl hover:-translate-y-2">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 md:p-8 hover:border-[#c89b3c] transition duration-300 shadow-xl hover:-translate-y-2">
 
             <h2 className="text-white text-2xl font-bold mb-4">
               Aluminios y Vidrios
@@ -155,9 +150,7 @@ function Home() {
       </section>
 
     </div>
-
   );
-
 }
 
 export default Home;
