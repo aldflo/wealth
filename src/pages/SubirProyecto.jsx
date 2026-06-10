@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase.config";
+import { useNavigate } from "react-router-dom";
 
 import {
   collection,
@@ -19,6 +20,9 @@ import {
 } from "react-icons/fa";
 
 function SubirProyecto() {
+
+  const navigate = useNavigate();
+
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState("Construcciones");
@@ -29,7 +33,6 @@ function SubirProyecto() {
   const [proyectos, setProyectos] = useState([]);
   const [editId, setEditId] = useState(null);
 
-  // 🔥 FILTRO CATÁLOGO
   const [filtro, setFiltro] = useState("Todos");
 
   // LISTAR
@@ -133,24 +136,36 @@ function SubirProyecto() {
     }
   };
 
-  // 🔥 FILTRO
   const proyectosFiltrados =
     filtro === "Todos"
       ? proyectos
       : proyectos.filter((p) => p.categoria === filtro);
 
   return (
+
     <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white px-6 py-14">
 
       {/* HEADER */}
-      <div className="max-w-6xl mx-auto mb-10 flex items-center gap-4">
-        <FaFolderOpen className="text-yellow-500 text-5xl" />
-        <div>
-          <h1 className="text-4xl font-bold">Panel de Proyectos</h1>
-          <p className="text-zinc-400">
-            Administra tu catálogo empresarial
-          </p>
+      <div className="max-w-6xl mx-auto mb-10 flex items-center gap-4 justify-between">
+
+        <div className="flex items-center gap-4">
+          <FaFolderOpen className="text-yellow-500 text-5xl" />
+          <div>
+            <h1 className="text-4xl font-bold">Panel de Proyectos</h1>
+            <p className="text-zinc-400">
+              Administra tu catálogo empresarial
+            </p>
+          </div>
         </div>
+
+        {/* 🔥 BOTÓN NUEVO */}
+        <button
+          onClick={() => navigate("/proyectos")}
+          className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-5 py-3 rounded-2xl text-sm font-semibold transition"
+        >
+          Ver proyectos
+        </button>
+
       </div>
 
       {/* FORM */}
@@ -199,24 +214,23 @@ function SubirProyecto() {
             <FaCloudUploadAlt />
             {editId ? "Actualizar Proyecto" : "Publicar Proyecto"}
           </button>
+
         </form>
+
       </div>
 
-      {/* 🔥 CATÁLOGO FILTROS */}
+      {/* FILTROS */}
       <div className="max-w-6xl mx-auto mt-14 mb-8 flex flex-wrap gap-3">
 
         {["Todos", "Construcciones", "Inmobiliaria", "Aluminios y Vidrios"].map((cat) => (
           <button
             key={cat}
             onClick={() => setFiltro(cat)}
-            className={`
-              px-5 py-2 rounded-full border transition text-sm font-semibold
-              ${
-                filtro === cat
-                  ? "bg-yellow-500 text-black border-yellow-500"
-                  : "bg-zinc-900 border-zinc-700 text-white hover:border-yellow-500"
-              }
-            `}
+            className={`px-5 py-2 rounded-full border transition text-sm font-semibold ${
+              filtro === cat
+                ? "bg-yellow-500 text-black border-yellow-500"
+                : "bg-zinc-900 border-zinc-700 text-white hover:border-yellow-500"
+            }`}
           >
             {cat}
           </button>
@@ -224,7 +238,7 @@ function SubirProyecto() {
 
       </div>
 
-      {/* LISTA CRUD */}
+      {/* LISTA */}
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
 
         {proyectosFiltrados.map((p) => (
@@ -265,11 +279,14 @@ function SubirProyecto() {
               </div>
 
             </div>
+
           </div>
         ))}
+
       </div>
 
     </div>
+
   );
 }
 
