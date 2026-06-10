@@ -1,4 +1,5 @@
 import { useState } from "react";
+
 import {
   FaUsers,
   FaBuilding,
@@ -16,6 +17,11 @@ function MenuAdmin() {
 
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+
+  // 🔥 SOLO REDIRECCIÓN (NO LOGOUT FIREBASE)
+ const handleLogout = () => {
+  window.location.replace("/");
+};
 
   const opciones = [
     {
@@ -60,7 +66,7 @@ function MenuAdmin() {
 
       </div>
 
-      {/* SIDEBAR DESKTOP (NO CAMBIA) */}
+      {/* SIDEBAR DESKTOP */}
       <aside className="hidden lg:block w-72 bg-zinc-950 border-r border-yellow-600/20 p-6">
 
         <h1 className="text-3xl font-bold mb-10">
@@ -74,136 +80,92 @@ function MenuAdmin() {
             Dashboard
           </button>
 
-          <button
-            onClick={() => navigate("/admin/clientes")}
-            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
-          >
+          <button onClick={() => navigate("/admin/clientes")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
             <FaUsers />
             Clientes
           </button>
 
-          <button
-            onClick={() => navigate("/proyectos")}
-            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
-          >
+          <button onClick={() => navigate("/proyectos")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
             <FaBuilding />
             Proyectos
           </button>
 
-          <button
-            onClick={() => navigate("/admin/subir-proyecto")}
-            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
-          >
+          <button onClick={() => navigate("/admin/subir-proyecto")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
             <FaPlusCircle />
             Subir Proyecto
           </button>
 
-          <button
-            onClick={() => navigate("/admin/mensajes")}
-            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
-          >
+          <button onClick={() => navigate("/admin/mensajes")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
             <FaEnvelope />
             Mensajes
           </button>
 
         </nav>
 
-        <div className="mt-12">
-
-          <button className="w-full flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-semibold transition">
-            <FaSignOutAlt />
-            Cerrar Sesión
-          </button>
-
-        </div>
+        {/* 🔥 CERRAR SESIÓN -> HOME */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-semibold transition"
+        >
+          <FaSignOutAlt />
+          Cerrar Sesión
+        </button>
 
       </aside>
 
-      {/* MENU MOBILE (HAMBURGUESA) */}
+      {/* MENU MOBILE */}
       {open && (
 
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col p-6 lg:hidden">
 
-          {/* HEADER */}
           <div className="flex justify-between items-center mb-10">
 
             <h1 className="text-2xl font-bold">
               Wealth <span className="text-yellow-500">Admin</span>
             </h1>
 
-            <button
-              onClick={() => setOpen(false)}
-              className="text-2xl"
-            >
+            <button onClick={() => setOpen(false)} className="text-2xl">
               <FaTimes />
             </button>
 
           </div>
 
-          {/* OPCIONES */}
           <div className="flex flex-col gap-4">
 
-            <button
-              onClick={() => {
-                navigate("/");
-                setOpen(false);
-              }}
-              className="flex items-center gap-3 bg-yellow-500 text-black px-5 py-4 rounded-2xl font-bold"
-            >
+            <button onClick={() => { navigate("/"); setOpen(false); }} className="flex items-center gap-3 bg-yellow-500 text-black px-5 py-4 rounded-2xl font-bold">
               <FaHome />
               Dashboard
             </button>
 
-            <button
-              onClick={() => {
-                navigate("/admin/clientes");
-                setOpen(false);
-              }}
-              className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl"
-            >
+            <button onClick={() => { navigate("/admin/clientes"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
               <FaUsers />
               Clientes
             </button>
 
-            <button
-              onClick={() => {
-                navigate("/proyectos");
-                setOpen(false);
-              }}
-              className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl"
-            >
+            <button onClick={() => { navigate("/proyectos"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
               <FaBuilding />
               Proyectos
             </button>
 
-            <button
-              onClick={() => {
-                navigate("/admin/subir-proyecto");
-                setOpen(false);
-              }}
-              className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl"
-            >
+            <button onClick={() => { navigate("/admin/subir-proyecto"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
               <FaPlusCircle />
               Subir Proyecto
             </button>
 
-            <button
-              onClick={() => {
-                navigate("/admin/mensajes");
-                setOpen(false);
-              }}
-              className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl"
-            >
+            <button onClick={() => { navigate("/admin/mensajes"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
               <FaEnvelope />
               Mensajes
             </button>
 
           </div>
 
-          {/* LOGOUT */}
+          {/* 🔥 LOGOUT MOBILE */}
           <div className="mt-auto">
 
-            <button className="w-full flex items-center justify-center gap-3 bg-red-600 py-4 rounded-2xl font-semibold">
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-3 bg-red-600 py-4 rounded-2xl font-semibold"
+            >
               <FaSignOutAlt />
               Cerrar Sesión
             </button>
@@ -214,7 +176,7 @@ function MenuAdmin() {
 
       )}
 
-      {/* CONTENIDO (NO SE TOCA) */}
+      {/* CONTENIDO */}
       <main className="flex-1 p-10">
 
         <div className="mb-12">
@@ -246,6 +208,7 @@ function MenuAdmin() {
       </main>
 
     </div>
+
   );
 }
 
