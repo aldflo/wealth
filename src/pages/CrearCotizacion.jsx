@@ -1,10 +1,20 @@
 import { useState } from "react";
 import { db, auth } from "../firebase.config";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { FaCloudUploadAlt, FaPhone, FaPen, FaTag, FaImage } from "react-icons/fa";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+} from "firebase/firestore";
+
+import {
+  FaCloudUploadAlt,
+  FaPhone,
+  FaPen,
+  FaTag,
+  FaImage,
+} from "react-icons/fa";
 
 function CrearCotizacion() {
-
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [tipo, setTipo] = useState("Construcción");
@@ -12,9 +22,10 @@ function CrearCotizacion() {
   const [imagen, setImagen] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // 🔥 SUBIR IMAGEN A CLOUDINARY
+  // SUBIR IMAGEN A CLOUDINARY
   const subirImagen = async (file) => {
     const formData = new FormData();
+
     formData.append("file", file);
     formData.append("upload_preset", "wealth");
 
@@ -22,20 +33,26 @@ function CrearCotizacion() {
       "https://api.cloudinary.com/v1_1/dxj4iczvk/image/upload",
       {
         method: "POST",
-        body: formData
+        body: formData,
       }
     );
 
     const data = await res.json();
+
     return data.secure_url;
   };
 
-  // 🔥 CREAR COTIZACIÓN
+  // CREAR COTIZACIÓN
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!nombre || !descripcion || !telefono) {
       alert("Completa todos los campos");
+      return;
+    }
+
+    if (!auth.currentUser) {
+      alert("Debes iniciar sesión para enviar una cotización.");
       return;
     }
 
@@ -49,14 +66,23 @@ function CrearCotizacion() {
       }
 
       await addDoc(collection(db, "cotizaciones"), {
-        nombre,
-        descripcion,
+        nombre: nombre.trim(),
+        descripcion: descripcion.trim(),
         tipo,
-        telefono,
+        telefono: telefono.trim(),
+
         imagen: imageUrl,
-        usuario: auth.currentUser ? auth.currentUser.email : "anonimo",
+
+        // Datos del usuario
+        usuario: auth.currentUser.email,
+        uid: auth.currentUser.uid,
+
+        // Estado inicial
         estado: "pendiente",
-        fecha: serverTimestamp()
+        leido: false,
+
+        // Fecha
+        fecha: serverTimestamp(),
       });
 
       alert("Cotización enviada correctamente");
@@ -67,20 +93,22 @@ function CrearCotizacion() {
       setTelefono("");
       setImagen(null);
 
-    } catch (error) {
-      console.log(error);
-      alert("Error al enviar cotización");
-    }
+      // Limpia el input file
+      const input = document.getElementById("imagenCotizacion");
+      if (input) input.value = "";
 
-    setLoading(false);
+    } catch (error) {
+      console.error(error);
+      alert("Error al enviar cotización");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
-
       <div className="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-3xl p-10 shadow-xl">
 
-        {/* HEADER */}
         <h1 className="text-3xl font-bold mb-2 text-yellow-500">
           Solicitar Cotización
         </h1>
@@ -91,10 +119,12 @@ function CrearCotizacion() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* NOMBRE */}
+          {/* Nombre */}
+
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaPen /> Nombre del proyecto
+              <FaPen />
+              Nombre del proyecto
             </label>
 
             <input
@@ -105,25 +135,29 @@ function CrearCotizacion() {
             />
           </div>
 
-          {/* DESCRIPCIÓN */}
+          {/* Descripción */}
+
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaPen /> Descripción
+              <FaPen />
+              Descripción
             </label>
 
             <textarea
-              className="w-full p-4 rounded-2xl bg-zinc-800 border border-zinc-700 focus:border-yellow-500 outline-none"
               rows="4"
+              className="w-full p-4 rounded-2xl bg-zinc-800 border border-zinc-700 focus:border-yellow-500 outline-none"
               placeholder="Describe lo que necesitas..."
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
             />
           </div>
 
-          {/* TIPO */}
+          {/* Tipo */}
+
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaTag /> Tipo de proyecto
+              <FaTag />
+              Tipo de proyecto
             </label>
 
             <select
@@ -138,10 +172,12 @@ function CrearCotizacion() {
             </select>
           </div>
 
-          {/* TELÉFONO */}
+          {/* Teléfono */}
+
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaPhone /> Teléfono de contacto
+              <FaPhone />
+              Teléfono de contacto
             </label>
 
             <input
@@ -153,13 +189,16 @@ function CrearCotizacion() {
             />
           </div>
 
-          {/* IMAGEN */}
+          {/* Imagen */}
+
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaImage /> Imagen de referencia
+              <FaImage />
+              Imagen de referencia
             </label>
 
             <input
+              id="imagenCotizacion"
               type="file"
               accept="image/*"
               onChange={(e) => setImagen(e.target.files[0])}
@@ -167,17 +206,20 @@ function CrearCotizacion() {
             />
           </div>
 
-          {/* BOTÓN */}
+          {/* Botón */}
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] transition"
+            className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] transition disabled:opacity-60"
           >
             <FaCloudUploadAlt />
+
             {loading ? "Enviando..." : "Enviar Cotización"}
           </button>
 
         </form>
+
       </div>
     </div>
   );
