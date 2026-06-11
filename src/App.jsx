@@ -85,7 +85,7 @@ function App() {
   element={<SubirProyecto />}
 />
 <Route path="/admin/cotizaciones" element={<CotizacionesAdmin />} />
-<Route path="/cotizaciones" element={<Cotizaciones />} />
+<Route path="/Cotizaciones" element={<Cotizaciones />} />
 <Route path="/crear-cotizacion" element={<CrearCotizacion />} />
 
 <Route path="/proyecto/:id" element={<DetalleProyecto />} />
