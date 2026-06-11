@@ -12,7 +12,7 @@ import Clientes from "./pages/Clientes";
 import Proyectos from "./pages/Proyectos";
 import SubirProyecto from "./pages/SubirProyecto";
 import DetalleProyecto from "./pages/DetalleProyecto";
-import Cotizaciones from "./pages/Cotizaciones";
+import Cotizaciones from "./pages/cotizaciones";
 import CrearCotizacion from "./pages/CrearCotizacion";
 import CotizacionesAdmin from "./pages/CotizacionesAdmin";
 import Notificaciones from "./pages/Notificaciones.jsx";
