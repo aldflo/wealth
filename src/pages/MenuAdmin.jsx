@@ -8,7 +8,8 @@ import {
   FaSignOutAlt,
   FaHome,
   FaBars,
-  FaTimes
+  FaTimes,
+  FaFileInvoiceDollar
 } from "react-icons/fa";
 
 import { useNavigate } from "react-router-dom";
@@ -18,33 +19,9 @@ function MenuAdmin() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  // 🔥 SOLO REDIRECCIÓN (NO LOGOUT FIREBASE)
- const handleLogout = () => {
-  window.location.replace("/");
-};
-
-  const opciones = [
-    {
-      titulo: "Clientes",
-      descripcion: "Administrar usuarios registrados en el sistema.",
-      icono: <FaUsers size={35} />
-    },
-    {
-      titulo: "Proyectos",
-      descripcion: "Visualizar y administrar proyectos publicados.",
-      icono: <FaBuilding size={35} />
-    },
-    {
-      titulo: "Subir Proyecto",
-      descripcion: "Agregar nuevos trabajos realizados por Wealth.",
-      icono: <FaPlusCircle size={35} />
-    },
-    {
-      titulo: "Mensajes",
-      descripcion: "Consultar solicitudes y mensajes de contacto.",
-      icono: <FaEnvelope size={35} />
-    }
-  ];
+  const handleLogout = () => {
+    window.location.replace("/");
+  };
 
   return (
 
@@ -102,7 +79,6 @@ function MenuAdmin() {
 
         </nav>
 
-        {/* 🔥 CERRAR SESIÓN -> HOME */}
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-semibold transition"
@@ -115,7 +91,6 @@ function MenuAdmin() {
 
       {/* MENU MOBILE */}
       {open && (
-
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col p-6 lg:hidden">
 
           <div className="flex justify-between items-center mb-10">
@@ -159,7 +134,6 @@ function MenuAdmin() {
 
           </div>
 
-          {/* 🔥 LOGOUT MOBILE */}
           <div className="mt-auto">
 
             <button
@@ -173,10 +147,9 @@ function MenuAdmin() {
           </div>
 
         </div>
-
       )}
 
-      {/* CONTENIDO */}
+      {/* 🔥 CONTENIDO (AQUÍ AGREGAMOS EL CARD) */}
       <main className="flex-1 p-10">
 
         <div className="mb-12">
@@ -202,6 +175,32 @@ function MenuAdmin() {
             publicar nuevos trabajos realizados y visualizar los mensajes
             recibidos desde el sitio web.
           </p>
+
+        </div>
+
+        {/* 🔥 NUEVO CARD DE COTIZACIONES */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+          <div
+            onClick={() => navigate("/admin/cotizaciones")}
+            className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-black p-8 rounded-3xl cursor-pointer hover:scale-105 transition"
+          >
+
+            <FaFileInvoiceDollar size={40} />
+
+            <h3 className="text-2xl font-bold mt-4">
+              Cotizaciones
+            </h3>
+
+            <p className="mt-2 font-medium">
+              Ver solicitudes de clientes, aceptar o rechazar proyectos
+            </p>
+
+            <button className="mt-5 bg-black text-white px-4 py-2 rounded-xl font-bold">
+              Ver solicitudes
+            </button>
+
+          </div>
 
         </div>
 

@@ -12,7 +12,10 @@ import Clientes from "./pages/Clientes";
 import Proyectos from "./pages/Proyectos";
 import SubirProyecto from "./pages/SubirProyecto";
 import DetalleProyecto from "./pages/DetalleProyecto";
-
+import Cotizaciones from "./pages/Cotizaciones";
+import CrearCotizacion from "./pages/CrearCotizacion";
+import CotizacionesAdmin from "./pages/CotizacionesAdmin";
+import Notificaciones from "./pages/Notificaciones.jsx";
 
 import MenuCliente from "./pages/MenuCliente";
 import MenuAdmin from "./pages/MenuAdmin";
@@ -33,7 +36,7 @@ function App() {
         path="/login"
         element={<Login />}
       />
-
+<Route path="/Notificaciones" element={<Notificaciones />} />
       <Route
         path="/register"
         element={<Register />}
@@ -81,6 +84,9 @@ function App() {
   path="/admin/subir-proyecto"
   element={<SubirProyecto />}
 />
+<Route path="/admin/cotizaciones" element={<CotizacionesAdmin />} />
+<Route path="/cotizaciones" element={<Cotizaciones />} />
+<Route path="/crear-cotizacion" element={<CrearCotizacion />} />
 
 <Route path="/proyecto/:id" element={<DetalleProyecto />} />
 
