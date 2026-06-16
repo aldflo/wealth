@@ -17,8 +17,7 @@ import CrearCotizacion from "./pages/CrearCotizacion";
 import CotizacionesAdmin from "./pages/CotizacionesAdmin";
 import Notificaciones from "./pages/Notificaciones.jsx";
 import Galeria from "./pages/Galeria";
-import SubirGaleria from "./pages/SubirGaleria";
-
+import SubirGaleria from "./pages/Subirgaleria";
 import MenuCliente from "./pages/MenuCliente";
 import MenuAdmin from "./pages/MenuAdmin";
 
@@ -80,6 +79,9 @@ function App() {
   path="/proyectos"
   element={<Proyectos />}
 />
+<Route path="/subir-galeria" element={<SubirGaleria />} />
+<Route path="/galeria" element={<Galeria />} />
+
 
  {/* Subirproyectos desde admin*/}
       <Route
@@ -91,11 +93,6 @@ function App() {
 <Route path="/crear-cotizacion" element={<CrearCotizacion />} />
 
 <Route path="/proyecto/:id" element={<DetalleProyecto />} />
-{/* 🖼️ Catálogo público */}
-        <Route path="/galeria" element={<Galeria />} />
-
-        {/* 📤 Subida (normalmente solo admin) */}
-        <Route path="/subir-galeria" element={<SubirGaleria />} />
 
 
       <Route
