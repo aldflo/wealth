@@ -19,7 +19,33 @@ function DetalleProyecto() {
   const [loading, setLoading] = useState(true);
   const [modalAbierto, setModalAbierto] = useState(false);
 const [imagenModal, setImagenModal] = useState("");
+const [touchStart, setTouchStart] = useState(null);
+const [touchEnd, setTouchEnd] = useState(null);
 
+const minSwipeDistance = 50;
+
+const onTouchStart = (e) => {
+  setTouchEnd(null);
+  setTouchStart(e.targetTouches[0].clientX);
+};
+
+const onTouchMove = (e) => {
+  setTouchEnd(e.targetTouches[0].clientX);
+};
+
+const onTouchEnd = () => {
+  if (!touchStart || !touchEnd) return;
+
+  const distance = touchStart - touchEnd;
+
+  if (distance > minSwipeDistance) {
+    siguienteImagen();
+  }
+
+  if (distance < -minSwipeDistance) {
+    anteriorImagen();
+  }
+};
   useEffect(() => {
     const fetch = async () => {
       const ref = doc(db, "proyectos", id);
@@ -55,7 +81,16 @@ const [imagenModal, setImagenModal] = useState("");
     Array.isArray(proyecto.imagenes) && proyecto.imagenes.length > 0
       ? proyecto.imagenes
       : [proyecto.imagen];
+// 👉 Cambiar imagen
+const siguienteImagen = () => {
+  setIndex((prev) => (prev + 1) % imagenes.length);
+};
 
+const anteriorImagen = () => {
+  setIndex((prev) =>
+    prev === 0 ? imagenes.length - 1 : prev - 1
+  );
+};
   // 👉 WHATSAPP
   const enviarWhatsApp = () => {
     const telefono = "529811574778";
@@ -113,21 +148,46 @@ const [imagenModal, setImagenModal] = useState("");
       <div className="grid md:grid-cols-2 gap-10 max-w-7xl mx-auto px-6 py-12">
 
         {/* IMAGEN */}
-        <div className="space-y-4">
-<div className="absolute top-4 right-4 bg-black/70 px-3 py-1 rounded-full text-sm z-10">
-  {index + 1} / {imagenes.length}
+       <div className="space-y-4">
+
+  <div
+  className="relative bg-zinc-900 rounded-3xl overflow-hidden"
+  onTouchStart={onTouchStart}
+  onTouchMove={onTouchMove}
+  onTouchEnd={onTouchEnd}
+>
+  {/* CONTADOR */}
+  <div className="absolute top-4 right-4 z-20 bg-black/70 backdrop-blur-md text-white text-sm px-3 py-1 rounded-full">
+    {index + 1} / {imagenes.length}
+  </div>
+
+  {/* FLECHA IZQUIERDA */}
+  <button
+    onClick={anteriorImagen}
+    className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 items-center justify-center text-white text-2xl transition"
+  >
+    ❮
+  </button>
+
+  {/* FLECHA DERECHA */}
+  <button
+    onClick={siguienteImagen}
+    className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 items-center justify-center text-white text-2xl transition"
+  >
+    ❯
+  </button>
+
+  <img
+    src={imagenes[index]}
+    alt={proyecto.nombre}
+    onClick={() => {
+  setIndex(i);
+}}
+    className="w-full h-[500px] object-contain p-6 cursor-zoom-in select-none"
+    draggable={false}
+  />
 </div>
-          <div className="relative bg-zinc-900 rounded-3xl overflow-hidden">
-            <img
-  src={imagenes[index]}
-  alt={proyecto.nombre}
-  onClick={() => {
-    setImagenModal(imagenes[index]);
-    setModalAbierto(true);
-  }}
-  className="w-full h-[500px] object-contain p-6 cursor-zoom-in"
-/>
-          </div>
+
 
           {/* MINI GALERÍA */}
           <div className="flex gap-3 overflow-x-auto">
