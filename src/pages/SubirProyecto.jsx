@@ -20,36 +20,52 @@ import {
 } from "react-icons/fa";
 
 function SubirProyecto() {
-
   const navigate = useNavigate();
+
+  const [imagenes, setImagenes] = useState([]);
   const [galeria, setGaleria] = useState([]);
+
+  const [previewImagenes, setPreviewImagenes] = useState([]);
+const [previewGaleria, setPreviewGaleria] = useState([]);
+
+  const [imagenesExistentes, setImagenesExistentes] = useState([]);
+  const [galeriaExistente, setGaleriaExistente] = useState([]);
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [categoria, setCategoria] = useState("Construcciones");
 
-  const [imagenes, setImagenes] = useState([]);
-  const [loading, setLoading] = useState(false);
-
   const [proyectos, setProyectos] = useState([]);
   const [editId, setEditId] = useState(null);
-
+  const [loading, setLoading] = useState(false);
   const [filtro, setFiltro] = useState("Todos");
 
   // LISTAR
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "proyectos"), (snap) => {
       setProyectos(
-        snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }))
+        snap.docs.map((d) => ({ id: d.id, ...d.data() }))
       );
     });
-
     return () => unsub();
   }, []);
+const handlePreviewImagenes = (files) => {
+  const imgs = Array.from(files).map((file) => ({
+    file,
+    url: URL.createObjectURL(file),
+  }));
+  setPreviewImagenes(imgs);
+  setImagenes(files);
+};
 
+const handlePreviewGaleria = (files) => {
+  const imgs = Array.from(files).map((file) => ({
+    file,
+    url: URL.createObjectURL(file),
+  }));
+  setPreviewGaleria(imgs);
+  setGaleria(files);
+};
   // CLOUDINARY
   const subirImagen = async (file) => {
     const formData = new FormData();
@@ -58,59 +74,38 @@ function SubirProyecto() {
 
     const res = await fetch(
       "https://api.cloudinary.com/v1_1/dxj4iczvk/image/upload",
-      {
-        method: "POST",
-        body: formData,
-      }
+      { method: "POST", body: formData }
     );
 
     const data = await res.json();
     return data.secure_url;
   };
 
- // CREATE / UPDATE
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  if (!nombre || !descripcion || !categoria) {
-    alert("Completa todos los campos");
-    return;
-  }
-
-  try {
+  // CREATE / UPDATE
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
 
-    // Imagen principal
     const urls =
       imagenes.length > 0
-        ? await Promise.all(
-            Array.from(imagenes).map((img) => subirImagen(img))
-          )
+        ? await Promise.all([...imagenes].map(subirImagen))
         : [];
 
-    // Galería de diseños
     const galeriaUrls =
       galeria.length > 0
-        ? await Promise.all(
-            Array.from(galeria).map((img) => subirImagen(img))
-          )
+        ? await Promise.all([...galeria].map(subirImagen))
         : [];
 
     if (editId) {
       await updateDoc(doc(db, "proyectos", editId), {
-  nombre,
-  descripcion,
-  categoria,
+        nombre,
+        descripcion,
+        categoria,
+        imagenes: [...imagenesExistentes, ...urls],
+        imagen: [...imagenesExistentes, ...urls][0] || "",
+        galeria: [...galeriaExistente, ...galeriaUrls],
+      });
 
-  ...(urls.length > 0 && {
-    imagen: urls[0],
-    imagenes: urls,
-  }),
-
-  ...(galeriaUrls.length > 0 && {
-    galeria: galeriaUrls,
-  }),
-});
       setEditId(null);
     } else {
       await addDoc(collection(db, "proyectos"), {
@@ -124,31 +119,23 @@ const handleSubmit = async (e) => {
       });
     }
 
-    resetForm();
-  } catch (err) {
-    console.log(err);
-  }
+    setLoading(false);
+    setImagenes([]);
+    setGaleria([]);
+    setImagenesExistentes([]);
+    setGaleriaExistente([]);
+    setNombre("");
+    setDescripcion("");
+  };
 
-  setLoading(false);
-};
-const resetForm = () => {
-  setNombre("");
-  setDescripcion("");
-  setCategoria("Construcciones");
-  setImagenes([]);
-  setGaleria([]);
-
-  const fileInput = document.getElementById("fileInput");
-  if (fileInput) fileInput.value = "";
-
-  const galeriaInput = document.getElementById("galeriaInput");
-  if (galeriaInput) galeriaInput.value = "";
-};
+  // EDITAR
   const handleEdit = (p) => {
     setEditId(p.id);
     setNombre(p.nombre);
     setDescripcion(p.descripcion);
     setCategoria(p.categoria);
+    setImagenesExistentes(p.imagenes || []);
+    setGaleriaExistente(p.galeria || []);
   };
 
   const handleDelete = async (id) => {
@@ -157,60 +144,56 @@ const resetForm = () => {
     }
   };
 
-  const proyectosFiltrados =
-    filtro === "Todos"
-      ? proyectos
-      : proyectos.filter((p) => p.categoria === filtro);
+  const eliminarImg = (url, tipo) => {
+    if (tipo === "main") {
+      setImagenesExistentes((prev) => prev.filter((i) => i !== url));
+    } else {
+      setGaleriaExistente((prev) => prev.filter((i) => i !== url));
+    }
+  };
 
   return (
-
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white px-6 py-14">
+    <div className="min-h-screen bg-black text-white px-6 py-14">
 
       {/* HEADER */}
-      <div className="max-w-6xl mx-auto mb-10 flex items-center gap-4 justify-between">
-
-        <div className="flex items-center gap-4">
+      <div className="max-w-6xl mx-auto flex justify-between mb-10">
+        <div className="flex gap-4 items-center">
           <FaFolderOpen className="text-yellow-500 text-5xl" />
           <div>
             <h1 className="text-4xl font-bold">Panel de Proyectos</h1>
-            <p className="text-zinc-400">
-              Administra tu catálogo empresarial
-            </p>
+            <p className="text-zinc-400">Administra tu catálogo empresarial</p>
           </div>
         </div>
 
-        {/* 🔥 BOTÓN NUEVO */}
         <button
           onClick={() => navigate("/proyectos")}
-          className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-5 py-3 rounded-2xl text-sm font-semibold transition"
+          className="bg-zinc-800 px-5 py-3 rounded-2xl border border-zinc-700"
         >
           Ver proyectos
         </button>
-
       </div>
 
       {/* FORM */}
-      <div className="max-w-4xl mx-auto bg-zinc-900/60 backdrop-blur-xl border border-zinc-800 rounded-3xl p-10 shadow-2xl">
+      <div className="max-w-4xl mx-auto bg-zinc-900/60 border border-zinc-800 rounded-3xl p-10">
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form className="space-y-6" onSubmit={handleSubmit}>
 
           <input
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4 outline-none focus:border-yellow-500"
+            className="w-full p-4 bg-zinc-800 rounded-2xl"
             placeholder="Nombre del proyecto"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
           />
 
           <textarea
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4 outline-none focus:border-yellow-500"
-            rows="4"
+            className="w-full p-4 bg-zinc-800 rounded-2xl"
             placeholder="Descripción"
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
           />
 
           <select
-            className="w-full bg-zinc-800 border border-zinc-700 rounded-2xl p-4"
+            className="w-full p-4 bg-zinc-800 rounded-2xl"
             value={categoria}
             onChange={(e) => setCategoria(e.target.value)}
           >
@@ -219,120 +202,135 @@ const resetForm = () => {
             <option>Aluminios y Vidrios</option>
           </select>
 
-          <input
-            id="fileInput"
-            type="file"
-            multiple
-            accept="image/*"
-            onChange={(e) => setImagenes(e.target.files)}
-            className="w-full text-sm text-zinc-300"
-          />
-          {/* GALERÍA DE DISEÑOS */}
-<div className="border border-zinc-700 rounded-2xl p-5 bg-zinc-800/40">
+          {/* IMAGENES */}
+          <label className="block border-2 border-dashed border-yellow-500 rounded-2xl p-6 text-center cursor-pointer hover:bg-yellow-500/10 transition">
+            <p className="text-lg">📸 Imágenes del proyecto</p>
+            <p className="text-xs text-zinc-400">Click aquí para subir imágenes principales</p>
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => setImagenes(e.target.files)}
+            />
+          </label>
 
-  <h3 className="text-lg font-semibold mb-2">
-    Galería de diseños (opcional)
-  </h3>
+          {/* GALERÍA */}
+          <label className="block border-2 border-dashed border-blue-500 rounded-2xl p-6 text-center cursor-pointer hover:bg-blue-500/10 transition">
+            <p className="text-lg">🖼️ Diseños relacionados</p>
+            <p className="text-xs text-zinc-400">Click aquí para subir diseños adicionales</p>
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => setGaleria(e.target.files)}
+            />
+          </label>
 
-  <p className="text-sm text-zinc-400 mb-4">
-    Estas imágenes se mostrarán como diseños relacionados
-    en la página del proyecto.
-  </p>
+          {/* PREVIEW MAIN */}
+          {imagenesExistentes.length > 0 && (
+            <div>
+              <p className="text-sm text-zinc-400">Imágenes del proyecto</p>
 
-  <input
-    id="galeriaInput"
-    type="file"
-    multiple
-    accept="image/*"
-    onChange={(e) => setGaleria(e.target.files)}
-    className="w-full text-sm text-zinc-300"
-  />
+              <div className="grid grid-cols-3 gap-3 mt-2">
+                {imagenesExistentes.map((img, i) => (
+                  <div key={i} className="relative bg-black rounded-xl overflow-hidden h-32">
+                    <img src={img} className="w-full h-full object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => eliminarImg(img, "main")}
+                      className="absolute top-2 right-2 bg-red-500 px-2 rounded"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-  {galeria?.length > 0 && (
-    <div className="mt-4 space-y-2">
+          {/* PREVIEW GALERIA */}
+          {galeriaExistente.length > 0 && (
+            <div>
+              <p className="text-sm text-zinc-400">Diseños relacionados</p>
 
-      {Array.from(galeria).map((file, index) => (
-        <div
-          key={index}
-          className="flex items-center gap-2 text-sm text-green-400"
-        >
-          <span>✓</span>
-          <span>{file.name}</span>
-        </div>
-      ))}
-
-    </div>
-  )}
-
-</div>
+              <div className="grid grid-cols-3 gap-3 mt-2">
+                {galeriaExistente.map((img, i) => (
+                  <div key={i} className="relative bg-black rounded-xl overflow-hidden h-32">
+                    <img src={img} className="w-full h-full object-contain" />
+                    <button
+                      type="button"
+                      onClick={() => eliminarImg(img, "galeria")}
+                      className="absolute top-2 right-2 bg-red-500 px-2 rounded"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <button
             disabled={loading}
-            className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-bold hover:scale-[1.02] transition flex justify-center gap-2"
+            className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-bold flex justify-center gap-2"
           >
             <FaCloudUploadAlt />
             {editId ? "Actualizar Proyecto" : "Publicar Proyecto"}
           </button>
 
         </form>
-
       </div>
 
-      {/* FILTROS */}
-      <div className="max-w-6xl mx-auto mt-14 mb-8 flex flex-wrap gap-3">
+      {/* LISTA PROYECTOS MEJORADA */}
+      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-10 mt-12">
 
-        {["Todos", "Construcciones", "Inmobiliaria", "Aluminios y Vidrios"].map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setFiltro(cat)}
-            className={`px-5 py-2 rounded-full border transition text-sm font-semibold ${
-              filtro === cat
-                ? "bg-yellow-500 text-black border-yellow-500"
-                : "bg-zinc-900 border-zinc-700 text-white hover:border-yellow-500"
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
-
-      </div>
-
-      {/* LISTA */}
-      <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
-
-        {proyectosFiltrados.map((p) => (
+        {proyectos.map((p) => (
           <div
             key={p.id}
-            className="group bg-zinc-900/60 border border-zinc-800 rounded-3xl overflow-hidden hover:border-yellow-500 transition hover:-translate-y-1"
+            className="group bg-zinc-900/70 border border-zinc-800 rounded-3xl overflow-hidden hover:border-yellow-500 transition-all duration-300 hover:-translate-y-1 shadow-xl"
           >
 
-            <img
-              src={p.imagen}
-              className="h-52 w-full object-cover group-hover:scale-105 transition"
-            />
+            {/* IMAGEN */}
+            <div className="relative h-72 bg-black flex items-center justify-center overflow-hidden">
 
+              <img
+                src={p.imagen}
+                className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+              />
+
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+
+              <div className="absolute top-3 left-3 bg-black/70 px-3 py-1 text-xs rounded-full border border-zinc-700">
+                {p.categoria}
+              </div>
+
+            </div>
+
+            {/* INFO */}
             <div className="p-6">
 
-              <h2 className="text-xl font-bold">{p.nombre}</h2>
+              <h2 className="text-xl font-bold mb-2">{p.nombre}</h2>
 
-              <p className="text-zinc-400 text-sm mt-2 line-clamp-2">
+              <p className="text-zinc-400 text-sm line-clamp-3">
                 {p.descripcion}
               </p>
 
-              <div className="flex gap-3 mt-5">
+              <div className="flex gap-3 mt-6">
 
                 <button
                   onClick={() => handleEdit(p)}
-                  className="flex-1 bg-blue-500 py-2 rounded-xl flex justify-center"
+                  className="flex-1 bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white border border-blue-500/30 hover:border-blue-500 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
                 >
                   <FaEdit />
+                  Editar
                 </button>
 
                 <button
                   onClick={() => handleDelete(p.id)}
-                  className="flex-1 bg-red-500 py-2 rounded-xl flex justify-center"
+                  className="flex-1 bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 hover:border-red-500 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2"
                 >
                   <FaTrash />
+                  Eliminar
                 </button>
 
               </div>
@@ -345,7 +343,6 @@ const resetForm = () => {
       </div>
 
     </div>
-
   );
 }
 
