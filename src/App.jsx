@@ -16,8 +16,8 @@ import Cotizaciones from "./pages/cotizaciones";
 import CrearCotizacion from "./pages/CrearCotizacion";
 import CotizacionesAdmin from "./pages/CotizacionesAdmin";
 import Notificaciones from "./pages/Notificaciones.jsx";
-import Galeria from "./pages/Galeria";
-import SubirGaleria from "./pages/Subirgaleria";
+import Galeria from "./pages/galeria";
+import SubirGaleria from "./pages/subirgaleria";
 import MenuCliente from "./pages/MenuCliente";
 import MenuAdmin from "./pages/MenuAdmin";
 
