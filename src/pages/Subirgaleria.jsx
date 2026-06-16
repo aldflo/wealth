@@ -4,7 +4,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 import { FaCloudUploadAlt } from "react-icons/fa";
 
-function SubirGaleria() {
+function Subirgaleria() {
   const [categoria, setCategoria] = useState("Construcciones");
   const [subcategoria, setSubcategoria] = useState("Puertas");
 
@@ -141,4 +141,4 @@ function SubirGaleria() {
   );
 }
 
-export default SubirGaleria;
+export default Subirgaleria;

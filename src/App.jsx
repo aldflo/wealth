@@ -79,7 +79,7 @@ function App() {
   path="/proyectos"
   element={<Proyectos />}
 />
-<Route path="/subir-galeria" element={<SubirGaleria />} />
+<Route path="/subir-galeria" element={<Subirgaleria />} />
 <Route path="/galeria" element={<Galeria />} />
 
 
