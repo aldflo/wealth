@@ -1,10 +1,6 @@
 import { useState } from "react";
 import { db, auth } from "../firebase.config";
-import {
-  addDoc,
-  collection,
-  serverTimestamp,
-} from "firebase/firestore";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 import {
   FaCloudUploadAlt,
@@ -19,13 +15,15 @@ function CrearCotizacion() {
   const [descripcion, setDescripcion] = useState("");
   const [tipo, setTipo] = useState("Construcción");
   const [telefono, setTelefono] = useState("");
-  const [imagen, setImagen] = useState(null);
+
+  // 🔥 MULTI IMÁGENES (FILELIST)
+  const [imagenes, setImagenes] = useState([]);
+
   const [loading, setLoading] = useState(false);
 
-  // SUBIR IMAGEN A CLOUDINARY
+  // 🔥 CLOUDINARY UPLOAD
   const subirImagen = async (file) => {
     const formData = new FormData();
-
     formData.append("file", file);
     formData.append("upload_preset", "wealth");
 
@@ -38,11 +36,10 @@ function CrearCotizacion() {
     );
 
     const data = await res.json();
-
     return data.secure_url;
   };
 
-  // CREAR COTIZACIÓN
+  // 🔥 SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -59,10 +56,13 @@ function CrearCotizacion() {
     try {
       setLoading(true);
 
-      let imageUrl = "";
+      // 🔥 SUBIR VARIAS IMÁGENES
+      let imagenesUrls = [];
 
-      if (imagen) {
-        imageUrl = await subirImagen(imagen);
+      if (imagenes && imagenes.length > 0) {
+        imagenesUrls = await Promise.all(
+          Array.from(imagenes).map((img) => subirImagen(img))
+        );
       }
 
       await addDoc(collection(db, "cotizaciones"), {
@@ -71,29 +71,26 @@ function CrearCotizacion() {
         tipo,
         telefono: telefono.trim(),
 
-        imagen: imageUrl,
+        // 🔥 SIEMPRE ARRAY
+        imagenes: imagenesUrls,
 
-        // Datos del usuario
         usuario: auth.currentUser.email,
         uid: auth.currentUser.uid,
 
-        // Estado inicial
         estado: "pendiente",
         leido: false,
-
-        // Fecha
         fecha: serverTimestamp(),
       });
 
       alert("Cotización enviada correctamente");
 
+      // RESET
       setNombre("");
       setDescripcion("");
       setTipo("Construcción");
       setTelefono("");
-      setImagen(null);
+      setImagenes([]);
 
-      // Limpia el input file
       const input = document.getElementById("imagenCotizacion");
       if (input) input.value = "";
 
@@ -107,6 +104,7 @@ function CrearCotizacion() {
 
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+
       <div className="w-full max-w-3xl bg-zinc-900 border border-zinc-800 rounded-3xl p-10 shadow-xl">
 
         <h1 className="text-3xl font-bold mb-2 text-yellow-500">
@@ -119,45 +117,39 @@ function CrearCotizacion() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
 
-          {/* Nombre */}
-
+          {/* NOMBRE */}
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaPen />
-              Nombre del proyecto
+              <FaPen /> Nombre del proyecto
             </label>
 
             <input
-              className="w-full p-4 rounded-2xl bg-zinc-800 border border-zinc-700 focus:border-yellow-500 outline-none"
-              placeholder="Ej: Casa moderna, ventanales, etc."
+              className="w-full p-4 rounded-2xl bg-zinc-800 border border-zinc-700"
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej: Casa moderna"
             />
           </div>
 
-          {/* Descripción */}
-
+          {/* DESCRIPCIÓN */}
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaPen />
-              Descripción
+              <FaPen /> Descripción
             </label>
 
             <textarea
               rows="4"
-              className="w-full p-4 rounded-2xl bg-zinc-800 border border-zinc-700 focus:border-yellow-500 outline-none"
-              placeholder="Describe lo que necesitas..."
+              className="w-full p-4 rounded-2xl bg-zinc-800 border border-zinc-700"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Describe tu proyecto..."
             />
           </div>
 
-          {/* Tipo */}
-
+          {/* TIPO */}
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaTag />
-              Tipo de proyecto
+              <FaTag /> Tipo de proyecto
             </label>
 
             <select
@@ -172,49 +164,58 @@ function CrearCotizacion() {
             </select>
           </div>
 
-          {/* Teléfono */}
-
+          {/* TELÉFONO */}
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaPhone />
-              Teléfono de contacto
+              <FaPhone /> Teléfono
             </label>
 
             <input
               type="tel"
-              className="w-full p-4 rounded-2xl bg-zinc-800 border border-zinc-700 focus:border-yellow-500 outline-none"
-              placeholder="Ej: 922 123 4567"
+              className="w-full p-4 rounded-2xl bg-zinc-800 border border-zinc-700"
               value={telefono}
               onChange={(e) => setTelefono(e.target.value)}
+              placeholder="Ej: 999 123 4567"
             />
           </div>
 
-          {/* Imagen */}
-
+          {/* IMÁGENES */}
           <div>
             <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-              <FaImage />
-              Imagen de referencia
+              <FaImage /> Imágenes de referencia
             </label>
 
             <input
               id="imagenCotizacion"
               type="file"
+              multiple
               accept="image/*"
-              onChange={(e) => setImagen(e.target.files[0])}
+              onChange={(e) => setImagenes(e.target.files)}
               className="w-full text-sm text-zinc-300"
             />
+
+            {/* PREVIEW */}
+            {imagenes.length > 0 && (
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                {Array.from(imagenes).map((file, i) => (
+                  <div
+                    key={i}
+                    className="text-xs text-green-400 bg-zinc-800 p-2 rounded-xl"
+                  >
+                    {file.name}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Botón */}
-
+          {/* BOTÓN */}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:scale-[1.02] transition disabled:opacity-60"
+            className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-bold flex items-center justify-center gap-2"
           >
             <FaCloudUploadAlt />
-
             {loading ? "Enviando..." : "Enviar Cotización"}
           </button>
 

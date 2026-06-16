@@ -1,5 +1,5 @@
 import { useState } from "react";
-
+import { FaImages } from "react-icons/fa";
 import {
   FaUsers,
   FaBuilding,
@@ -71,6 +71,13 @@ function MenuAdmin() {
             <FaPlusCircle />
             Subir Proyecto
           </button>
+          <button
+  onClick={() => navigate("/subir-galeria")}
+  className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
+>
+  <FaImages />
+  Subir Galería
+</button>
 
           <button onClick={() => navigate("/admin/mensajes")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
             <FaEnvelope />
@@ -126,6 +133,16 @@ function MenuAdmin() {
               <FaPlusCircle />
               Subir Proyecto
             </button>
+            <button
+  onClick={() => {
+    navigate("/subir-galeria");
+    setOpen(false);
+  }}
+  className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl"
+>
+  <FaImages />
+  Subir Galería
+</button>
 
             <button onClick={() => { navigate("/admin/mensajes"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
               <FaEnvelope />

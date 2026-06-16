@@ -100,21 +100,21 @@ function Notificaciones() {
 
         <button
           onClick={seleccionarTodas}
-          className="bg-zinc-800 px-4 py-2 rounded-xl text-sm"
+          className="bg-zinc-800 px-4 py-2 rounded-xl text-sm hover:bg-zinc-700 transition"
         >
           Seleccionar todo
         </button>
 
         <button
           onClick={marcarLeidas}
-          className="bg-green-600 px-4 py-2 rounded-xl text-sm flex items-center gap-2"
+          className="bg-green-600 px-4 py-2 rounded-xl text-sm flex items-center gap-2 hover:bg-green-700 transition"
         >
           <FaCheck /> Marcar leídas
         </button>
 
         <button
           onClick={eliminar}
-          className="bg-red-600 px-4 py-2 rounded-xl text-sm flex items-center gap-2"
+          className="bg-red-600 px-4 py-2 rounded-xl text-sm flex items-center gap-2 hover:bg-red-700 transition"
         >
           <FaTrash /> Eliminar
         </button>
@@ -133,38 +133,76 @@ function Notificaciones() {
             <div
               key={n.id}
               onClick={() => toggleSelect(n.id)}
-              className={`p-4 rounded-xl border cursor-pointer transition
+              className={`
+                p-5 rounded-2xl border cursor-pointer transition relative overflow-hidden
+                hover:scale-[1.01]
                 ${n.leido
                   ? "bg-zinc-900 border-zinc-800"
-                  : "bg-zinc-800 border-yellow-500"
+                  : "bg-zinc-900 border-yellow-500/40"
                 }
-                ${seleccionadas.includes(n.id) ? "ring-2 ring-yellow-400" : ""}
+                ${seleccionadas.includes(n.id)
+                  ? "ring-2 ring-yellow-400 bg-zinc-800"
+                  : ""
+                }
               `}
             >
 
-              <p className="text-white font-medium">
-                {n.mensaje}
-              </p>
-
-              <p className="text-xs text-zinc-400 mt-2">
-                {n.fecha?.toDate?.().toLocaleString() || "Sin fecha"}
-              </p>
-
-              {n.tipo && (
-                <span className="text-xs text-yellow-400">
-                  {n.tipo}
-                </span>
-              )}
-
+              {/* 🔥 barra lateral no leída */}
               {!n.leido && (
-                <span className="text-xs text-red-400 ml-2">
-                  NUEVO
-                </span>
+                <div className="absolute left-0 top-0 h-full w-1 bg-yellow-500" />
               )}
+
+              {/* CONTENIDO */}
+              <div className="flex justify-between gap-4">
+
+                <div className="flex-1">
+
+                  <p className="text-white font-medium leading-snug">
+                    {n.mensaje}
+                  </p>
+
+                  {/* TAGS */}
+                  <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-zinc-400">
+
+                    {n.tipo && (
+                      <span className="bg-zinc-800 px-2 py-1 rounded-full">
+                        {n.tipo}
+                      </span>
+                    )}
+
+                    {n.estado && (
+                      <span className={`
+                        px-2 py-1 rounded-full text-black font-bold
+                        ${n.estado === "success" && "bg-green-500"}
+                        ${n.estado === "error" && "bg-red-500"}
+                        ${n.estado === "warning" && "bg-yellow-500"}
+                        ${n.estado === "info" && "bg-blue-500"}
+                      `}>
+                        {n.estado}
+                      </span>
+                    )}
+
+                    {!n.leido && (
+                      <span className="bg-red-500 text-white px-2 py-1 rounded-full">
+                        NUEVO
+                      </span>
+                    )}
+
+                  </div>
+
+                  {/* FECHA */}
+                  <p className="text-xs text-zinc-500 mt-3">
+                    {n.fecha?.toDate?.().toLocaleString() || "Sin fecha"}
+                  </p>
+
+                </div>
+
+              </div>
 
             </div>
 
           ))
+
         )}
 
       </div>

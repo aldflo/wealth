@@ -23,7 +23,10 @@ function CotizacionesAdmin() {
 
   const [cotizaciones, setCotizaciones] = useState([]);
 
-  // 🔥 TRAER DATOS (NO MODIFICA FIRESTORE)
+  const [modalOpen, setModalOpen] = useState(false);
+  const [imagenesActivas, setImagenesActivas] = useState([]);
+  const [index, setIndex] = useState(0);
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "cotizaciones"), (snap) => {
       setCotizaciones(
@@ -37,42 +40,29 @@ function CotizacionesAdmin() {
     return () => unsub();
   }, []);
 
-  // 🔥 CAMBIAR ESTADO + CREAR NOTIFICACIÓN
   const cambiarEstado = async (cotizacion, estado) => {
-    try {
+    await updateDoc(doc(db, "cotizaciones", cotizacion.id), {
+      estado,
+      leido: true
+    });
 
-      // 🔥 SOLO AGREGA / ACTUALIZA CAMPOS, NO BORRA NADA
-      await updateDoc(doc(db, "cotizaciones", cotizacion.id), {
-        estado: estado,
-        leido: true
-      });
-
-      // 🔥 CREA NOTIFICACIÓN SIN TOCAR LAS ANTERIORES
-      await addDoc(collection(db, "notificaciones"), {
-        usuario: cotizacion.usuario,
-        mensaje:
-          estado === "aceptada"
-            ? `Tu cotización "${cotizacion.nombre}" fue ACEPTADA, nos pondremos en contacto por via whatsapp.`
-            : `Tu cotización "${cotizacion.nombre}" fue RECHAZADA.`,
-        leido: false,
-        tipo: "cotizacion",
-        fecha: serverTimestamp()
-      });
-
-    } catch (error) {
-      console.log("Error:", error);
-    }
+    await addDoc(collection(db, "notificaciones"), {
+      usuario: cotizacion.usuario,
+      mensaje:
+        estado === "aceptada"
+          ? `Tu cotización "${cotizacion.nombre}" fue ACEPTADA`
+          : `Tu cotización "${cotizacion.nombre}" fue RECHAZADA`,
+      leido: false,
+      tipo: "cotizacion",
+      fecha: serverTimestamp()
+    });
   };
 
-  // 🗑️ ELIMINAR (NO AFECTA OTROS DATOS)
   const eliminar = async (id) => {
-    const ok = confirm("¿Eliminar cotización?");
-    if (!ok) return;
-
+    if (!confirm("¿Eliminar cotización?")) return;
     await deleteDoc(doc(db, "cotizaciones", id));
   };
 
-  // 🔁 VOLVER A PENDIENTE (NO BORRA DATOS)
   const resetEstado = async (id) => {
     await updateDoc(doc(db, "cotizaciones", id), {
       estado: "pendiente"
@@ -88,6 +78,29 @@ function CotizacionesAdmin() {
       default:
         return "bg-yellow-500 text-black";
     }
+  };
+
+  // 🔥 abrir modal (soporta imagen o array)
+  const openModal = (imagenes, i = 0) => {
+    const imgs = Array.isArray(imagenes)
+      ? imagenes
+      : [imagenes];
+
+    setImagenesActivas(imgs);
+    setIndex(i);
+    setModalOpen(true);
+  };
+
+  const next = () => {
+    setIndex((prev) =>
+      prev + 1 >= imagenesActivas.length ? 0 : prev + 1
+    );
+  };
+
+  const prev = () => {
+    setIndex((prev) =>
+      prev === 0 ? imagenesActivas.length - 1 : prev - 1
+    );
   };
 
   return (
@@ -106,7 +119,6 @@ function CotizacionesAdmin() {
             className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6"
           >
 
-            {/* HEADER */}
             <div className="flex justify-between gap-4">
 
               <div className="flex-1">
@@ -132,12 +144,27 @@ function CotizacionesAdmin() {
 
               </div>
 
-              {c.imagen && (
+              {/* 🔥 IMAGENES (SOPORTE MULTI + LEGACY) */}
+              {c.imagenes?.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto">
+
+                  {c.imagenes.map((img, i) => (
+                    <img
+                      key={i}
+                      src={img}
+                      onClick={() => openModal(c.imagenes, i)}
+                      className="w-20 h-20 object-cover rounded-xl border border-zinc-700 cursor-zoom-in hover:scale-105 transition"
+                    />
+                  ))}
+
+                </div>
+              ) : c.imagen ? (
                 <img
                   src={c.imagen}
-                  className="w-28 h-28 object-cover rounded-xl border border-zinc-700"
+                  onClick={() => openModal(c.imagen)}
+                  className="w-28 h-28 object-cover rounded-xl border border-zinc-700 cursor-zoom-in hover:scale-105 transition"
                 />
-              )}
+              ) : null}
 
             </div>
 
@@ -148,7 +175,6 @@ function CotizacionesAdmin() {
                 {c.estado || "pendiente"}
               </span>
 
-              {/* 🔥 BOTÓN EDITAR SOLO SI YA RESPONDIDO */}
               {c.estado && c.estado !== "pendiente" && (
                 <button
                   onClick={() => resetEstado(c.id)}
@@ -160,27 +186,27 @@ function CotizacionesAdmin() {
 
             </div>
 
-            {/* BOTONES SOLO SI PENDIENTE */}
+            {/* BOTONES */}
             {(!c.estado || c.estado === "pendiente") && (
-              <div className="flex flex-wrap gap-3 mt-5">
+              <div className="flex gap-3 mt-5">
 
                 <button
                   onClick={() => cambiarEstado(c, "aceptada")}
-                  className="flex items-center gap-2 bg-green-600 px-4 py-2 rounded-xl"
+                  className="bg-green-600 px-4 py-2 rounded-xl"
                 >
                   <FaCheck /> Aceptar
                 </button>
 
                 <button
                   onClick={() => cambiarEstado(c, "rechazada")}
-                  className="flex items-center gap-2 bg-red-600 px-4 py-2 rounded-xl"
+                  className="bg-red-600 px-4 py-2 rounded-xl"
                 >
                   <FaTimes /> Rechazar
                 </button>
 
                 <button
                   onClick={() => eliminar(c.id)}
-                  className="flex items-center gap-2 bg-zinc-700 px-4 py-2 rounded-xl"
+                  className="bg-zinc-700 px-4 py-2 rounded-xl"
                 >
                   <FaTrash /> Eliminar
                 </button>
@@ -189,10 +215,50 @@ function CotizacionesAdmin() {
             )}
 
           </div>
-
         ))}
-
       </div>
+
+      {/* 🔥 MODAL PRO */}
+      {modalOpen && (
+        <div
+          className="fixed inset-0 bg-black/95 flex items-center justify-center z-50"
+          onClick={() => setModalOpen(false)}
+        >
+
+          {imagenesActivas.length > 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); prev(); }}
+              className="absolute left-6 text-white text-4xl"
+            >
+              ❮
+            </button>
+          )}
+
+          <img
+            src={imagenesActivas[index]}
+            className="max-w-[90%] max-h-[90%] rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          {imagenesActivas.length > 1 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); next(); }}
+              className="absolute right-6 text-white text-4xl"
+            >
+              ❯
+            </button>
+          )}
+
+          <button
+            onClick={() => setModalOpen(false)}
+            className="absolute top-6 right-6 text-white text-5xl hover:text-yellow-500"
+          >
+            ×
+          </button>
+
+        </div>
+      )}
+
     </div>
   );
 }

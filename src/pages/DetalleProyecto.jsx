@@ -268,14 +268,21 @@ const anteriorImagen = () => {
       {proyecto.galeria && proyecto.galeria.length > 0 && (
         <div className="max-w-7xl mx-auto px-6 pb-16">
 
-          <h2 className="text-3xl font-bold mb-3">
-            Más diseños relacionados
-          </h2>
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
 
-          <p className="text-zinc-400 mb-8">
-            Explora otros diseños y acabados que también podemos fabricar
-            y personalizar para tu proyecto.
-          </p>
+  <p className="text-zinc-400">
+    Explora otros diseños y acabados que también podemos fabricar
+    y personalizar para tu proyecto.
+  </p>
+
+  <button
+    onClick={() => navigate("/galeria")}
+    className="bg-yellow-500 text-black px-5 py-2 rounded-xl font-bold hover:scale-105 transition"
+  >
+    Ver galería completa
+  </button>
+
+</div>
 
          <div className="flex gap-6 overflow-x-auto pb-3 snap-x snap-mandatory">
 
