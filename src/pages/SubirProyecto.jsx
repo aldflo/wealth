@@ -22,6 +22,7 @@ import {
 function SubirProyecto() {
 
   const navigate = useNavigate();
+  const [galeria, setGaleria] = useState([]);
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -67,62 +68,82 @@ function SubirProyecto() {
     return data.secure_url;
   };
 
-  // CREATE / UPDATE
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ // CREATE / UPDATE
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!nombre || !descripcion || !categoria) {
-      alert("Completa todos los campos");
-      return;
+  if (!nombre || !descripcion || !categoria) {
+    alert("Completa todos los campos");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    // Imagen principal
+    const urls =
+      imagenes.length > 0
+        ? await Promise.all(
+            Array.from(imagenes).map((img) => subirImagen(img))
+          )
+        : [];
+
+    // Galería de diseños
+    const galeriaUrls =
+      galeria.length > 0
+        ? await Promise.all(
+            Array.from(galeria).map((img) => subirImagen(img))
+          )
+        : [];
+
+    if (editId) {
+      await updateDoc(doc(db, "proyectos", editId), {
+  nombre,
+  descripcion,
+  categoria,
+
+  ...(urls.length > 0 && {
+    imagen: urls[0],
+    imagenes: urls,
+  }),
+
+  ...(galeriaUrls.length > 0 && {
+    galeria: galeriaUrls,
+  }),
+});
+      setEditId(null);
+    } else {
+      await addDoc(collection(db, "proyectos"), {
+        nombre,
+        descripcion,
+        categoria,
+        imagen: urls[0] || "",
+        imagenes: urls,
+        galeria: galeriaUrls,
+        fecha: serverTimestamp(),
+      });
     }
 
-    try {
-      setLoading(true);
+    resetForm();
+  } catch (err) {
+    console.log(err);
+  }
 
-      const urls =
-        imagenes.length > 0
-          ? await Promise.all(Array.from(imagenes).map(subirImagen))
-          : [];
+  setLoading(false);
+};
+const resetForm = () => {
+  setNombre("");
+  setDescripcion("");
+  setCategoria("Construcciones");
+  setImagenes([]);
+  setGaleria([]);
 
-      if (editId) {
-        await updateDoc(doc(db, "proyectos", editId), {
-          nombre,
-          descripcion,
-          categoria,
-          ...(urls.length > 0 && {
-            imagen: urls[0],
-            imagenes: urls,
-          }),
-        });
+  const fileInput = document.getElementById("fileInput");
+  if (fileInput) fileInput.value = "";
 
-        setEditId(null);
-      } else {
-        await addDoc(collection(db, "proyectos"), {
-          nombre,
-          descripcion,
-          categoria,
-          imagen: urls[0] || "",
-          imagenes: urls,
-          fecha: serverTimestamp(),
-        });
-      }
-
-      resetForm();
-    } catch (err) {
-      console.log(err);
-    }
-
-    setLoading(false);
-  };
-
-  const resetForm = () => {
-    setNombre("");
-    setDescripcion("");
-    setCategoria("Construcciones");
-    setImagenes([]);
-    document.getElementById("fileInput").value = "";
-  };
-
+  const galeriaInput = document.getElementById("galeriaInput");
+  if (galeriaInput) galeriaInput.value = "";
+};
   const handleEdit = (p) => {
     setEditId(p.id);
     setNombre(p.nombre);
@@ -206,6 +227,44 @@ function SubirProyecto() {
             onChange={(e) => setImagenes(e.target.files)}
             className="w-full text-sm text-zinc-300"
           />
+          {/* GALERÍA DE DISEÑOS */}
+<div className="border border-zinc-700 rounded-2xl p-5 bg-zinc-800/40">
+
+  <h3 className="text-lg font-semibold mb-2">
+    Galería de diseños (opcional)
+  </h3>
+
+  <p className="text-sm text-zinc-400 mb-4">
+    Estas imágenes se mostrarán como diseños relacionados
+    en la página del proyecto.
+  </p>
+
+  <input
+    id="galeriaInput"
+    type="file"
+    multiple
+    accept="image/*"
+    onChange={(e) => setGaleria(e.target.files)}
+    className="w-full text-sm text-zinc-300"
+  />
+
+  {galeria?.length > 0 && (
+    <div className="mt-4 space-y-2">
+
+      {Array.from(galeria).map((file, index) => (
+        <div
+          key={index}
+          className="flex items-center gap-2 text-sm text-green-400"
+        >
+          <span>✓</span>
+          <span>{file.name}</span>
+        </div>
+      ))}
+
+    </div>
+  )}
+
+</div>
 
           <button
             disabled={loading}

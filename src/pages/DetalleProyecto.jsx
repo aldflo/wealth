@@ -17,6 +17,8 @@ function DetalleProyecto() {
   const [proyecto, setProyecto] = useState(null);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [modalAbierto, setModalAbierto] = useState(false);
+const [imagenModal, setImagenModal] = useState("");
 
   useEffect(() => {
     const fetch = async () => {
@@ -112,12 +114,19 @@ function DetalleProyecto() {
 
         {/* IMAGEN */}
         <div className="space-y-4">
-
-          <div className="bg-zinc-900 rounded-3xl overflow-hidden">
+<div className="absolute top-4 right-4 bg-black/70 px-3 py-1 rounded-full text-sm z-10">
+  {index + 1} / {imagenes.length}
+</div>
+          <div className="relative bg-zinc-900 rounded-3xl overflow-hidden">
             <img
-              src={imagenes[index]}
-              className="w-full h-[500px] object-contain p-6"
-            />
+  src={imagenes[index]}
+  alt={proyecto.nombre}
+  onClick={() => {
+    setImagenModal(imagenes[index]);
+    setModalAbierto(true);
+  }}
+  className="w-full h-[500px] object-contain p-6 cursor-zoom-in"
+/>
           </div>
 
           {/* MINI GALERÍA */}
@@ -127,7 +136,12 @@ function DetalleProyecto() {
               <img
                 key={i}
                 src={img}
-                onClick={() => setIndex(i)}
+                alt={`${proyecto.nombre} ${i + 1}`}
+               onClick={() => {
+  setIndex(i);
+  setImagenModal(img);
+  setModalAbierto(true);
+}}
                 className={`w-24 h-20 object-cover rounded-xl cursor-pointer border-2 transition ${
                   i === index
                     ? "border-yellow-500"
@@ -187,7 +201,66 @@ function DetalleProyecto() {
           </div>
 
         </div>
-      </div>
+        
+           </div>
+
+      {/* GALERÍA DE DISEÑOS */}
+      {proyecto.galeria && proyecto.galeria.length > 0 && (
+        <div className="max-w-7xl mx-auto px-6 pb-16">
+
+          <h2 className="text-3xl font-bold mb-3">
+            Más diseños relacionados
+          </h2>
+
+          <p className="text-zinc-400 mb-8">
+            Explora otros diseños y acabados que también podemos fabricar
+            y personalizar para tu proyecto.
+          </p>
+
+         <div className="flex gap-6 overflow-x-auto pb-3 snap-x snap-mandatory">
+
+            {proyecto.galeria.map((img, i) => (
+              <div
+                key={i}
+               className="min-w-[280px] md:min-w-[320px] overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 flex-shrink-0"
+              >
+               <img
+  src={img}
+  alt={`Diseño ${i + 1}`}
+  onClick={() => {
+    setImagenModal(img);
+    setModalAbierto(true);
+  }}
+  className="w-full h-64 object-cover hover:scale-110 transition duration-300 cursor-zoom-in"
+/>
+              </div>
+            ))}
+
+          </div>
+
+        </div>
+      )}
+      {/* MODAL DE IMAGEN */}
+      {modalAbierto && (
+        <div
+          onClick={() => setModalAbierto(false)}
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6 cursor-zoom-out"
+        >
+          <img
+            src={imagenModal}
+            alt="Vista previa"
+            onClick={(e) => e.stopPropagation()}
+            className="max-w-full max-h-full rounded-2xl object-contain"
+          />
+
+          <button
+            onClick={() => setModalAbierto(false)}
+            className="absolute top-6 right-6 text-white text-5xl hover:text-yellow-500 transition"
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 }

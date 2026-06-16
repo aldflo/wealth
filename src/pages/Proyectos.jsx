@@ -151,6 +151,23 @@ function Proyectos() {
                 <div className="mt-5 text-sm text-white/60 group-hover:text-white transition">
                   Ver detalles →
                 </div>
+                <div className="mt-2">
+  <button
+    onClick={(e) => {
+      e.stopPropagation(); // Evita que se abra el detalle al hacer clic
+      navigate(`/proyecto/${p.id}#galeria`);
+    }}
+    className="
+      text-sm
+      text-yellow-400
+      hover:text-yellow-300
+      transition
+      font-medium
+    "
+  >
+    Ver más diseños →
+  </button>
+</div>
 
               </div>
 
