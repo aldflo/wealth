@@ -1,9 +1,24 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import {
   FaBuilding,
   FaMapMarkerAlt,
 } from "react-icons/fa";
 
+import { db } from "../firebase.config";
+
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  limit,
+} from "firebase/firestore";
 function WealthInmobiliario() {
+  const navigate = useNavigate();
+
+const [proyectos, setProyectos] = useState([]);
   const servicios = [
     {
       icon: <FaBuilding size={40} />,
@@ -53,32 +68,28 @@ function WealthInmobiliario() {
     },
   ];
 
-  const proyectos = [
-    {
-      cliente: "SEDUMOP",
-      descripcion:
-        "Planeación y supervisión de ampliación de red eléctrica en Emiliano Zapata.",
-      ubicacion: "Calakmul, Campeche",
-    },
-    {
-      cliente: "INIFEEC",
-      descripcion:
-        "Proyecto de rehabilitación de espacios educativos y obra complementaria.",
-      ubicacion: "Champotón, Campeche",
-    },
-    {
-      cliente: "INIFEEC",
-      descripcion:
-        "Diseño de servicios sanitarios y obra exterior.",
-      ubicacion: "Palizada, Campeche",
-    },
-    {
-      cliente: "INIFEEC",
-      descripcion:
-        "Proyecto ejecutivo de dirección y bodega escolar.",
-      ubicacion: "Carmen, Campeche",
-    },
-  ];
+ useEffect(() => {
+
+  const q = query(
+    collection(db, "proyectos"),
+    where("categoria", "==", "Inmobiliaria"),
+    limit(6)
+  );
+
+  const unsub = onSnapshot(q, (snapshot) => {
+
+    const lista = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    setProyectos(lista);
+
+  });
+
+  return () => unsub();
+
+}, []);
 
   return (
     <div className="bg-black text-white min-h-screen py-16 px-6">
@@ -136,34 +147,106 @@ function WealthInmobiliario() {
           </div>
         </section>
 
-        {/* PROYECTOS */}
-        <section>
-          <h2 className="text-4xl font-bold text-yellow-500 mb-10">
-            Proyectos Ejecutivos
-          </h2>
+      {/* PROYECTOS */}
+<section>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            {proyectos.map((proyecto, index) => (
-              <div
-                key={index}
-                className="bg-black/40 p-8 rounded-3xl border border-zinc-800 hover:border-zinc-700 transition"
-              >
-                <h3 className="text-2xl font-bold text-yellow-500 mb-3">
-                  {proyecto.cliente}
-                </h3>
+  <h2 className="text-4xl font-bold text-yellow-500 mb-10">
+    Proyectos Ejecutivos
+  </h2>
 
-                <p className="text-zinc-300 mb-4 leading-relaxed">
-                  {proyecto.descripcion}
-                </p>
+  {proyectos.length === 0 ? (
 
-                <div className="flex items-center gap-2 text-zinc-400">
-                  <FaMapMarkerAlt />
-                  <span>{proyecto.ubicacion}</span>
-                </div>
-              </div>
-            ))}
+    <div className="text-center py-16 text-zinc-500">
+      No hay proyectos disponibles.
+    </div>
+
+  ) : (
+
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+      {proyectos.map((proyecto) => (
+
+        <div
+          key={proyecto.id}
+          onClick={() => navigate(`/proyecto/${proyecto.id}`)}
+          className="
+            cursor-pointer
+            bg-black/40
+            rounded-3xl
+            overflow-hidden
+            border
+            border-zinc-800
+            hover:border-yellow-500
+            transition-all
+            duration-300
+            hover:scale-[1.02]
+            group
+          "
+        >
+
+          <img
+            src={proyecto.imagen}
+            alt={proyecto.nombre}
+            className="
+              w-full
+              h-64
+              object-cover
+              transition
+              duration-500
+              group-hover:scale-105
+            "
+          />
+
+          <div className="p-7">
+
+            <span className="inline-block px-3 py-1 rounded-full bg-yellow-500/10 text-yellow-400 text-xs mb-4">
+              {proyecto.categoria}
+            </span>
+
+            <h3 className="text-2xl font-bold mb-3">
+              {proyecto.nombre}
+            </h3>
+
+            <p className="text-zinc-400 line-clamp-3">
+              {proyecto.descripcion}
+            </p>
+
+            <div className="flex items-center gap-2 text-zinc-500 mt-5">
+              <FaMapMarkerAlt />
+              {proyecto.ubicacion || "Ubicación no especificada"}
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/proyecto/${proyecto.id}`);
+              }}
+              className="
+                mt-7
+                w-full
+                bg-yellow-500
+                hover:bg-yellow-400
+                text-black
+                py-3
+                rounded-xl
+                font-semibold
+                transition
+              "
+            >
+              Ver proyecto
+            </button>
+
           </div>
-        </section>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  )}
+
+</section>
 
       </div>
     </div>

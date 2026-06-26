@@ -86,13 +86,7 @@ function MenuAdmin() {
 
         </nav>
 
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 py-4 rounded-2xl font-semibold transition"
-        >
-          <FaSignOutAlt />
-          Cerrar Sesión
-        </button>
+       
 
       </aside>
 
@@ -153,13 +147,7 @@ function MenuAdmin() {
 
           <div className="mt-auto">
 
-            <button
-              onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-3 bg-red-600 py-4 rounded-2xl font-semibold"
-            >
-              <FaSignOutAlt />
-              Cerrar Sesión
-            </button>
+          
 
           </div>
 

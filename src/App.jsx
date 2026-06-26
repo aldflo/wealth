@@ -1,5 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 
+import Layout from "./components/Layout";
+
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -20,94 +22,53 @@ import Galeria from "./pages/Galeria";
 import Subirgaleria from "./pages/Subirgaleria";
 import MenuCliente from "./pages/MenuCliente";
 import MenuAdmin from "./pages/MenuAdmin";
+import Favoritos from "./pages/favoritos";
 
 function App() {
-
   return (
-
     <Routes>
 
-      {/* PUBLICO */}
-      <Route
-        path="/"
-        element={<Home />}
-      />
+      {/* 🔥 TODO DENTRO DE LAYOUT */}
+      <Route element={<Layout />}>
 
-      <Route
-        path="/login"
-        element={<Login />}
-      />
-<Route path="/Notificaciones" element={<Notificaciones />} />
-      <Route
-        path="/register"
-        element={<Register />}
-      />
+        {/* PUBLICO */}
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/contacto" element={<Contacto />} />
+        <Route path="/ubicacion" element={<Ubicacion />} />
 
-      {/* EMPRESAS */}
-      <Route
-        path="/construcciones"
-        element={<WealthConstrucciones />}
-      />
+        <Route path="/favoritos" element={<Favoritos />} />
+        <Route path="/Notificaciones" element={<Notificaciones />} />
 
-      <Route
-        path="/inmobiliaria"
-        element={<WealthInmobiliario />}
-      />
+        {/* EMPRESAS */}
+        <Route path="/construcciones" element={<WealthConstrucciones />} />
+        <Route path="/inmobiliaria" element={<WealthInmobiliario />} />
+        <Route path="/aluminios" element={<WealthVyA />} />
 
-      <Route
-        path="/aluminios"
-        element={<WealthVyA />}
-      />
+        {/* CLIENTE */}
+        <Route path="/cliente" element={<MenuCliente />} />
+        <Route path="/admin/clientes" element={<Clientes />} />
 
-      {/* CLIENTE */}
-      <Route
-        path="/cliente"
-        element={<MenuCliente />}
-      />
-      <Route
-  path="/admin/clientes"
-  element={<Clientes />}
-/>
-     
-      {/* ADMIN */}
-      <Route
-        path="/admin"
-        element={<MenuAdmin />}
-      />
-        {/* Vizualizarproyectosdesdeadmin*/}
-      <Route
-  path="/proyectos"
-  element={<Proyectos />}
-/>
-<Route path="/subir-galeria" element={<Subirgaleria />} />
-<Route path="/galeria" element={<Galeria />} />
+        {/* ADMIN */}
+        <Route path="/admin" element={<MenuAdmin />} />
 
+        <Route path="/proyectos" element={<Proyectos />} />
+        <Route path="/subir-galeria" element={<Subirgaleria />} />
+        <Route path="/galeria" element={<Galeria />} />
 
- {/* Subirproyectos desde admin*/}
-      <Route
-  path="/admin/subir-proyecto"
-  element={<SubirProyecto />}
-/>
-<Route path="/admin/cotizaciones" element={<CotizacionesAdmin />} />
-<Route path="/Cotizaciones" element={<Cotizaciones />} />
-<Route path="/crear-cotizacion" element={<CrearCotizacion />} />
+        <Route path="/admin/subir-proyecto" element={<SubirProyecto />} />
+        <Route path="/admin/cotizaciones" element={<CotizacionesAdmin />} />
 
-<Route path="/proyecto/:id" element={<DetalleProyecto />} />
+        <Route path="/cotizaciones" element={<Cotizaciones />} />
+        <Route path="/crear-cotizacion" element={<CrearCotizacion />} />
 
+        <Route path="/proyecto/:id" element={<DetalleProyecto />} />
 
-      <Route
-  path="/contacto"
-  element={<Contacto />}
-/>
-<Route
-  path="/ubicacion"
-  element={<Ubicacion />}
-/>
+      </Route>
 
     </Routes>
-
   );
-
 }
 
 export default App;

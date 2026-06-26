@@ -146,6 +146,13 @@ function MenuCliente() {
             <FaFileInvoiceDollar />
             Cotizaciones
           </button>
+          <button
+  onClick={() => navigate("/favoritos")}
+  className="w-full flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl"
+>
+  <FaHeart />
+  Favoritos
+</button>
 
           {/* 🔥 CAMPANA CON BADGE */}
           <button
@@ -206,6 +213,16 @@ function MenuCliente() {
               <FaFileInvoiceDollar />
               Cotizaciones
             </button>
+            <button
+  onClick={() => {
+    navigate("/favoritos");
+    setOpen(false);
+  }}
+  className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl"
+>
+  <FaHeart />
+  Favoritos
+</button>
 
             <button onClick={() => { navigate("/notificaciones"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
               <FaBell />
