@@ -7,6 +7,36 @@ import ProjectGallery from "./ProjectGallery";
 import TypingIndicator from "./TypingIndicator";
 import EmptyState from "./EmptyState";
 
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import { db } from "../firebase.config";
+
+/* 🔥 FIRESTORE RECOMENDACIONES */
+const getRecomendaciones = async (text) => {
+  const t = text.toLowerCase();
+
+  let subcategoria = null;
+
+  if (t.includes("puerta")) subcategoria = "puertas";
+  if (t.includes("ventana")) subcategoria = "ventanas";
+  if (t.includes("cancel")) subcategoria = "canceles";
+  if (t.includes("vidrio")) subcategoria = "puertas";
+
+  if (!subcategoria) return [];
+
+  const q = query(
+    collection(db, "galeria"),
+    where("subcategoria", "==", subcategoria),
+    limit(6)
+  );
+
+  const snap = await getDocs(q);
+
+  return snap.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+};
+
 export default function ChatIA() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -25,52 +55,44 @@ export default function ChatIA() {
     setProjects([]);
 
     try {
+      /* 🤖 BACKEND */
       const res = await fetch("http://localhost:5000/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: text,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
       });
+
+      if (!res.ok) throw new Error("Error backend IA");
 
       const data = await res.json();
 
-      const aiText = data?.reply || "No pude generar respuesta.";
+      const aiText = data?.reply || "Sin respuesta";
 
-      const aiMessage = {
+      setMessages([...newMessages, {
         role: "ai",
-        content: aiText,
-      };
+        content: aiText
+      }]);
 
-      setMessages([...newMessages, aiMessage]);
+      /* 🔥 GALERÍA REAL */
+      const recomendaciones = await getRecomendaciones(text);
 
-      if (
-        aiText.toLowerCase().includes("cancel") ||
-        aiText.toLowerCase().includes("vidrio") ||
-        aiText.toLowerCase().includes("proyecto")
-      ) {
-        setProjects([
-          {
-            id: 1,
-            title: "Cancel de vidrio moderno",
-            img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
-          },
-          {
-            id: 2,
-            title: "Fachada minimalista",
-            img: "https://images.unsplash.com/photo-1507089947368-19c1da9775ae",
-          },
-        ]);
+      if (recomendaciones.length > 0) {
+        setProjects(
+          recomendaciones.map(item => ({
+            id: item.id,
+            title: item.titulo,
+            img: item.imagenes?.[0] || ""
+          }))
+        );
       }
-    } catch (err) {
-      console.error(err);
 
-      setMessages([
-        ...newMessages,
-        { role: "ai", content: "Error al conectar con IA" },
-      ]);
+    } catch (err) {
+      console.error("ERROR CHAT:", err);
+
+      setMessages([...newMessages, {
+        role: "ai",
+        content: "Error al conectar con IA"
+      }]);
     }
 
     setLoading(false);
@@ -78,14 +100,12 @@ export default function ChatIA() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0a0a0a] text-white">
-      
-      {/* Header con estilo oscuro */}
+
       <div className="border-b border-[#c89b3c]/30 bg-black/40 backdrop-blur-md">
         <ChatHeader />
       </div>
 
-      {/* Mensajes */}
-      <div className="flex-1 overflow-y-auto bg-[#0a0a0a]">
+      <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
           <EmptyState onSelect={sendMessage} />
         ) : (
@@ -93,35 +113,20 @@ export default function ChatIA() {
         )}
       </div>
 
-      {/* Indicador */}
-      {loading && (
-        <div className="text-[#c89b3c]">
-          <TypingIndicator />
-        </div>
-      )}
+      {loading && <TypingIndicator />}
 
-      {/* Proyectos */}
       {projects.length > 0 && (
-        <div className="border-t border-[#c89b3c]/20 bg-black/30">
-          <ProjectGallery projects={projects} />
-        </div>
+        <ProjectGallery projects={projects} />
       )}
 
-      {/* Sugerencias */}
-      <div className="bg-black/40 border-t border-[#c89b3c]/20">
-        <SuggestedQuestions onSelect={sendMessage} />
-      </div>
+      <SuggestedQuestions onSelect={sendMessage} />
 
-      {/* Input */}
-      <div className="bg-black/60 border-t border-[#c89b3c]/30 backdrop-blur-md">
-        <ChatInput
-          value={input}
-          setValue={setInput}
-          onSend={() => sendMessage()}
-          loading={loading}
-        />
-      </div>
-
+      <ChatInput
+        value={input}
+        setValue={setInput}
+        onSend={() => sendMessage()}
+        loading={loading}
+      />
     </div>
   );
 }

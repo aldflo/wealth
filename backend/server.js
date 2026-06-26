@@ -1,19 +1,21 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: "http://localhost:5173"
+}));
+
 app.use(express.json());
 
-const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_KEY,
+app.get("/", (req, res) => {
+  res.send("WEALTH IA backend funcionando 🚀");
 });
 
-// 💬 CHAT
 app.post("/chat", async (req, res) => {
   try {
     const { message } = req.body;
@@ -22,29 +24,56 @@ app.post("/chat", async (req, res) => {
       return res.status(400).json({ reply: "Escribe un mensaje" });
     }
 
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash", // 🔥 ESTE ES EL CORRECTO
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: message }],
+    if (!process.env.GROQ_API_KEY) {
+      return res.status(500).json({ reply: "Falta GROQ_API_KEY en .env" });
+    }
+
+    const response = await fetch(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
         },
-      ],
-    });
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [
+            {
+              role: "system",
+              content: "Eres un asistente experto en construcción, vidrio y aluminio."
+            },
+            {
+              role: "user",
+              content: message
+            }
+          ],
+          temperature: 0.7,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("❌ GROQ ERROR:", data);
+      return res.status(500).json({
+        reply: data?.error?.message || "Error en Groq API",
+      });
+    }
 
     res.json({
-      reply: result.text,
+      reply: data?.choices?.[0]?.message?.content || "Sin respuesta",
     });
 
   } catch (error) {
-    console.error("❌ ERROR GEMINI:", error);
-
-    res.status(500).json({
-      reply: error?.message || "Error con Gemini",
-    });
+    console.error("❌ SERVER ERROR:", error);
+    res.status(500).json({ reply: "Error en servidor" });
   }
 });
 
-app.listen(5000, () => {
-  console.log("✅ WEALTH IA corriendo en http://localhost:5000");
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+  console.log("✅ WEALTH IA corriendo en http://localhost:" + PORT);
 });
