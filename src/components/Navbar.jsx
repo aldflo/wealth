@@ -57,8 +57,11 @@ function Navbar() {
           {/* MENU DESKTOP */}
           <div className="hidden lg:flex items-center gap-8">
             <Link to="/" className="text-white hover:text-[#d4af37] transition">
-              Inicio
+             
             </Link>
+           <Link to="/chat-ia" className="flex items-center gap-2 text-white hover:text-[#d4af37]">
+  🤖 Asistente IA
+</Link>
 
             <Link to="/inmobiliaria" className="flex items-center gap-2 text-white hover:text-[#d4af37] transition">
               <FaBuilding />

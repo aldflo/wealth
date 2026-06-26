@@ -23,6 +23,7 @@ import Subirgaleria from "./pages/Subirgaleria";
 import MenuCliente from "./pages/MenuCliente";
 import MenuAdmin from "./pages/MenuAdmin";
 import Favoritos from "./pages/favoritos";
+import ChatIA from "./pages/ChatIA";
 
 function App() {
   return (
@@ -49,6 +50,7 @@ function App() {
         {/* CLIENTE */}
         <Route path="/cliente" element={<MenuCliente />} />
         <Route path="/admin/clientes" element={<Clientes />} />
+         <Route path="/chat-ia" element={<ChatIA />} />
 
         {/* ADMIN */}
         <Route path="/admin" element={<MenuAdmin />} />
