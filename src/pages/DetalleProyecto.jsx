@@ -133,14 +133,7 @@ const anteriorImagen = () => {
 
         <h1 className="font-semibold">{proyecto.nombre}</h1>
 
-        {/* LOGIN BUTTON */}
-        <button
-          onClick={handleAuth}
-          className="flex items-center gap-2 text-sm bg-zinc-800 px-4 py-2 rounded-xl hover:bg-zinc-700 transition"
-        >
-          <FaUser />
-          Registrarse / Iniciar sesión
-        </button>
+        
 
       </div>
 
@@ -276,11 +269,11 @@ const anteriorImagen = () => {
   </p>
 
   <button
-    onClick={() => navigate("/galeria")}
-    className="bg-yellow-500 text-black px-5 py-2 rounded-xl font-bold hover:scale-105 transition"
-  >
-    Ver galería completa
-  </button>
+  onClick={() => navigate("/galeria")}
+  className="bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 px-5 py-2 rounded-xl font-bold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-yellow-500/20"
+>
+  Ver galería completa
+</button>
 
 </div>
 

@@ -271,12 +271,12 @@ const handlePreviewGaleria = (files) => {
           )}
 
           <button
-            disabled={loading}
-            className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-bold flex justify-center gap-2"
-          >
-            <FaCloudUploadAlt />
-            {editId ? "Actualizar Proyecto" : "Publicar Proyecto"}
-          </button>
+  disabled={loading}
+  className="w-full bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 py-4 rounded-2xl font-bold flex justify-center gap-2 transition-all duration-300 shadow-lg hover:shadow-yellow-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  <FaCloudUploadAlt />
+  {editId ? "Actualizar Proyecto" : "Publicar Proyecto"}
+</button>
 
         </form>
       </div>

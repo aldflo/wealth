@@ -242,24 +242,35 @@ const [proyectos, setProyectos] = useState([]);
             </div>
 
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                navigate(`/proyecto/${proyecto.id}`);
-              }}
-              className="
-                mt-7
-                w-full
-                bg-yellow-500
-                hover:bg-yellow-400
-                text-black
-                py-3
-                rounded-xl
-                font-semibold
-                transition
-              "
-            >
-              Ver proyecto
-            </button>
+  onClick={(e) => {
+    e.stopPropagation();
+    navigate(`/proyecto/${proyecto.id}`);
+  }}
+  className="
+    mt-7
+    w-full
+    bg-yellow-500/10
+    hover:bg-yellow-500
+    text-yellow-400
+    hover:text-black
+    border
+    border-yellow-500/30
+    hover:border-yellow-500
+    py-3
+    rounded-xl
+    font-semibold
+    transition-all
+    duration-300
+    flex
+    items-center
+    justify-center
+    gap-2
+    shadow-lg
+    hover:shadow-yellow-500/20
+  "
+>
+  Ver proyecto
+</button>
 
           </div>
 
@@ -271,25 +282,6 @@ const [proyectos, setProyectos] = useState([]);
 
   )}
 
-  <div className="flex justify-center mt-12">
-
-    <button
-      onClick={() => navigate("/proyectos")}
-      className="
-        bg-white
-        hover:bg-yellow-400
-        text-black
-        px-8
-        py-4
-        rounded-2xl
-        font-semibold
-        transition
-      "
-    >
-      Ver todos los proyectos →
-    </button>
-
-  </div>
 
 </section>
 

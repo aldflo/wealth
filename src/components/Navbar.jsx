@@ -127,9 +127,15 @@ function Navbar() {
         <div className="flex flex-col items-center justify-center h-full gap-8 text-lg">
 
           <Link onClick={() => setOpen(false)} to="/" className="text-white hover:text-[#d4af37]">
-            Inicio
+    
           </Link>
-
+        <Link
+  onClick={() => setOpen(false)}
+  to="/chat-ia"
+  className="text-white hover:text-[#d4af37]"
+>
+  🤖 Asistente IA
+</Link>
           <Link onClick={() => setOpen(false)} to="/inmobiliaria" className="flex items-center gap-2 text-white hover:text-[#d4af37]">
             <FaBuilding /> Inmobiliaria
           </Link>

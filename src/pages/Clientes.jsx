@@ -100,10 +100,8 @@ function Clientes() {
         <div className="mb-8 lg:mb-10 text-center lg:text-left">
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold">
-
             Gestión de
             <span className="text-yellow-500"> Clientes</span>
-
           </h1>
 
           <p className="text-zinc-400 mt-3 text-sm sm:text-base">
@@ -194,13 +192,22 @@ function Clientes() {
 
                 ) : (
 
-                  <span className={`inline-block px-4 py-1 rounded-full text-sm font-bold ${
-                    cliente.role === "admin"
-                      ? "bg-red-600"
-                      : "bg-green-600"
-                  }`}>
-                    {cliente.role}
-                  </span>
+                <span
+  className={`inline-flex items-center px-4 py-1 rounded-full text-xs font-bold tracking-wide border transition
+    ${
+      cliente.role === "admin"
+        ? "bg-red-500/10 text-red-400 border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.15)]"
+        : "bg-green-500/10 text-green-400 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.15)]"
+    }`}
+>
+  <span
+    className={`w-2 h-2 rounded-full mr-2 ${
+      cliente.role === "admin" ? "bg-red-400" : "bg-green-400"
+    }`}
+  ></span>
+
+  {cliente.role === "admin" ? "Administrador" : "Cliente"}
+</span>
 
                 )}
 
@@ -214,14 +221,14 @@ function Clientes() {
                   <>
                     <button
                       onClick={() => guardarCambios(cliente.id)}
-                      className="bg-green-600 p-3 rounded-xl"
+                      className="p-3 rounded-xl bg-green-500/10 hover:bg-green-500 text-green-400 hover:text-white border border-green-500/30 hover:border-green-500 transition flex items-center justify-center"
                     >
                       <FaSave />
                     </button>
 
                     <button
                       onClick={() => setEditando(null)}
-                      className="bg-zinc-700 p-3 rounded-xl"
+                      className="p-3 rounded-xl bg-zinc-800/50 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 transition flex items-center justify-center"
                     >
                       <FaTimes />
                     </button>
@@ -232,21 +239,21 @@ function Clientes() {
                   <>
                     <button
                       onClick={() => iniciarEdicion(cliente)}
-                      className="bg-blue-600 p-3 rounded-xl"
+                      className="p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white border border-blue-500/30 hover:border-blue-500 transition flex items-center justify-center"
                     >
                       <FaEdit />
                     </button>
 
                     <button
                       onClick={() => resetPassword(cliente.correo)}
-                      className="bg-yellow-600 p-3 rounded-xl"
+                      className="p-3 rounded-xl bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 transition flex items-center justify-center"
                     >
                       <FaKey />
                     </button>
 
                     <button
                       onClick={() => eliminarCliente(cliente.id)}
-                      className="bg-red-600 p-3 rounded-xl"
+                      className="p-3 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 hover:border-red-500 transition flex items-center justify-center"
                     >
                       <FaTrash />
                     </button>

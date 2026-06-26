@@ -7,7 +7,6 @@ import {
   onSnapshot,
   deleteDoc,
   doc,
-  getDocs,
   updateDoc,
 } from "firebase/firestore";
 
@@ -25,11 +24,48 @@ function Subirgaleria() {
 
   const [galeriaDB, setGaleriaDB] = useState([]);
 
-  // 🔥 EDIT MODE
   const [editId, setEditId] = useState(null);
   const [imagenesExistentes, setImagenesExistentes] = useState([]);
 
-  // LISTAR
+  /* 🔥 SUBCATEGORÍAS */
+  const subcategorias = {
+    Construcciones: [
+      "Servicios de Electrificación",
+      "Remodelaciones y Obra Ligera",
+      "Instalación y Mantenimiento",
+      "Estructuras Metálicas y Herrería",
+      "Estructuras metálicas",
+      "Barandales",
+      "Cortinas metálicas",
+      "Domos",
+      "Protectores",
+      "Rejas y portones",
+      "Cercado de malla ciclónica",
+      "Estructuras a diseño"
+    ],
+
+    "Vidrio y Aluminio": [
+      "Fabricación de vidrio templado",
+      "Canceles de baño",
+      "Espejos y vitrinas",
+      "Ventanas de aluminio",
+      "Puertas residenciales",
+      "Puertas de baño y mosquiteras",
+      "Domos de vidrio y aluminio",
+      "Cancelería moderna",
+      "Diseños arquitectónicos ligeros",
+      "Barandales de vidrio y aluminio",
+      "Protectores y rejas ligeras",
+      "Seguridad estética",
+      "Portones eléctricos",
+      "Sistemas automáticos de apertura",
+      "Estructuras residenciales",
+      "Fabricación personalizada",
+      "Diseños arquitectónicos",
+      "Proyectos especiales en aluminio y vidrio"
+    ]
+  };
+
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "galeria"), (snap) => {
       setGaleriaDB(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
@@ -38,7 +74,6 @@ function Subirgaleria() {
     return () => unsub();
   }, []);
 
-  // CLOUDINARY
   const subirImagen = async (file) => {
     const formData = new FormData();
     formData.append("file", file);
@@ -53,7 +88,6 @@ function Subirgaleria() {
     return data.secure_url;
   };
 
-  // SUBIR / ACTUALIZAR (MERGE REAL)
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -88,18 +122,15 @@ function Subirgaleria() {
 
     setImagenes([]);
     setImagenesExistentes([]);
-    e.target.reset();
     setLoading(false);
   };
 
-  // ELIMINAR GALERÍA COMPLETA
   const eliminarGaleria = async (id) => {
     if (confirm("¿Eliminar esta galería?")) {
       await deleteDoc(doc(db, "galeria", id));
     }
   };
 
-  // EDITAR
   const handleEdit = (g) => {
     setEditId(g.id);
     setCategoria(g.categoria);
@@ -107,7 +138,6 @@ function Subirgaleria() {
     setImagenesExistentes(g.imagenes || []);
   };
 
-  // QUITAR IMAGEN EXISTENTE
   const quitarImagenExistente = (url) => {
     setImagenesExistentes((prev) => prev.filter((i) => i !== url));
   };
@@ -127,14 +157,6 @@ function Subirgaleria() {
           </p>
         </div>
 
-        <button
-          onClick={() => navigate("/galeria")}
-          className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 px-5 py-3 rounded-2xl hover:bg-zinc-700"
-        >
-          <FaImages />
-          Ver Galería
-        </button>
-
       </div>
 
       {/* FORM */}
@@ -143,29 +165,45 @@ function Subirgaleria() {
         className="max-w-5xl mx-auto bg-zinc-900/60 border border-zinc-800 rounded-3xl p-8 space-y-6"
       >
 
+        {/* CATEGORÍA */}
         <select
           className="w-full p-4 bg-zinc-800 rounded-2xl"
           value={categoria}
-          onChange={(e) => setCategoria(e.target.value)}
+          onChange={(e) => {
+            setCategoria(e.target.value);
+            setSubcategoria("");
+          }}
         >
           <option>Construcciones</option>
-          <option>Inmobiliaria</option>
           <option>Vidrio y Aluminio</option>
+          <option>Inmobiliaria</option>
         </select>
 
+        {/* BOTÓN VER GALERÍA */}
+        <button
+          onClick={() => navigate("/galeria")}
+          className="flex items-center gap-2 bg-zinc-800 border border-zinc-700 px-5 py-3 rounded-2xl hover:bg-zinc-700"
+        >
+          <FaImages />
+          Ver Galería
+        </button>
+
+        {/* SUBCATEGORÍA DINÁMICA */}
         <select
           className="w-full p-4 bg-zinc-800 rounded-2xl"
           value={subcategoria}
           onChange={(e) => setSubcategoria(e.target.value)}
         >
-          <option>Puertas</option>
-          <option>Ventanas</option>
-          <option>Cancelería</option>
-          <option>Fachadas</option>
-          <option>Otros</option>
+          <option value="">Selecciona subcategoría</option>
+
+          {subcategorias[categoria]?.map((item, i) => (
+            <option key={i} value={item}>
+              {item}
+            </option>
+          ))}
         </select>
 
-        {/* INPUT */}
+        {/* INPUT IMÁGENES */}
         <label className="block border-2 border-dashed border-yellow-500 rounded-2xl p-8 text-center cursor-pointer">
           <p className="text-lg font-semibold">📸 Seleccionar imágenes</p>
 
@@ -178,61 +216,7 @@ function Subirgaleria() {
           />
         </label>
 
-        {/* PREVIEW NUEVAS */}
-        {imagenes.length > 0 && (
-          <div>
-            <p className="text-zinc-400 mb-3">
-              Nuevas imágenes ({imagenes.length})
-            </p>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-              {imagenes.map((file, i) => (
-                <div key={i} className="relative bg-zinc-800 rounded-2xl overflow-hidden">
-                  <img
-                    src={URL.createObjectURL(file)}
-                    className="h-36 w-full object-contain bg-black"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setImagenes((prev) => prev.filter((_, index) => index !== i))
-                    }
-                    className="absolute top-2 right-2 bg-red-500 p-2 rounded-full"
-                  >
-                    <FaTrash size={10} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* PREVIEW EXISTENTES (EDIT MODE) */}
-        {imagenesExistentes.length > 0 && (
-          <div>
-            <p className="text-zinc-400 mb-3">
-              Imágenes actuales
-            </p>
-
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
-              {imagenesExistentes.map((img, i) => (
-                <div key={i} className="relative bg-zinc-800 rounded-2xl overflow-hidden">
-                  <img src={img} className="h-36 w-full object-contain bg-black" />
-
-                  <button
-                    type="button"
-                    onClick={() => quitarImagenExistente(img)}
-                    className="absolute top-2 right-2 bg-red-500 p-2 rounded-full"
-                  >
-                    <FaTrash size={10} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
+        {/* BOTÓN SUBIR */}
         <button
           disabled={loading}
           className="w-full bg-yellow-500 text-black py-4 rounded-2xl font-bold flex justify-center gap-2"
