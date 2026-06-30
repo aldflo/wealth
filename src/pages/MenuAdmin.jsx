@@ -1,49 +1,67 @@
-import { useState } from "react";
 import { FaImages } from "react-icons/fa";
 import {
   FaUsers,
   FaBuilding,
   FaPlusCircle,
   FaEnvelope,
-  FaSignOutAlt,
   FaHome,
-  FaBars,
-  FaTimes,
   FaFileInvoiceDollar
 } from "react-icons/fa";
 
 import { useNavigate } from "react-router-dom";
 
 function MenuAdmin() {
-
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
 
-  const handleLogout = () => {
-    window.location.replace("/");
-  };
+  const cards = [
+    {
+      titulo: "Clientes",
+      icono: <FaUsers size={35} />,
+      descripcion: "Administrar clientes registrados.",
+      color: "text-cyan-400",
+      ruta: "/admin/clientes",
+    },
+    {
+      titulo: "Proyectos",
+      icono: <FaBuilding size={35} />,
+      descripcion: "Gestionar proyectos publicados.",
+      color: "text-green-400",
+      ruta: "/proyectos",
+    },
+    {
+      titulo: "Subir Proyecto",
+      icono: <FaPlusCircle size={35} />,
+      descripcion: "Publicar un nuevo proyecto.",
+      color: "text-yellow-400",
+      ruta: "/admin/subir-proyecto",
+    },
+    {
+      titulo: "Subir Galería",
+      icono: <FaImages size={35} />,
+      descripcion: "Agregar imágenes a la galería.",
+      color: "text-pink-400",
+      ruta: "/subir-galeria",
+    },
+    {
+      titulo: "Mensajes",
+      icono: <FaEnvelope size={35} />,
+      descripcion: "Visualizar mensajes recibidos.",
+      color: "text-blue-400",
+      ruta: "/admin/mensajes",
+    },
+    {
+      titulo: "Cotizaciones",
+      icono: <FaFileInvoiceDollar size={35} />,
+      descripcion: "Aceptar o rechazar solicitudes.",
+      color: "text-orange-400",
+      ruta: "/admin/cotizaciones",
+    },
+  ];
 
   return (
-
     <div className="min-h-screen bg-black text-white flex flex-col lg:flex-row">
 
-      {/* TOP BAR SOLO MOBILE */}
-      <div className="lg:hidden flex items-center justify-between p-4 bg-zinc-950 border-b border-yellow-600/20">
-
-        <h1 className="text-xl font-bold">
-          Wealth <span className="text-yellow-500">Admin</span>
-        </h1>
-
-        <button
-          onClick={() => setOpen(true)}
-          className="text-white text-2xl"
-        >
-          <FaBars />
-        </button>
-
-      </div>
-
-      {/* SIDEBAR DESKTOP */}
+      {/* SIDEBAR SOLO ESCRITORIO */}
       <aside className="hidden lg:block w-72 bg-zinc-950 border-r border-yellow-600/20 p-6">
 
         <h1 className="text-3xl font-bold mb-10">
@@ -52,114 +70,64 @@ function MenuAdmin() {
 
         <nav className="space-y-4">
 
-          <button className="w-full flex items-center gap-4 bg-yellow-500 text-black px-5 py-4 rounded-2xl font-bold">
+          <button
+            className="w-full flex items-center gap-4 bg-yellow-500 text-black px-5 py-4 rounded-2xl font-bold"
+          >
             <FaHome />
             Dashboard
           </button>
 
-          <button onClick={() => navigate("/admin/clientes")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
+          <button
+            onClick={() => navigate("/admin/clientes")}
+            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
+          >
             <FaUsers />
             Clientes
           </button>
 
-          <button onClick={() => navigate("/proyectos")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
+          <button
+            onClick={() => navigate("/proyectos")}
+            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
+          >
             <FaBuilding />
             Proyectos
           </button>
 
-          <button onClick={() => navigate("/admin/subir-proyecto")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
+          <button
+            onClick={() => navigate("/admin/subir-proyecto")}
+            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
+          >
             <FaPlusCircle />
             Subir Proyecto
           </button>
-          <button
-  onClick={() => navigate("/subir-galeria")}
-  className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
->
-  <FaImages />
-  Subir Galería
-</button>
 
-          <button onClick={() => navigate("/admin/mensajes")} className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition">
+          <button
+            onClick={() => navigate("/subir-galeria")}
+            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
+          >
+            <FaImages />
+            Subir Galería
+          </button>
+
+          <button
+            onClick={() => navigate("/admin/mensajes")}
+            className="w-full flex items-center gap-4 bg-zinc-900 hover:bg-zinc-800 px-5 py-4 rounded-2xl transition"
+          >
             <FaEnvelope />
             Mensajes
           </button>
 
         </nav>
 
-       
-
       </aside>
 
-      {/* MENU MOBILE */}
-      {open && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex flex-col p-6 lg:hidden">
+      {/* CONTENIDO */}
+      <main className="flex-1 p-6 lg:p-10">
 
-          <div className="flex justify-between items-center mb-10">
-
-            <h1 className="text-2xl font-bold">
-              Wealth <span className="text-yellow-500">Admin</span>
-            </h1>
-
-            <button onClick={() => setOpen(false)} className="text-2xl">
-              <FaTimes />
-            </button>
-
-          </div>
-
-          <div className="flex flex-col gap-4">
-
-            <button onClick={() => { navigate("/"); setOpen(false); }} className="flex items-center gap-3 bg-yellow-500 text-black px-5 py-4 rounded-2xl font-bold">
-              <FaHome />
-              Dashboard
-            </button>
-
-            <button onClick={() => { navigate("/admin/clientes"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
-              <FaUsers />
-              Clientes
-            </button>
-
-            <button onClick={() => { navigate("/proyectos"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
-              <FaBuilding />
-              Proyectos
-            </button>
-
-            <button onClick={() => { navigate("/admin/subir-proyecto"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
-              <FaPlusCircle />
-              Subir Proyecto
-            </button>
-            <button
-  onClick={() => {
-    navigate("/subir-galeria");
-    setOpen(false);
-  }}
-  className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl"
->
-  <FaImages />
-  Subir Galería
-</button>
-
-            <button onClick={() => { navigate("/admin/mensajes"); setOpen(false); }} className="flex items-center gap-3 bg-zinc-900 px-5 py-4 rounded-2xl">
-              <FaEnvelope />
-              Mensajes
-            </button>
-
-          </div>
-
-          <div className="mt-auto">
-
-          
-
-          </div>
-
-        </div>
-      )}
-
-      {/* 🔥 CONTENIDO (AQUÍ AGREGAMOS EL CARD) */}
-      <main className="flex-1 p-10">
-
+        {/* Encabezado */}
         <div className="mb-12">
 
-          <h2 className="text-5xl font-bold">
+          <h2 className="text-4xl lg:text-5xl font-bold">
             Panel <span className="text-yellow-500">Administrativo</span>
           </h2>
 
@@ -169,7 +137,8 @@ function MenuAdmin() {
 
         </div>
 
-        <div className="bg-zinc-900 rounded-3xl p-10 border border-yellow-600/20 mb-10">
+        {/* Card de información SOLO escritorio */}
+        <div className="hidden lg:block bg-zinc-900 rounded-3xl p-10 border border-yellow-600/20 mb-10">
 
           <h3 className="text-3xl font-bold text-yellow-500 mb-6">
             Centro de Administración
@@ -183,8 +152,41 @@ function MenuAdmin() {
 
         </div>
 
-        {/* 🔥 NUEVO CARD DE COTIZACIONES */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* =================== */}
+        {/* CELULAR */}
+        {/* =================== */}
+
+        <div className="grid grid-cols-1 gap-6 lg:hidden">
+
+          {cards.map((card, index) => (
+            <div
+              key={index}
+              onClick={() => navigate(card.ruta)}
+              className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800 hover:border-yellow-500 transition cursor-pointer"
+            >
+
+              <div className={`${card.color} mb-4`}>
+                {card.icono}
+              </div>
+
+              <h3 className="text-2xl font-bold mb-2">
+                {card.titulo}
+              </h3>
+
+              <p className="text-zinc-400">
+                {card.descripcion}
+              </p>
+
+            </div>
+          ))}
+
+        </div>
+
+        {/* =================== */}
+        {/* ESCRITORIO */}
+        {/* =================== */}
+
+        <div className="hidden lg:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
 
           <div
             onClick={() => navigate("/admin/cotizaciones")}
@@ -212,7 +214,6 @@ function MenuAdmin() {
       </main>
 
     </div>
-
   );
 }
 
