@@ -55,7 +55,7 @@ function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 w-full z-50 bg-black/40 backdrop-blur-xl border-b border-white/10">
-     <div className="w-full px-6">
+      <div className="w-full px-6">
 
         <div className="flex items-center h-20">
 
@@ -161,21 +161,38 @@ function Navbar() {
       >
         <div className="flex flex-col items-center justify-center h-full gap-8 text-lg">
 
-          <Link onClick={() => setOpen(false)} to="/chat-ia">🤖 Asistente IA</Link>
-          <Link onClick={() => setOpen(false)} to="/inmobiliaria">Inmobiliaria</Link>
-          <Link onClick={() => setOpen(false)} to="/construcciones">Construcciones</Link>
-          <Link onClick={() => setOpen(false)} to="/aluminios">Aluminios</Link>
-          <Link onClick={() => setOpen(false)} to="/contacto">Contacto</Link>
-          <Link onClick={() => setOpen(false)} to="/ubicacion">Ubicación</Link>
+          <Link onClick={() => setOpen(false)} to="/chat-ia" className="text-white hover:text-[#d4af37] transition">
+            🤖 Asistente IA
+          </Link>
+
+          <Link onClick={() => setOpen(false)} to="/inmobiliaria" className="text-white hover:text-[#d4af37] transition">
+            Inmobiliaria
+          </Link>
+
+          <Link onClick={() => setOpen(false)} to="/construcciones" className="text-white hover:text-[#d4af37] transition">
+            Construcciones
+          </Link>
+
+          <Link onClick={() => setOpen(false)} to="/aluminios" className="text-white hover:text-[#d4af37] transition">
+            Aluminios
+          </Link>
+
+          <Link onClick={() => setOpen(false)} to="/contacto" className="text-white hover:text-[#d4af37] transition">
+            Contacto
+          </Link>
+
+          <Link onClick={() => setOpen(false)} to="/ubicacion" className="text-white hover:text-[#d4af37] transition">
+            Ubicación
+          </Link>
 
           {role === "admin" && (
-            <Link onClick={() => setOpen(false)} to="/admin">
+            <Link onClick={() => setOpen(false)} to="/admin" className="text-white hover:text-[#d4af37] transition">
               Panel Admin
             </Link>
           )}
 
           {role === "cliente" && (
-            <Link onClick={() => setOpen(false)} to="/cliente">
+            <Link onClick={() => setOpen(false)} to="/cliente" className="text-white hover:text-[#d4af37] transition">
               Mi Panel
             </Link>
           )}
@@ -183,7 +200,7 @@ function Navbar() {
           {user ? (
             <button
               onClick={handleLogout}
-              className="bg-red-600 px-6 py-3 rounded-xl font-bold mt-6"
+              className="bg-red-600 px-6 py-3 rounded-xl font-bold mt-6 text-white"
             >
               Cerrar Sesión
             </button>
@@ -191,7 +208,7 @@ function Navbar() {
             <Link
               onClick={() => setOpen(false)}
               to="/login"
-              className="bg-gradient-to-r from-[#b88a2d] to-[#d4af37] px-6 py-3 rounded-xl font-bold mt-6"
+              className="bg-gradient-to-r from-[#b88a2d] to-[#d4af37] px-6 py-3 rounded-xl font-bold mt-6 text-white"
             >
               Iniciar Sesión
             </Link>
