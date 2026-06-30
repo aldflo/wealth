@@ -159,6 +159,12 @@ function Navbar() {
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
+        <button
+  onClick={() => setOpen(false)}
+  className="absolute top-6 right-6 text-white text-3xl"
+>
+  <FaTimes />
+</button>
         <div className="flex flex-col items-center justify-center h-full gap-8 text-lg">
 
           <Link onClick={() => setOpen(false)} to="/chat-ia" className="text-white hover:text-[#d4af37] transition">
