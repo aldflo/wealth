@@ -213,55 +213,60 @@ function Clientes() {
 
               </div>
 
-              {/* ACCIONES */}
-              <div className="flex flex-wrap md:flex-nowrap justify-start md:justify-center gap-2 mt-2 md:mt-0">
+           {/* ACCIONES */}
+<div className="flex flex-wrap md:flex-nowrap justify-start md:justify-center gap-2 mt-2 md:mt-0">
 
-                {editando === cliente.id ? (
+  {editando === cliente.id ? (
 
-                  <>
-                    <button
-                      onClick={() => guardarCambios(cliente.id)}
-                      className="p-3 rounded-xl bg-green-500/10 hover:bg-green-500 text-green-400 hover:text-white border border-green-500/30 hover:border-green-500 transition flex items-center justify-center"
-                    >
-                      <FaSave />
-                    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => guardarCambios(cliente.id)}
+        className="touch-manipulation p-3 rounded-xl bg-green-500/10 hover:bg-green-500 text-green-400 hover:text-white border border-green-500/30 hover:border-green-500 transition flex items-center justify-center"
+      >
+        <FaSave />
+      </button>
 
-                    <button
-                      onClick={() => setEditando(null)}
-                      className="p-3 rounded-xl bg-zinc-800/50 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 transition flex items-center justify-center"
-                    >
-                      <FaTimes />
-                    </button>
-                  </>
+      <button
+        type="button"
+        onClick={() => setEditando(null)}
+        className="touch-manipulation p-3 rounded-xl bg-zinc-800/50 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 transition flex items-center justify-center"
+      >
+        <FaTimes />
+      </button>
+    </>
 
-                ) : (
+  ) : (
 
-                  <>
-                    <button
-                      onClick={() => iniciarEdicion(cliente)}
-                      className="p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white border border-blue-500/30 hover:border-blue-500 transition flex items-center justify-center"
-                    >
-                      <FaEdit />
-                    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => iniciarEdicion(cliente)}
+        className="touch-manipulation p-3 rounded-xl bg-blue-500/10 hover:bg-blue-500 text-blue-400 hover:text-white border border-blue-500/30 hover:border-blue-500 transition flex items-center justify-center"
+      >
+        <FaEdit />
+      </button>
 
-                    <button
-                      onClick={() => resetPassword(cliente.correo)}
-                      className="p-3 rounded-xl bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 transition flex items-center justify-center"
-                    >
-                      <FaKey />
-                    </button>
+      <button
+        type="button"
+        onClick={() => resetPassword(cliente.correo)}
+        className="touch-manipulation p-3 rounded-xl bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 transition flex items-center justify-center"
+      >
+        <FaKey />
+      </button>
 
-                    <button
-                      onClick={() => eliminarCliente(cliente.id)}
-                      className="p-3 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 hover:border-red-500 transition flex items-center justify-center"
-                    >
-                      <FaTrash />
-                    </button>
-                  </>
+      <button
+        type="button"
+        onClick={() => eliminarCliente(cliente.id)}
+        className="touch-manipulation p-3 rounded-xl bg-red-500/10 hover:bg-red-500 text-red-400 hover:text-white border border-red-500/30 hover:border-red-500 transition flex items-center justify-center"
+      >
+        <FaTrash />
+      </button>
+    </>
 
-                )}
+  )}
 
-              </div>
+</div>
 
             </div>
 
