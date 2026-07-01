@@ -64,9 +64,7 @@ function MenuAdmin() {
       {/* SIDEBAR SOLO ESCRITORIO */}
       <aside className="hidden lg:block w-72 bg-zinc-950 border-r border-yellow-600/20 p-6">
 
-        <h1 className="text-3xl font-bold mb-10">
-          Wealth <span className="text-yellow-500">Admin</span>
-        </h1>
+       
 
         <nav className="space-y-4">
 

@@ -89,29 +89,44 @@ function Subirgaleria() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (imagenes.length === 0 && editId === null) {
-      alert("Selecciona al menos una imagen");
-      return;
-    }
+  if (imagenes.length === 0 && editId === null) {
+    alert("Selecciona al menos una imagen");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    const nuevasUrls =
-      imagenes.length > 0
-        ? await Promise.all(imagenes.map(subirImagen))
-        : [];
+  const nuevasUrls =
+    imagenes.length > 0
+      ? await Promise.all(imagenes.map(subirImagen))
+      : [];
 
-    if (editId) {
-      await updateDoc(doc(db, "galeria", editId), {
-        categoria,
-        subcategoria,
-        imagenes: [...imagenesExistentes, ...nuevasUrls],
+  if (editId) {
+    // Actualizar la galería que se está editando
+    await updateDoc(doc(db, "galeria", editId), {
+      categoria,
+      subcategoria,
+      imagenes: [...imagenesExistentes, ...nuevasUrls],
+    });
+
+    setEditId(null);
+  } else {
+    // Buscar si ya existe esa categoría y subcategoría
+    const existente = galeriaDB.find(
+      (g) =>
+        g.categoria === categoria &&
+        g.subcategoria === subcategoria
+    );
+
+    if (existente) {
+      // Agregar las nuevas imágenes al documento existente
+      await updateDoc(doc(db, "galeria", existente.id), {
+        imagenes: [...(existente.imagenes || []), ...nuevasUrls],
       });
-
-      setEditId(null);
     } else {
+      // Crear una nueva galería
       await addDoc(collection(db, "galeria"), {
         categoria,
         subcategoria,
@@ -119,12 +134,12 @@ function Subirgaleria() {
         fecha: serverTimestamp(),
       });
     }
+  }
 
-    setImagenes([]);
-    setImagenesExistentes([]);
-    setLoading(false);
-  };
-
+  setImagenes([]);
+  setImagenesExistentes([]);
+  setLoading(false);
+};
   const eliminarGaleria = async (id) => {
     if (confirm("¿Eliminar esta galería?")) {
       await deleteDoc(doc(db, "galeria", id));

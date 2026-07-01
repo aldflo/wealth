@@ -55,7 +55,10 @@ function Galeria() {
 
         <select
           value={filtroCategoria}
-          onChange={(e) => setFiltroCategoria(e.target.value)}
+          onChange={(e) => {
+            setFiltroCategoria(e.target.value);
+            setFiltroSubcategoria("todos");
+          }}
           className="bg-zinc-800 p-3 rounded-xl"
         >
           <option value="todos">Todas las categorías</option>
@@ -70,11 +73,109 @@ function Galeria() {
           className="bg-zinc-800 p-3 rounded-xl"
         >
           <option value="todos">Todas las subcategorías</option>
-          <option value="Puertas">Puertas</option>
-          <option value="Ventanas">Ventanas</option>
-          <option value="Cancelería">Cancelería</option>
-          <option value="Fachadas">Fachadas</option>
-          <option value="Otros">Otros</option>
+
+          {(filtroCategoria === "todos" ||
+            filtroCategoria === "Construcciones") && (
+            <>
+              <option value="Servicios de Electrificación">
+                Servicios de Electrificación
+              </option>
+              <option value="Remodelaciones y Obra Ligera">
+                Remodelaciones y Obra Ligera
+              </option>
+              <option value="Instalación y Mantenimiento">
+                Instalación y Mantenimiento
+              </option>
+              <option value="Estructuras Metálicas y Herrería">
+                Estructuras Metálicas y Herrería
+              </option>
+              <option value="Estructuras metálicas">
+                Estructuras metálicas
+              </option>
+              <option value="Barandales">
+                Barandales
+              </option>
+              <option value="Cortinas metálicas">
+                Cortinas metálicas
+              </option>
+              <option value="Domos">
+                Domos
+              </option>
+              <option value="Protectores">
+                Protectores
+              </option>
+              <option value="Rejas y portones">
+                Rejas y portones
+              </option>
+              <option value="Cercado de malla ciclónica">
+                Cercado de malla ciclónica
+              </option>
+              <option value="Estructuras a diseño">
+                Estructuras a diseño
+              </option>
+            </>
+          )}
+
+          {(filtroCategoria === "todos" ||
+            filtroCategoria === "Vidrio y Aluminio") && (
+            <>
+              <option value="Fabricación de vidrio templado">
+                Fabricación de vidrio templado
+              </option>
+              <option value="Canceles de baño">
+                Canceles de baño
+              </option>
+              <option value="Espejos y vitrinas">
+                Espejos y vitrinas
+              </option>
+              <option value="Ventanas de aluminio">
+                Ventanas de aluminio
+              </option>
+              <option value="Puertas residenciales">
+                Puertas residenciales
+              </option>
+              <option value="Puertas de baño y mosquiteras">
+                Puertas de baño y mosquiteras
+              </option>
+              <option value="Domos de vidrio y aluminio">
+                Domos de vidrio y aluminio
+              </option>
+              <option value="Cancelería moderna">
+                Cancelería moderna
+              </option>
+              <option value="Diseños arquitectónicos ligeros">
+                Diseños arquitectónicos ligeros
+              </option>
+              <option value="Barandales de vidrio y aluminio">
+                Barandales de vidrio y aluminio
+              </option>
+              <option value="Protectores y rejas ligeras">
+                Protectores y rejas ligeras
+              </option>
+              <option value="Seguridad estética">
+                Seguridad estética
+              </option>
+              <option value="Portones eléctricos">
+                Portones eléctricos
+              </option>
+              <option value="Sistemas automáticos de apertura">
+                Sistemas automáticos de apertura
+              </option>
+              <option value="Estructuras residenciales">
+                Estructuras residenciales
+              </option>
+              <option value="Fabricación personalizada">
+                Fabricación personalizada
+              </option>
+              <option value="Diseños arquitectónicos">
+                Diseños arquitectónicos
+              </option>
+              <option value="Proyectos especiales en aluminio y vidrio">
+                Proyectos especiales en aluminio y vidrio
+              </option>
+            </>
+          )}
+
         </select>
 
       </div>
@@ -111,6 +212,7 @@ function Galeria() {
                 >
                   <img
                     src={img}
+                    alt=""
                     className="w-full h-48 object-cover"
                   />
                 </div>
