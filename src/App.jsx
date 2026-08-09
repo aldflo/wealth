@@ -17,7 +17,6 @@ import DetalleProyecto from "./pages/DetalleProyecto";
 import Cotizaciones from "./pages/cotizaciones";
 import CrearCotizacion from "./pages/CrearCotizacion";
 import CotizacionesAdmin from "./pages/CotizacionesAdmin";
-import Notificaciones from "./pages/Notificaciones.jsx";
 import Galeria from "./pages/Galeria";
 import Subirgaleria from "./pages/Subirgaleria";
 import MenuCliente from "./pages/MenuCliente";
@@ -40,7 +39,7 @@ function App() {
         <Route path="/ubicacion" element={<Ubicacion />} />
 
         <Route path="/favoritos" element={<Favoritos />} />
-        <Route path="/Notificaciones" element={<Notificaciones />} />
+
 
         {/* EMPRESAS */}
         <Route path="/construcciones" element={<WealthConstrucciones />} />
