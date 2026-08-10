@@ -122,13 +122,27 @@ function MenuCliente() {
                   ...documento.data(),
                 })
               )
-              .filter(
-                (cotizacion) =>
-                  cotizacion.uid ===
-                    userUid ||
-                  cotizacion.usuario ===
-                    userEmail
-              );
+              .filter((cotizacion) => {
+                const pertenece =
+                  cotizacion.uid === userUid ||
+                  cotizacion.usuario === userEmail;
+
+                const visible =
+                  cotizacion.ocultoPorCliente !== true;
+
+                const noFinalizada =
+                  ![
+                    "finalizada",
+                    "terminada",
+                    "terminado",
+                  ].includes(cotizacion.estado);
+
+                return (
+                  pertenece &&
+                  visible &&
+                  noFinalizada
+                );
+              });
 
           setCotizaciones(
             data
@@ -291,15 +305,15 @@ function MenuCliente() {
             [
               "cotizada",
               "propuesta_enviada",
+              "propuesta_modificada",
               "confirmada_admin",
               "anticipo_pendiente",
               "anticipo_pagado",
+              "anticipo_recibido",
               "en_proceso",
               "proceso",
               "instalacion_programada",
               "instalacion",
-              "finalizada",
-              "terminada",
             ].includes(
               cotizacion.estado
             )
@@ -609,7 +623,7 @@ function MenuCliente() {
             }
             onClick={() =>
               navigate(
-                "/cotizaciones"
+                "/cliente/cotizaciones"
               )
             }
           />
@@ -621,7 +635,7 @@ function MenuCliente() {
             texto="Mis proyectos"
             onClick={() =>
               navigate(
-                "/mis-proyectos"
+                "/cliente/mis-proyectos"
               )
             }
           />
@@ -965,7 +979,7 @@ function MenuCliente() {
                 }
                 onClick={() => {
                   navigate(
-                    "/cotizaciones"
+                    "/cliente/cotizaciones"
                   );
 
                   setOpen(
@@ -981,7 +995,7 @@ function MenuCliente() {
                 texto="Mis proyectos"
                 onClick={() => {
                   navigate(
-                    "/mis-proyectos"
+                    "/cliente/mis-proyectos"
                   );
 
                   setOpen(
@@ -1151,7 +1165,7 @@ function MenuCliente() {
                 type="button"
                 onClick={() =>
                   navigate(
-                    "/cotizaciones"
+                    "/cliente/cotizaciones"
                   )
                 }
                 className="
@@ -1313,14 +1327,14 @@ function MenuCliente() {
             valor={
               estadisticas.total
             }
-            descripcion="Solicitudes realizadas"
+            descripcion="Cotizaciones visibles"
             icon={
               <FaFileInvoiceDollar />
             }
             color="yellow"
             onClick={() =>
               navigate(
-                "/cotizaciones"
+                "/cliente/cotizaciones"
               )
             }
           />
@@ -1337,7 +1351,7 @@ function MenuCliente() {
             color="purple"
             onClick={() =>
               navigate(
-                "/cotizaciones"
+                "/cliente/cotizaciones"
               )
             }
           />
@@ -1354,7 +1368,7 @@ function MenuCliente() {
             color="green"
             onClick={() =>
               navigate(
-                "/mis-proyectos"
+                "/cliente/mis-proyectos"
               )
             }
           />

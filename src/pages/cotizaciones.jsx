@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -267,6 +268,16 @@ function SelectorUbicacionEditar({
 ====================================================== */
 
 function Cotizaciones() {
+  // ======================================================
+  // CONTROL DE NOTIFICACIONES
+  // ======================================================
+  //
+  // Al entrar a "Mis cotizaciones" se marcan como vistas
+  // únicamente las novedades que YA estaban pendientes.
+  // Si llega otra actualización mientras el cliente permanece
+  // en esta pantalla, no se borra automáticamente.
+  const notificacionesInicialesMarcadas = useRef(false);
+
   /* ======================================================
      COTIZACIONES
   ====================================================== */
@@ -564,12 +575,73 @@ function Cotizaciones() {
                           c.ocultoPorCliente !==
                           true;
 
+                        // Los trabajos ya finalizados dejan Mis Cotizaciones
+                        // y se consultan únicamente desde Mis Proyectos.
+                        const sigueEnCotizaciones =
+                          ![
+                            "finalizada",
+                            "terminada",
+                            "terminado",
+                          ].includes(
+                            c.estado
+                          );
+
                         return (
                           pertenece &&
-                          visible
+                          visible &&
+                          sigueEnCotizaciones
                         );
                       }
                     );
+
+                // =========================================
+                // MARCAR NOVEDADES COMO VISTAS AL ENTRAR
+                // =========================================
+                if (!notificacionesInicialesMarcadas.current) {
+                  notificacionesInicialesMarcadas.current = true;
+
+                  const pendientesDeVista = data.filter(
+                    (cotizacion) =>
+                      cotizacion.vistoPorCliente === false &&
+                      [
+                        "cotizada",
+                        "propuesta_enviada",
+                        "propuesta_modificada",
+                        "confirmada_admin",
+                        "anticipo_pendiente",
+                        "anticipo_pagado",
+                        "anticipo_recibido",
+                        "en_proceso",
+                        "proceso",
+                        "instalacion_programada",
+                        "instalacion",
+                      ].includes(cotizacion.estado)
+                  );
+
+                  if (pendientesDeVista.length > 0) {
+                    const batchVistas = writeBatch(db);
+
+                    pendientesDeVista.forEach((cotizacion) => {
+                      batchVistas.update(
+                        doc(
+                          db,
+                          "cotizaciones",
+                          cotizacion.id
+                        ),
+                        {
+                          vistoPorCliente: true,
+                        }
+                      );
+                    });
+
+                    batchVistas.commit().catch((error) => {
+                      console.error(
+                        "Error marcando novedades del cliente como vistas:",
+                        error
+                      );
+                    });
+                  }
+                }
 
                 setCotizaciones(
                   data
@@ -1038,7 +1110,7 @@ function Cotizaciones() {
             1
               ? "cotización"
               : "cotizaciones"
-          } de tu panel?\n\nEl registro administrativo de Wealth se conservará.`
+          }?\n\nSi todavía no ha sido aceptada o confirmada, se eliminará de las cotizaciones activas de Wealth y el administrador recibirá un aviso de que la cancelaste.`
         );
 
       if (!confirmar) {
@@ -1055,25 +1127,108 @@ function Cotizaciones() {
 
         seleccionadas.forEach(
           (id) => {
-            const referencia =
+            const cotizacion =
+              cotizaciones.find(
+                (item) =>
+                  item.id === id
+              );
+
+            if (!cotizacion) {
+              return;
+            }
+
+            // Solo permitimos eliminación definitiva desde el cliente
+            // mientras el trabajo todavía NO ha sido confirmado.
+            const yaEsTrabajo =
+              [
+                "aceptada_cliente",
+                "confirmada_admin",
+                "anticipo_pendiente",
+                "anticipo_pagado",
+                "anticipo_recibido",
+                "en_proceso",
+                "proceso",
+                "instalacion_programada",
+                "instalacion",
+              ].includes(
+                cotizacion.estado
+              );
+
+            if (yaEsTrabajo) {
+              return;
+            }
+
+            // 1. Guardar aviso administrativo mínimo.
+            //    Así Wealth sabe quién eliminó la solicitud,
+            //    pero la cotización ya no se acumula entre las activas.
+            const avisoRef =
+              doc(
+                collection(
+                  db,
+                  "cotizacionesEliminadas"
+                )
+              );
+
+            batch.set(
+              avisoRef,
+              {
+                cotizacionId:
+                  cotizacion.id,
+
+                uid:
+                  cotizacion.uid ||
+                  auth.currentUser?.uid ||
+                  null,
+
+                usuario:
+                  cotizacion.usuario ||
+                  auth.currentUser?.email ||
+                  "",
+
+                nombreCliente:
+                  cotizacion.nombreCliente ||
+                  cotizacion.clienteNombre ||
+                  "",
+
+                telefono:
+                  cotizacion.telefono ||
+                  "",
+
+                nombreProyecto:
+                  cotizacion.nombre ||
+                  "Cotización",
+
+                descripcion:
+                  cotizacion.descripcion ||
+                  "",
+
+                estadoAnterior:
+                  cotizacion.estado ||
+                  "pendiente",
+
+                precioTotal:
+                  cotizacion.precioTotal ??
+                  cotizacion.presupuestoAdmin ??
+                  null,
+
+                eliminadoPorCliente:
+                  true,
+
+                vistoPorAdmin:
+                  false,
+
+                fechaEliminacion:
+                  serverTimestamp(),
+              }
+            );
+
+            // 2. Eliminar la cotización original.
+            batch.delete(
               doc(
                 db,
                 "cotizaciones",
                 id
-              );
-
-            batch.update(
-              referencia,
-              {
-                ocultoPorCliente:
-                  true,
-
-                fechaOcultadaPorCliente:
-                  serverTimestamp(),
-
-                fechaActualizacion:
-                  serverTimestamp(),
-              }
+              )
             );
           }
         );
@@ -1089,7 +1244,7 @@ function Cotizaciones() {
         );
 
         setMensajeGeneral(
-          "Cotización eliminada de tu panel correctamente."
+          "✅ La cotización fue eliminada. Wealth recibió un aviso de la cancelación."
         );
 
       } catch (error) {
@@ -2052,11 +2207,13 @@ function Cotizaciones() {
         return;
       }
 
+      const propuesta =
+        obtenerPropuestaActual(
+          cotizacionSeleccionada
+        );
+
       const precio =
-        cotizacionSeleccionada.precioTotal ??
-        cotizacionSeleccionada.total ??
-        cotizacionSeleccionada.precio ??
-        cotizacionSeleccionada.propuestaPrecio;
+        propuesta.precioTotal;
 
       const confirmar =
         window.confirm(
@@ -2103,7 +2260,7 @@ function Cotizaciones() {
                 : null,
 
             versionAceptada:
-              cotizacionSeleccionada.versionPropuesta ||
+              propuesta.version ||
               1,
 
             fechaRespuestaCliente:
@@ -2397,6 +2554,103 @@ function Cotizaciones() {
             0,
         }
       );
+    };
+
+  /* ======================================================
+     PROPUESTA NORMALIZADA
+  ====================================================== */
+
+  const obtenerPropuestaActual =
+    (cotizacion) => {
+      const propuesta =
+        cotizacion?.propuestaActual ||
+        {};
+
+      const precio =
+        propuesta.precioTotal ??
+        cotizacion?.precioTotal ??
+        cotizacion?.presupuestoAdmin ??
+        cotizacion?.total ??
+        cotizacion?.precio ??
+        cotizacion?.propuestaPrecio ??
+        null;
+
+      const porcentajeAnticipo =
+        propuesta.porcentajeAnticipo ??
+        cotizacion?.porcentajeAnticipo ??
+        null;
+
+      let anticipo =
+        propuesta.anticipo ??
+        cotizacion?.anticipo ??
+        cotizacion?.montoAnticipo ??
+        null;
+
+      if (
+        anticipo === null &&
+        precio !== null &&
+        porcentajeAnticipo !== null
+      ) {
+        anticipo =
+          Number(precio) *
+          Number(porcentajeAnticipo) /
+          100;
+      }
+
+      let saldo =
+        propuesta.saldo ??
+        cotizacion?.saldo ??
+        cotizacion?.saldoPendiente ??
+        null;
+
+      if (
+        saldo === null &&
+        precio !== null &&
+        anticipo !== null
+      ) {
+        saldo =
+          Number(precio) -
+          Number(anticipo);
+      }
+
+      return {
+        version:
+          propuesta.version ??
+          cotizacion?.versionPropuesta ??
+          1,
+
+        precioTotal:
+          precio,
+
+        porcentajeAnticipo,
+        anticipo,
+        saldo,
+
+        tiempoEstimado:
+          propuesta.tiempoEstimado ??
+          cotizacion?.tiempoEstimado ??
+          cotizacion?.tiempo ??
+          "",
+
+        garantia:
+          propuesta.garantia ??
+          cotizacion?.garantia ??
+          "",
+
+        observaciones:
+          propuesta.observaciones ??
+          cotizacion?.observacionesAdmin ??
+          cotizacion?.observaciones ??
+          cotizacion?.detallesPropuesta ??
+          cotizacion?.mensajePropuesta ??
+          "",
+
+        fecha:
+          propuesta.fecha ??
+          cotizacion?.fechaPropuesta ??
+          cotizacion?.fechaActualizacion ??
+          null,
+      };
     };
 
   /* ======================================================
@@ -2804,11 +3058,13 @@ function Cotizaciones() {
                 cotizacion
               );
 
+            const propuesta =
+              obtenerPropuestaActual(
+                cotizacion
+              );
+
             const precio =
-              cotizacion.precioTotal ??
-              cotizacion.total ??
-              cotizacion.precio ??
-              cotizacion.propuestaPrecio;
+              propuesta.precioTotal;
 
             return (
               <article
@@ -4489,11 +4745,13 @@ function Cotizaciones() {
                   c.estado
                 );
 
+              const propuesta =
+                obtenerPropuestaActual(
+                  c
+                );
+
               const precio =
-                c.precioTotal ??
-                c.total ??
-                c.precio ??
-                c.propuestaPrecio;
+                propuesta.precioTotal;
 
               const puedeResponder =
                 [
@@ -4610,22 +4868,100 @@ function Cotizaciones() {
                     {precio !==
                       undefined &&
                       precio !==
-                        null && (
-                      <div className="mt-6 bg-black border border-zinc-800 rounded-2xl p-5">
+                      null && (
+                      <section className="mt-6">
 
-                        <p className="text-zinc-500 text-sm">
-                          Precio total
-                        </p>
+                        <div className="mb-4">
 
-                        <p className="text-3xl font-bold mt-1">
-                          {
-                            moneda(
-                              precio
-                            )
-                          }
-                        </p>
+                          <p className="text-xs uppercase tracking-[0.2em] text-yellow-500 font-bold">
+                            Propuesta de Wealth
+                          </p>
 
-                      </div>
+                          <p className="text-zinc-500 text-sm mt-1">
+                            Versión {propuesta.version}
+                          </p>
+
+                        </div>
+
+                        <div className="grid sm:grid-cols-3 gap-4">
+
+                          <div className="bg-black border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                              Precio total
+                            </p>
+                            <p className="text-2xl font-bold mt-2">
+                              {moneda(propuesta.precioTotal)}
+                            </p>
+                          </div>
+
+                          <div className="bg-black border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                              Anticipo
+                            </p>
+                            <p className="text-xl font-bold mt-2">
+                              {moneda(propuesta.anticipo)}
+                            </p>
+                            {propuesta.porcentajeAnticipo !== null && (
+                              <p className="text-yellow-500 text-xs mt-2">
+                                {propuesta.porcentajeAnticipo}% del total
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="bg-black border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                              Saldo
+                            </p>
+                            <p className="text-xl font-bold mt-2">
+                              {moneda(propuesta.saldo)}
+                            </p>
+                          </div>
+
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4 mt-4">
+
+                          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-sm">
+                              Tiempo estimado
+                            </p>
+                            <p className="text-white font-semibold mt-2">
+                              {propuesta.tiempoEstimado || "No especificado"}
+                            </p>
+                          </div>
+
+                          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-sm">
+                              Garantía
+                            </p>
+                            <p className="text-white font-semibold mt-2">
+                              {propuesta.garantia || "No especificada"}
+                            </p>
+                          </div>
+
+                        </div>
+
+                        {propuesta.observaciones && (
+                          <div className="mt-4 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-5">
+
+                            <p className="text-xs uppercase tracking-wider text-yellow-500 font-bold">
+                              Observaciones de Wealth
+                            </p>
+
+                            <p className="text-zinc-300 mt-3 whitespace-pre-wrap leading-relaxed">
+                              {propuesta.observaciones}
+                            </p>
+
+                          </div>
+                        )}
+
+                        {propuesta.fecha && (
+                          <p className="text-xs text-zinc-500 mt-4">
+                            Actualizada: {formatearFecha(propuesta.fecha)}
+                          </p>
+                        )}
+
+                      </section>
                     )}
 
                     {puedeResponder && (

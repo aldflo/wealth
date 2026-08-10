@@ -1,1397 +1,1280 @@
-import { useEffect, useMemo, useState } from "react";
-import { db } from "../firebase.config";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  db,
+  auth,
+} from "../firebase.config";
 
 import {
   collection,
+  query,
   onSnapshot,
-  doc,
+  orderBy,
   updateDoc,
-  deleteDoc,
+  doc,
   serverTimestamp,
-  arrayUnion,
-  Timestamp,
   writeBatch,
 } from "firebase/firestore";
 
 import {
-  FaCheck,
-  FaTimes,
-  FaTrash,
-  FaUser,
-  FaEdit,
-  FaPhone,
-  FaMapMarkerAlt,
-  FaRulerCombined,
-  FaCalendarAlt,
-  FaDollarSign,
-  FaClock,
-  FaShieldAlt,
-  FaEye,
-  FaPaperPlane,
-  FaUndo,
+  onAuthStateChanged,
+} from "firebase/auth";
+
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
+
+import L from "leaflet";
+
+import "leaflet/dist/leaflet.css";
+
+import {
+  FaArrowLeft,
+  FaArrowRight,
   FaBell,
+  FaBuilding,
+  FaCalendarAlt,
+  FaCamera,
+  FaCheck,
   FaCheckCircle,
-  FaExclamationTriangle,
-  FaSyncAlt,
-  FaChevronDown,
-  FaChevronUp,
-  FaSearch,
-  FaBriefcase,
-  FaPlay,
-  FaTools,
-  FaFlagCheckered,
+  FaCheckSquare,
+  FaClock,
+  FaCloudUploadAlt,
+  FaCrosshairs,
+  FaDollarSign,
+  FaEdit,
+  FaEye,
+  FaHistory,
   FaImages,
-  FaImage,
+  FaMapMarkerAlt,
+  FaMoneyBillWave,
+  FaPen,
+  FaPhone,
+  FaRulerCombined,
+  FaSave,
+  FaSearch,
+  FaShieldAlt,
+  FaSquare,
+  FaSyncAlt,
+  FaTag,
+  FaTimes,
+  FaTimesCircle,
+  FaTrashAlt,
+  FaWhatsapp,
 } from "react-icons/fa";
 
-function CotizacionesAdmin() {
-  // ======================================================
-  // COTIZACIONES
-  // ======================================================
+/* ======================================================
+   CONFIGURACIÓN LEAFLET
+====================================================== */
 
-  const [cotizaciones, setCotizaciones] = useState([]);
+delete L.Icon.Default.prototype._getIconUrl;
 
-  // ======================================================
-  // CLIENTES
-  // ======================================================
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
 
-  const [clienteAbierto, setClienteAbierto] = useState(null);
-  const [busquedaCliente, setBusquedaCliente] = useState("");
+  iconUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
 
-  // ======================================================
-  // MODAL IMÁGENES
-  // ======================================================
+  shadowUrl:
+    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [imagenesActivas, setImagenesActivas] = useState([]);
-  const [index, setIndex] = useState(0);
+/* ======================================================
+   POSICIÓN INICIAL CAMPECHE
+====================================================== */
 
-  // ======================================================
-  // MODAL COTIZACIÓN
-  // ======================================================
+const POSICION_CAMPECHE = {
+  lat: 19.8301,
+  lng: -90.5349,
+};
 
-  const [cotizacionActiva, setCotizacionActiva] =
-    useState(null);
+/* ======================================================
+   GEOCODIFICACIÓN INVERSA
+====================================================== */
 
-  const [modalCotizacion, setModalCotizacion] =
-    useState(false);
+const obtenerDireccion = async (
+  lat,
+  lng
+) => {
+  const params =
+    new URLSearchParams({
+      format: "jsonv2",
+      lat: String(lat),
+      lon: String(lng),
+      addressdetails: "1",
+      zoom: "18",
+      "accept-language": "es",
+    });
 
-  // ======================================================
-  // PROPUESTA ADMIN
-  // ======================================================
+  const response =
+    await fetch(
+      `https://nominatim.openstreetmap.org/reverse?${params.toString()}`
+    );
 
-  const [presupuestoAdmin, setPresupuestoAdmin] =
-    useState("");
+  if (!response.ok) {
+    throw new Error(
+      "No se pudo obtener la dirección."
+    );
+  }
 
-  const [
-    porcentajeAnticipo,
-    setPorcentajeAnticipo,
-  ] = useState("50");
+  const data =
+    await response.json();
 
-  const [tiempoEstimado, setTiempoEstimado] =
-    useState("");
+  return (
+    data.display_name ||
+    ""
+  );
+};
 
-  const [garantia, setGarantia] =
-    useState("");
+/* ======================================================
+   RECENTRAR MAPA
+====================================================== */
 
-  const [
-    observacionesAdmin,
-    setObservacionesAdmin,
-  ] = useState("");
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  // ======================================================
-  // FINALIZACIÓN + FOTOS DEL TRABAJO
-  // ======================================================
-
-  const [modalFinalizar, setModalFinalizar] =
-    useState(false);
-
-  const [cotizacionFinalizar, setCotizacionFinalizar] =
-    useState(null);
-
-  const [fotosFinales, setFotosFinales] =
-    useState([]);
-
-  const [previewsFinales, setPreviewsFinales] =
-    useState([]);
-
-  const [errorFinalizar, setErrorFinalizar] =
-    useState("");
-
-  const [subiendoFinales, setSubiendoFinales] =
-    useState(false);
-
-  // ======================================================
-  // FIRESTORE
-  // ======================================================
+function RecentrarMapa({
+  posicion,
+  zoom = 16,
+}) {
+  const map = useMap();
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "cotizaciones"),
+    if (!posicion) {
+      return;
+    }
 
-      (snap) => {
-        const data = snap.docs.map((d) => ({
-          id: d.id,
-          ...d.data(),
-        }));
+    map.setView(
+      [
+        posicion.lat,
+        posicion.lng,
+      ],
+      zoom,
+      {
+        animate: true,
+      }
+    );
+  }, [
+    posicion,
+    map,
+    zoom,
+  ]);
 
-        // Última actividad primero
-        data.sort((a, b) => {
-          const fechaA =
-            a.fechaActualizacion?.toMillis?.() ||
-            a.fecha?.toMillis?.() ||
-            0;
+  return null;
+}
 
-          const fechaB =
-            b.fechaActualizacion?.toMillis?.() ||
-            b.fecha?.toMillis?.() ||
-            0;
+/* ======================================================
+   SELECTOR DE UBICACIÓN
+====================================================== */
 
-          return fechaB - fechaA;
-        });
+function SelectorUbicacionEditar({
+  posicion,
+  setPosicion,
+  setUbicacion,
+  setError,
+}) {
+  const actualizarUbicacion =
+    async (
+      lat,
+      lng
+    ) => {
+      setError("");
 
-        setCotizaciones(data);
+      setPosicion({
+        lat,
+        lng,
+      });
 
-        // Mantiene actualizado el modal
-        setCotizacionActiva((actual) => {
-          if (!actual) return null;
-
-          const nueva = data.find(
-            (c) => c.id === actual.id
+      try {
+        const direccion =
+          await obtenerDireccion(
+            lat,
+            lng
           );
 
-          return nueva || actual;
-        });
-      },
-
-      (error) => {
+        setUbicacion(
+          direccion ||
+            `${lat.toFixed(
+              6
+            )}, ${lng.toFixed(
+              6
+            )}`
+        );
+      } catch (error) {
         console.error(
-          "Error cargando cotizaciones:",
+          "Error obteniendo dirección:",
           error
         );
-      }
-    );
 
-    return () => unsub();
+        setUbicacion(
+          `${lat.toFixed(
+            6
+          )}, ${lng.toFixed(
+            6
+          )}`
+        );
+      }
+    };
+
+  useMapEvents({
+    click(e) {
+      actualizarUbicacion(
+        e.latlng.lat,
+        e.latlng.lng
+      );
+    },
+  });
+
+  if (!posicion) {
+    return null;
+  }
+
+  return (
+    <Marker
+      position={[
+        posicion.lat,
+        posicion.lng,
+      ]}
+      draggable
+      eventHandlers={{
+        dragend: (e) => {
+          const nuevaPosicion =
+            e.target.getLatLng();
+
+          actualizarUbicacion(
+            nuevaPosicion.lat,
+            nuevaPosicion.lng
+          );
+        },
+      }}
+    >
+      <Popup>
+        Ubicación seleccionada
+      </Popup>
+    </Marker>
+  );
+}
+
+/* ======================================================
+   COMPONENTE PRINCIPAL
+====================================================== */
+
+function Cotizaciones() {
+  // ======================================================
+  // CONTROL DE NOTIFICACIONES
+  // ======================================================
+  //
+  // Al entrar a "Mis cotizaciones" se marcan como vistas
+  // únicamente las novedades que YA estaban pendientes.
+  // Si llega otra actualización mientras el cliente permanece
+  // en esta pantalla, no se borra automáticamente.
+  const notificacionesInicialesMarcadas = useRef(false);
+
+  /* ======================================================
+     COTIZACIONES
+  ====================================================== */
+
+  const [
+    cotizaciones,
+    setCotizaciones,
+  ] = useState([]);
+
+  const [
+    cargando,
+    setCargando,
+  ] = useState(true);
+
+  const [
+    procesando,
+    setProcesando,
+  ] = useState(false);
+
+  const [
+    mensajeGeneral,
+    setMensajeGeneral,
+  ] = useState("");
+
+  const [
+    errorGeneral,
+    setErrorGeneral,
+  ] = useState("");
+
+  /* ======================================================
+     SELECCIÓN MÚLTIPLE
+  ====================================================== */
+
+  const [
+    modoSeleccion,
+    setModoSeleccion,
+  ] = useState(false);
+
+  const [
+    seleccionadas,
+    setSeleccionadas,
+  ] = useState([]);
+
+  /* ======================================================
+     GALERÍA
+  ====================================================== */
+
+  const [
+    galeriaOpen,
+    setGaleriaOpen,
+  ] = useState(false);
+
+  const [
+    imgs,
+    setImgs,
+  ] = useState([]);
+
+  const [
+    index,
+    setIndex,
+  ] = useState(0);
+
+  /* ======================================================
+     MODAL DETALLES
+  ====================================================== */
+
+  const [
+    propuestaOpen,
+    setPropuestaOpen,
+  ] = useState(false);
+
+  const [
+    cotizacionSeleccionada,
+    setCotizacionSeleccionada,
+  ] = useState(null);
+
+  /* ======================================================
+     EDICIÓN
+  ====================================================== */
+
+  const [
+    editarOpen,
+    setEditarOpen,
+  ] = useState(false);
+
+  const [
+    cotizacionEditando,
+    setCotizacionEditando,
+  ] = useState(null);
+
+  const [
+    pasoEditar,
+    setPasoEditar,
+  ] = useState(1);
+
+  const totalPasosEditar =
+    4;
+
+  /* ======================================================
+     DATOS EDICIÓN
+  ====================================================== */
+
+  const [
+    editNombre,
+    setEditNombre,
+  ] = useState("");
+
+  const [
+    editDescripcion,
+    setEditDescripcion,
+  ] = useState("");
+
+  const [
+    editTipo,
+    setEditTipo,
+  ] = useState(
+    "Construcción"
+  );
+
+  const [
+    editUbicacion,
+    setEditUbicacion,
+  ] = useState("");
+
+  const [
+    editMedidas,
+    setEditMedidas,
+  ] = useState("");
+
+  const [
+    editFechaDeseada,
+    setEditFechaDeseada,
+  ] = useState("");
+
+  const [
+    editPresupuesto,
+    setEditPresupuesto,
+  ] = useState("");
+
+  const [
+    editTelefono,
+    setEditTelefono,
+  ] = useState("");
+
+  const [
+    editMetodoContacto,
+    setEditMetodoContacto,
+  ] = useState(
+    "WhatsApp"
+  );
+
+  /* ======================================================
+     MAPA EDICIÓN
+  ====================================================== */
+
+  const [
+    editPosicion,
+    setEditPosicion,
+  ] = useState(
+    POSICION_CAMPECHE
+  );
+
+  const [
+    buscandoUbicacion,
+    setBuscandoUbicacion,
+  ] = useState(false);
+
+  const [
+    obteniendoGPS,
+    setObteniendoGPS,
+  ] = useState(false);
+
+  /* ======================================================
+     IMÁGENES EDICIÓN
+  ====================================================== */
+
+  const [
+    imagenesProyectoEdit,
+    setImagenesProyectoEdit,
+  ] = useState([]);
+
+  const [
+    imagenesClienteEdit,
+    setImagenesClienteEdit,
+  ] = useState([]);
+
+  const [
+    nuevasImagenes,
+    setNuevasImagenes,
+  ] = useState([]);
+
+  /* ======================================================
+     PREVIEWS NUEVAS FOTOS
+  ====================================================== */
+
+  const previewsNuevos =
+    useMemo(() => {
+      return nuevasImagenes.map(
+        (file) => ({
+          file,
+          url:
+            URL.createObjectURL(
+              file
+            ),
+        })
+      );
+    }, [
+      nuevasImagenes,
+    ]);
+
+  useEffect(() => {
+    return () => {
+      previewsNuevos.forEach(
+        (preview) => {
+          URL.revokeObjectURL(
+            preview.url
+          );
+        }
+      );
+    };
+  }, [
+    previewsNuevos,
+  ]);
+
+  /* ======================================================
+     FIREBASE EN TIEMPO REAL
+  ====================================================== */
+
+  useEffect(() => {
+    let unsubCotizaciones =
+      null;
+
+    const unsubAuth =
+      onAuthStateChanged(
+        auth,
+        (user) => {
+          if (!user) {
+            setCotizaciones(
+              []
+            );
+
+            setCargando(
+              false
+            );
+
+            return;
+          }
+
+          const userEmail =
+            user.email;
+
+          const userUid =
+            user.uid;
+
+          const q = query(
+            collection(
+              db,
+              "cotizaciones"
+            ),
+            orderBy(
+              "fecha",
+              "desc"
+            )
+          );
+
+          unsubCotizaciones =
+            onSnapshot(
+              q,
+
+              (snapshot) => {
+                const data =
+                  snapshot.docs
+                    .map(
+                      (
+                        documento
+                      ) => ({
+                        id:
+                          documento.id,
+
+                        ...documento.data(),
+                      })
+                    )
+                    .filter(
+                      (c) => {
+                        const pertenece =
+                          c.uid ===
+                            userUid ||
+                          (
+                            userEmail &&
+                            c.usuario ===
+                              userEmail
+                          );
+
+                        const visible =
+                          c.ocultoPorCliente !==
+                          true;
+
+                        // Los trabajos ya finalizados dejan Mis Cotizaciones
+                        // y se consultan únicamente desde Mis Proyectos.
+                        const sigueEnCotizaciones =
+                          ![
+                            "finalizada",
+                            "terminada",
+                            "terminado",
+                          ].includes(
+                            c.estado
+                          );
+
+                        return (
+                          pertenece &&
+                          visible &&
+                          sigueEnCotizaciones
+                        );
+                      }
+                    );
+
+                // =========================================
+                // MARCAR NOVEDADES COMO VISTAS AL ENTRAR
+                // =========================================
+                if (!notificacionesInicialesMarcadas.current) {
+                  notificacionesInicialesMarcadas.current = true;
+
+                  const pendientesDeVista = data.filter(
+                    (cotizacion) =>
+                      cotizacion.vistoPorCliente === false &&
+                      [
+                        "cotizada",
+                        "propuesta_enviada",
+                        "propuesta_modificada",
+                        "confirmada_admin",
+                        "anticipo_pendiente",
+                        "anticipo_pagado",
+                        "anticipo_recibido",
+                        "en_proceso",
+                        "proceso",
+                        "instalacion_programada",
+                        "instalacion",
+                      ].includes(cotizacion.estado)
+                  );
+
+                  if (pendientesDeVista.length > 0) {
+                    const batchVistas = writeBatch(db);
+
+                    pendientesDeVista.forEach((cotizacion) => {
+                      batchVistas.update(
+                        doc(
+                          db,
+                          "cotizaciones",
+                          cotizacion.id
+                        ),
+                        {
+                          vistoPorCliente: true,
+                        }
+                      );
+                    });
+
+                    batchVistas.commit().catch((error) => {
+                      console.error(
+                        "Error marcando novedades del cliente como vistas:",
+                        error
+                      );
+                    });
+                  }
+                }
+
+                setCotizaciones(
+                  data
+                );
+
+                setSeleccionadas(
+                  (actuales) =>
+                    actuales.filter(
+                      (id) =>
+                        data.some(
+                          (c) =>
+                            c.id ===
+                            id
+                        )
+                    )
+                );
+
+                setCotizacionSeleccionada(
+                  (actual) => {
+                    if (!actual) {
+                      return null;
+                    }
+
+                    return (
+                      data.find(
+                        (c) =>
+                          c.id ===
+                          actual.id
+                      ) ||
+                      actual
+                    );
+                  }
+                );
+
+                setCargando(
+                  false
+                );
+              },
+
+              (error) => {
+                console.error(
+                  "Error cargando cotizaciones:",
+                  error
+                );
+
+                setErrorGeneral(
+                  "No se pudieron cargar las cotizaciones."
+                );
+
+                setCargando(
+                  false
+                );
+              }
+            );
+        }
+      );
+
+    return () => {
+      unsubAuth();
+
+      if (
+        unsubCotizaciones
+      ) {
+        unsubCotizaciones();
+      }
+    };
   }, []);
 
-  // ======================================================
-  // COTIZACIONES ACTIVAS
-  // ======================================================
+  /* ======================================================
+     ESTADO
+  ====================================================== */
 
-  const cotizacionesActivas =
-    useMemo(() => {
-      return cotizaciones.filter(
-        (c) =>
-          ![
-            "finalizada",
-            "terminado",
-            "terminada",
-          ].includes(c.estado)
-      );
-    }, [cotizaciones]);
-
-  // ======================================================
-  // AGRUPAR POR CLIENTE
-  // ======================================================
-
-  const clientes = useMemo(() => {
-    const grupos = {};
-
-    cotizacionesActivas.forEach(
-      (cotizacion) => {
-        const clave =
-          cotizacion.uid ||
-          cotizacion.usuario ||
-          "sin_usuario";
-
-        if (!grupos[clave]) {
-          grupos[clave] = {
-            clave,
-
-            uid:
-              cotizacion.uid ||
-              null,
-
-            usuario:
-              cotizacion.usuario ||
-              "Sin correo",
-
-            nombre:
-              cotizacion.nombreCliente ||
-              cotizacion.clienteNombre ||
-              cotizacion.usuario ||
-              "Cliente",
-
-            telefono:
-              cotizacion.telefono ||
-              "",
-
-            cotizaciones: [],
-          };
-        }
-
-        grupos[
-          clave
-        ].cotizaciones.push(
-          cotizacion
-        );
-
-        if (
-          !grupos[clave].telefono &&
-          cotizacion.telefono
-        ) {
-          grupos[
-            clave
-          ].telefono =
-            cotizacion.telefono;
-        }
-      }
-    );
-
-    const lista =
-      Object.values(grupos).map(
-        (cliente) => {
-          const nuevas =
-            cliente.cotizaciones.filter(
-              (c) =>
-                c.vistoPorAdmin ===
-                false
-            ).length;
-
-          const ultimaActividad =
-            Math.max(
-              ...cliente.cotizaciones.map(
-                (c) =>
-                  c.fechaActualizacion?.toMillis?.() ||
-                  c.fecha?.toMillis?.() ||
-                  0
-              )
-            );
-
-          const confirmados =
-            cliente.cotizaciones.filter(
-              (c) =>
-                [
-                  "confirmada_admin",
-                  "en_proceso",
-                  "proceso",
-                  "instalacion_programada",
-                  "instalacion",
-                ].includes(c.estado)
-            ).length;
-
+  const obtenerEstado =
+    (estado) => {
+      switch (estado) {
+        case "pendiente":
           return {
-            ...cliente,
-            nuevas,
-            ultimaActividad,
-            confirmados,
+            texto:
+              "Solicitud enviada",
+
+            color:
+              "bg-zinc-700 text-white",
           };
-        }
+
+        case "revision":
+        case "en_revision":
+          return {
+            texto:
+              "En revisión",
+
+            color:
+              "bg-blue-600 text-white",
+          };
+
+        case "cotizada":
+        case "propuesta_enviada":
+          return {
+            texto:
+              "Propuesta recibida",
+
+            color:
+              "bg-yellow-500 text-black",
+          };
+
+        case "propuesta_modificada":
+          return {
+            texto:
+              "Propuesta modificada",
+
+            color:
+              "bg-orange-500 text-black",
+          };
+
+        case "aceptada_cliente":
+          return {
+            texto:
+              "Aceptada",
+
+            color:
+              "bg-green-600 text-white",
+          };
+
+        case "cambios":
+        case "cambios_solicitados":
+          return {
+            texto:
+              "Cambios solicitados",
+
+            color:
+              "bg-orange-500 text-black",
+          };
+
+        case "rechazada_cliente":
+          return {
+            texto:
+              "Propuesta rechazada",
+
+            color:
+              "bg-red-600 text-white",
+          };
+
+        case "cancelada_cliente":
+          return {
+            texto:
+              "Solicitud cancelada",
+
+            color:
+              "bg-red-700 text-white",
+          };
+
+        case "confirmada_admin":
+          return {
+            texto:
+              "Trabajo confirmado",
+
+            color:
+              "bg-emerald-600 text-white",
+          };
+
+        case "anticipo_pendiente":
+          return {
+            texto:
+              "Anticipo pendiente",
+
+            color:
+              "bg-amber-500 text-black",
+          };
+
+        case "anticipo_pagado":
+          return {
+            texto:
+              "Anticipo recibido",
+
+            color:
+              "bg-green-600 text-white",
+          };
+
+        case "proceso":
+        case "en_proceso":
+          return {
+            texto:
+              "Trabajo en proceso",
+
+            color:
+              "bg-purple-600 text-white",
+          };
+
+        case "instalacion":
+        case "instalacion_programada":
+          return {
+            texto:
+              "Instalación programada",
+
+            color:
+              "bg-cyan-600 text-white",
+          };
+
+        case "finalizada":
+        case "terminada":
+          return {
+            texto:
+              "Trabajo finalizado",
+
+            color:
+              "bg-green-700 text-white",
+          };
+
+        default:
+          return {
+            texto:
+              estado ||
+              "Pendiente",
+
+            color:
+              "bg-zinc-700 text-white",
+          };
+      }
+    };
+
+  /* ======================================================
+     PERMISOS
+  ====================================================== */
+
+  const puedeEditarSolicitud =
+    (cotizacion) => {
+      return [
+        "pendiente",
+        "revision",
+        "en_revision",
+      ].includes(
+        cotizacion.estado
       );
+    };
 
-    // Novedades primero
-    lista.sort((a, b) => {
-      if (
-        a.nuevas > 0 &&
-        b.nuevas === 0
-      ) {
-        return -1;
-      }
+  const puedeCancelarSolicitud =
+    (cotizacion) => {
+      return [
+        "pendiente",
+        "revision",
+        "en_revision",
+      ].includes(
+        cotizacion.estado
+      );
+    };
 
-      if (
-        b.nuevas > 0 &&
-        a.nuevas === 0
-      ) {
-        return 1;
-      }
+  /* ======================================================
+     NOVEDADES
+  ====================================================== */
 
+  const tieneNovedad =
+    (cotizacion) => {
       return (
-        b.ultimaActividad -
-        a.ultimaActividad
+        cotizacion.vistoPorCliente ===
+          false &&
+        [
+          "cotizada",
+          "propuesta_enviada",
+          "propuesta_modificada",
+          "confirmada_admin",
+          "anticipo_pendiente",
+          "anticipo_pagado",
+          "proceso",
+          "en_proceso",
+          "instalacion",
+          "instalacion_programada",
+          "finalizada",
+          "terminada",
+        ].includes(
+          cotizacion.estado
+        )
       );
-    });
+    };
 
-    return lista;
-  }, [cotizacionesActivas]);
-
-  // ======================================================
-  // BUSCADOR
-  // ======================================================
-
-  const clientesFiltrados =
-    useMemo(() => {
-      const texto =
-        busquedaCliente
-          .trim()
-          .toLowerCase();
-
-      if (!texto) {
-        return clientes;
-      }
-
-      return clientes.filter(
-        (cliente) => {
-          const contenido = [
-            cliente.nombre,
-            cliente.usuario,
-            cliente.telefono,
-
-            ...cliente.cotizaciones.map(
-              (c) =>
-                `${c.nombre || ""} ${
-                  c.descripcion || ""
-                }`
-            ),
-          ]
-            .join(" ")
-            .toLowerCase();
-
-          return contenido.includes(
-            texto
-          );
-        }
-      );
-    }, [
-      clientes,
-      busquedaCliente,
-    ]);
-
-  // ======================================================
-  // NOVEDADES
-  // ======================================================
-
-  const cantidadNovedadesAdmin =
-    cotizacionesActivas.filter(
-      (c) =>
-        c.vistoPorAdmin === false
+  const cantidadNuevas =
+    cotizaciones.filter(
+      tieneNovedad
     ).length;
 
-  // ======================================================
-  // CÁLCULOS
-  // ======================================================
+  /* ======================================================
+     MENSAJE DE ESTADO
+  ====================================================== */
 
-  const montoAnticipo =
-    useMemo(() => {
-      const total =
-        Number(presupuestoAdmin);
-
-      const porcentaje =
-        Number(
-          porcentajeAnticipo
-        );
-
-      if (!total) return 0;
-
-      return (
-        (total * porcentaje) /
-        100
-      );
-    }, [
-      presupuestoAdmin,
-      porcentajeAnticipo,
-    ]);
-
-  const saldoPendiente =
-    useMemo(() => {
-      const total =
-        Number(presupuestoAdmin);
-
-      if (!total) return 0;
-
-      return total - montoAnticipo;
-    }, [
-      presupuestoAdmin,
-      montoAnticipo,
-    ]);
-
-  // ======================================================
-  // PRECIO ACTUAL
-  // ======================================================
-
-  const obtenerPrecio = (c) => {
-    return (
-      c?.precioTotal ??
-      c?.presupuestoAdmin ??
-      c?.total ??
-      c?.precio ??
-      c?.propuestaPrecio ??
-      null
-    );
-  };
-
-  // ======================================================
-  // TIENE PROPUESTA
-  // ======================================================
-
-  const tienePropuesta = (c) => {
-    return (
-      obtenerPrecio(c) !== null ||
-      [
-        "cotizada",
-        "propuesta_enviada",
-        "propuesta_modificada",
-        "aceptada_cliente",
-        "cambios_solicitados",
-        "rechazada_cliente",
-        "confirmada_admin",
-        "en_proceso",
-        "proceso",
-        "instalacion_programada",
-        "instalacion",
-      ].includes(c?.estado)
-    );
-  };
-
-  // ======================================================
-  // ABRIR / CERRAR CLIENTE
-  // ======================================================
-
-  const toggleCliente = (clave) => {
-    setClienteAbierto(
-      (actual) =>
-        actual === clave
-          ? null
-          : clave
-    );
-  };
-
-  // ======================================================
-  // ABRIR COTIZACIÓN
-  // ======================================================
-
-  const abrirCotizacion =
-    async (cotizacion) => {
-      setCotizacionActiva(
-        cotizacion
-      );
-
-      setPresupuestoAdmin(
-        cotizacion.presupuestoAdmin ??
-          cotizacion.precioTotal ??
-          cotizacion.total ??
-          cotizacion.precio ??
-          ""
-      );
-
-      setPorcentajeAnticipo(
-        cotizacion.porcentajeAnticipo ??
-          "50"
-      );
-
-      setTiempoEstimado(
-        cotizacion.tiempoEstimado ??
-          cotizacion.tiempo ??
-          ""
-      );
-
-      setGarantia(
-        cotizacion.garantia ??
-          cotizacion["garantía"] ??
-          ""
-      );
-
-      setObservacionesAdmin(
-        cotizacion.observacionesAdmin ??
-          cotizacion.observaciones ??
-          cotizacion.observacion ??
-          ""
-      );
-
-      setError("");
-
-      setModalCotizacion(true);
-
-      // Marcar respuesta como vista
-      if (
-        cotizacion.vistoPorAdmin ===
-        false
+  const obtenerMensajeEstado =
+    (cotizacion) => {
+      switch (
+        cotizacion.estado
       ) {
-        try {
-          await updateDoc(
-            doc(
-              db,
-              "cotizaciones",
-              cotizacion.id
+        case "cotizada":
+        case "propuesta_enviada":
+          return {
+            titulo:
+              "Wealth envió una propuesta",
+
+            texto:
+              "Revisa el precio y las condiciones.",
+
+            clase:
+              "bg-yellow-500/10 border-yellow-500/30",
+
+            icono: (
+              <FaBell className="text-yellow-500" />
             ),
-            {
-              vistoPorAdmin: true,
-            }
-          );
-        } catch (error) {
-          console.error(
-            "Error marcando como visto:",
-            error
-          );
-        }
-      }
-    };
-
-  // ======================================================
-  // ENVIAR / ACTUALIZAR PROPUESTA
-  // ======================================================
-
-  const enviarPropuesta =
-    async () => {
-      if (!cotizacionActiva) {
-        return;
-      }
-
-      setError("");
-
-      const total =
-        Number(
-          presupuestoAdmin
-        );
-
-      const porcentaje =
-        Number(
-          porcentajeAnticipo
-        );
-
-      if (
-        !total ||
-        total <= 0
-      ) {
-        setError(
-          "Ingresa un precio válido."
-        );
-
-        return;
-      }
-
-      if (
-        porcentajeAnticipo ===
-          "" ||
-        porcentaje < 0 ||
-        porcentaje > 100
-      ) {
-        setError(
-          "El porcentaje de anticipo debe estar entre 0 y 100."
-        );
-
-        return;
-      }
-
-      try {
-        setLoading(true);
-
-        const yaTeniaPropuesta =
-          tienePropuesta(
-            cotizacionActiva
-          );
-
-        const versionActual =
-          Number(
-            cotizacionActiva.versionPropuesta
-          ) ||
-          (yaTeniaPropuesta
-            ? 1
-            : 0);
-
-        const nuevaVersion =
-          yaTeniaPropuesta
-            ? versionActual + 1
-            : 1;
-
-        const datosActualizados = {
-          estado:
-            yaTeniaPropuesta
-              ? "propuesta_modificada"
-              : "propuesta_enviada",
-
-          precioTotal: total,
-
-          anticipo:
-            Number(
-              montoAnticipo
-            ),
-
-          saldo:
-            Number(
-              saldoPendiente
-            ),
-
-          tiempoEstimado:
-            tiempoEstimado.trim(),
-
-          garantia:
-            garantia.trim(),
-
-          observaciones:
-            observacionesAdmin.trim(),
-
-          // Compatibilidad
-          presupuestoAdmin:
-            total,
-
-          porcentajeAnticipo:
-            porcentaje,
-
-          montoAnticipo:
-            Number(
-              montoAnticipo
-            ),
-
-          saldoPendiente:
-            Number(
-              saldoPendiente
-            ),
-
-          observacionesAdmin:
-            observacionesAdmin.trim(),
-
-          versionPropuesta:
-            nuevaVersion,
-
-          respuestaCliente:
-            "sin_respuesta",
-
-          mensajeCliente: "",
-
-          vistoPorCliente:
-            false,
-
-          vistoPorAdmin:
-            true,
-
-          mensajeClienteSistema:
-            yaTeniaPropuesta
-              ? "Wealth modificó tu propuesta."
-              : "Wealth envió una nueva propuesta.",
-
-          fechaPropuesta:
-            serverTimestamp(),
-
-          fechaActualizacion:
-            serverTimestamp(),
-        };
-
-        // ================================================
-        // HISTORIAL
-        // ================================================
-
-        if (
-          yaTeniaPropuesta
-        ) {
-          const precioAnterior =
-            obtenerPrecio(
-              cotizacionActiva
-            );
-
-          const anticipoAnterior =
-            cotizacionActiva.anticipo ??
-            cotizacionActiva.montoAnticipo ??
-            null;
-
-          const saldoAnterior =
-            cotizacionActiva.saldo ??
-            cotizacionActiva.saldoPendiente ??
-            null;
-
-          const versionAnterior = {
-            version:
-              versionActual,
-
-            precioTotal:
-              precioAnterior !==
-              null
-                ? Number(
-                    precioAnterior
-                  )
-                : null,
-
-            porcentajeAnticipo:
-              Number(
-                cotizacionActiva.porcentajeAnticipo ??
-                  50
-              ),
-
-            anticipo:
-              anticipoAnterior !==
-              null
-                ? Number(
-                    anticipoAnterior
-                  )
-                : null,
-
-            saldo:
-              saldoAnterior !==
-              null
-                ? Number(
-                    saldoAnterior
-                  )
-                : null,
-
-            tiempoEstimado:
-              cotizacionActiva.tiempoEstimado ??
-              "",
-
-            garantia:
-              cotizacionActiva.garantia ??
-              "",
-
-            observaciones:
-              cotizacionActiva.observaciones ??
-              cotizacionActiva.observacionesAdmin ??
-              "",
-
-            estadoAnterior:
-              cotizacionActiva.estado ??
-              "cotizada",
-
-            respuestaCliente:
-              cotizacionActiva.respuestaCliente ??
-              "sin_respuesta",
-
-            versionAceptada:
-              cotizacionActiva.versionAceptada ??
-              null,
-
-            precioAceptado:
-              cotizacionActiva.precioAceptado ??
-              null,
-
-            fecha:
-              cotizacionActiva.fechaActualizacion ??
-              Timestamp.now(),
           };
 
-          datosActualizados.historialPropuestas =
-            arrayUnion(
-              versionAnterior
+        case "propuesta_modificada":
+          return {
+            titulo:
+              "Propuesta modificada",
+
+            texto:
+              "Wealth actualizó la propuesta.",
+
+            clase:
+              "bg-orange-500/10 border-orange-500/30",
+
+            icono: (
+              <FaSyncAlt className="text-orange-400" />
+            ),
+          };
+
+        case "aceptada_cliente":
+          return {
+            titulo:
+              "Propuesta aceptada",
+
+            texto:
+              "Wealth recibió tu aceptación.",
+
+            clase:
+              "bg-green-500/10 border-green-500/30",
+
+            icono: (
+              <FaCheckCircle className="text-green-500" />
+            ),
+          };
+
+        case "cancelada_cliente":
+          return {
+            titulo:
+              "Solicitud cancelada",
+
+            texto:
+              "Wealth dejará de procesar esta solicitud.",
+
+            clase:
+              "bg-red-500/10 border-red-500/30",
+
+            icono: (
+              <FaTimesCircle className="text-red-500" />
+            ),
+          };
+
+        case "confirmada_admin":
+          return {
+            titulo:
+              "Trabajo confirmado por Wealth",
+
+            texto:
+              "Nuestro personal se pondrá en contacto contigo.",
+
+            clase:
+              "bg-emerald-500/10 border-emerald-500/30",
+
+            icono: (
+              <FaBuilding className="text-emerald-500" />
+            ),
+          };
+
+        default:
+          return null;
+      }
+    };
+
+  /* ======================================================
+     SELECCIÓN
+  ====================================================== */
+
+  const alternarModoSeleccion =
+    () => {
+      setModoSeleccion(
+        (actual) =>
+          !actual
+      );
+
+      setSeleccionadas(
+        []
+      );
+
+      setMensajeGeneral(
+        ""
+      );
+
+      setErrorGeneral(
+        ""
+      );
+    };
+
+  const seleccionarCotizacion =
+    (id) => {
+      setSeleccionadas(
+        (actuales) => {
+          if (
+            actuales.includes(
+              id
+            )
+          ) {
+            return actuales.filter(
+              (item) =>
+                item !== id
             );
-
-          datosActualizados.versionAceptada =
-            null;
-
-          datosActualizados.precioAceptado =
-            null;
-        }
-
-        await updateDoc(
-          doc(
-            db,
-            "cotizaciones",
-            cotizacionActiva.id
-          ),
-
-          datosActualizados
-        );
-
-        setModalCotizacion(
-          false
-        );
-
-        setCotizacionActiva(
-          null
-        );
-      } catch (error) {
-        console.error(error);
-
-        setError(
-          "No se pudo enviar la propuesta."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-  // ======================================================
-  // CONFIRMAR TRABAJO
-  // ======================================================
-
-  const confirmarTrabajo =
-    async (cotizacion) => {
-      const precio =
-        obtenerPrecio(
-          cotizacion
-        );
-
-      const ok =
-        window.confirm(
-          `¿Confirmar el trabajo "${cotizacion.nombre}"${
-            precio
-              ? ` por $${Number(
-                  precio
-                ).toLocaleString(
-                  "es-MX"
-                )} MXN`
-              : ""
-          }?\n\nEl cliente recibirá la confirmación.`
-        );
-
-      if (!ok) return;
-
-      try {
-        await updateDoc(
-          doc(
-            db,
-            "cotizaciones",
-            cotizacion.id
-          ),
-          {
-            estado:
-              "confirmada_admin",
-
-            vistoPorCliente:
-              false,
-
-            vistoPorAdmin:
-              true,
-
-            mensajeClienteSistema:
-              "Trabajo confirmado por Wealth.",
-
-            fechaConfirmacionAdmin:
-              serverTimestamp(),
-
-            fechaActualizacion:
-              serverTimestamp(),
           }
-        );
-      } catch (error) {
-        console.error(error);
 
-        alert(
-          "No se pudo confirmar el trabajo."
-        );
-      }
-    };
-
-  // ======================================================
-  // INICIAR TRABAJO
-  // ======================================================
-
-  const iniciarTrabajo =
-    async (cotizacion) => {
-      const ok =
-        window.confirm(
-          `¿Marcar "${cotizacion.nombre}" como trabajo en proceso?`
-        );
-
-      if (!ok) return;
-
-      try {
-        await updateDoc(
-          doc(
-            db,
-            "cotizaciones",
-            cotizacion.id
-          ),
-          {
-            estado:
-              "en_proceso",
-
-            vistoPorCliente:
-              false,
-
-            vistoPorAdmin:
-              true,
-
-            mensajeClienteSistema:
-              "Nuestro equipo ha iniciado los trabajos correspondientes a tu proyecto.",
-
-            fechaInicioProyecto:
-              serverTimestamp(),
-
-            fechaActualizacion:
-              serverTimestamp(),
-          }
-        );
-      } catch (error) {
-        console.error(error);
-
-        alert(
-          "No se pudo iniciar el trabajo."
-        );
-      }
-    };
-
-  // ======================================================
-  // PROGRAMAR INSTALACIÓN
-  // ======================================================
-
-  const programarInstalacion =
-    async (cotizacion) => {
-      const ok =
-        window.confirm(
-          `¿Marcar "${cotizacion.nombre}" como instalación programada?`
-        );
-
-      if (!ok) return;
-
-      try {
-        await updateDoc(
-          doc(
-            db,
-            "cotizaciones",
-            cotizacion.id
-          ),
-          {
-            estado:
-              "instalacion_programada",
-
-            vistoPorCliente:
-              false,
-
-            vistoPorAdmin:
-              true,
-
-            mensajeClienteSistema:
-              "La instalación de tu proyecto ha sido programada. Nuestro personal se pondrá en contacto contigo para coordinar los detalles.",
-
-            fechaInstalacion:
-              serverTimestamp(),
-
-            fechaActualizacion:
-              serverTimestamp(),
-          }
-        );
-      } catch (error) {
-        console.error(error);
-
-        alert(
-          "No se pudo actualizar la instalación."
-        );
-      }
-    };
-
-  // ======================================================
-  // FINALIZAR TRABAJO + FOTOS
-  // ======================================================
-
-  const abrirFinalizacion = (cotizacion) => {
-    setCotizacionFinalizar(cotizacion);
-    setFotosFinales([]);
-    setPreviewsFinales([]);
-    setErrorFinalizar("");
-    setModalFinalizar(true);
-  };
-
-  const seleccionarFotosFinales = (e) => {
-    const archivos = Array.from(e.target.files || []);
-    e.target.value = "";
-
-    const soloImagenes = archivos.filter((archivo) =>
-      archivo.type?.startsWith("image/")
-    );
-
-    if (soloImagenes.length !== archivos.length) {
-      setErrorFinalizar(
-        "Solo puedes agregar archivos de imagen."
-      );
-    } else {
-      setErrorFinalizar("");
-    }
-
-    const disponibles = Math.max(
-      0,
-      6 - fotosFinales.length
-    );
-
-    const nuevos = soloImagenes.slice(
-      0,
-      disponibles
-    );
-
-    if (soloImagenes.length > disponibles) {
-      setErrorFinalizar(
-        "Puedes agregar un máximo de 6 fotografías por proyecto."
-      );
-    }
-
-    setFotosFinales((actuales) => [
-      ...actuales,
-      ...nuevos,
-    ]);
-
-    setPreviewsFinales((actuales) => [
-      ...actuales,
-      ...nuevos.map((archivo) =>
-        URL.createObjectURL(archivo)
-      ),
-    ]);
-  };
-
-  const eliminarFotoFinal = (indice) => {
-    setPreviewsFinales((actuales) => {
-      const url = actuales[indice];
-
-      if (url) {
-        URL.revokeObjectURL(url);
-      }
-
-      return actuales.filter(
-        (_, i) => i !== indice
-      );
-    });
-
-    setFotosFinales((actuales) =>
-      actuales.filter(
-        (_, i) => i !== indice
-      )
-    );
-  };
-
-  const cerrarFinalizacion = () => {
-    previewsFinales.forEach((url) =>
-      URL.revokeObjectURL(url)
-    );
-
-    setPreviewsFinales([]);
-    setFotosFinales([]);
-    setCotizacionFinalizar(null);
-    setErrorFinalizar("");
-    setModalFinalizar(false);
-  };
-
-  const subirFotoCloudinary = async (archivo) => {
-    if (
-      archivo.size >
-      5 * 1024 * 1024
-    ) {
-      throw new Error(
-        `La imagen "${archivo.name}" supera el límite de 5 MB.`
-      );
-    }
-
-    const formData =
-      new FormData();
-
-    formData.append(
-      "file",
-      archivo
-    );
-
-    formData.append(
-      "upload_preset",
-      "wealth"
-    );
-
-    const respuesta =
-      await fetch(
-        "https://api.cloudinary.com/v1_1/dxj4iczvk/image/upload",
-        {
-          method: "POST",
-          body: formData,
+          return [
+            ...actuales,
+            id,
+          ];
         }
       );
+    };
 
-    if (!respuesta.ok) {
-      const detalle =
-        await respuesta
-          .json()
-          .catch(() => null);
+  const todasSeleccionadas =
+    cotizaciones.length >
+      0 &&
+    seleccionadas.length ===
+      cotizaciones.length;
 
-      throw new Error(
-        detalle?.error?.message ||
-          "No se pudo subir una de las fotografías."
+  const seleccionarTodas =
+    () => {
+      if (
+        todasSeleccionadas
+      ) {
+        setSeleccionadas(
+          []
+        );
+
+        return;
+      }
+
+      setSeleccionadas(
+        cotizaciones.map(
+          (c) =>
+            c.id
+        )
       );
-    }
+    };
 
-    const data =
-      await respuesta.json();
+  /* ======================================================
+     ELIMINAR DEL PANEL
+  ====================================================== */
 
-    return data.secure_url;
-  };
+  const eliminarSeleccionadas =
+    async () => {
+      if (
+        seleccionadas.length ===
+        0
+      ) {
+        return;
+      }
 
-  const terminarTrabajo =
-    async (cotizacion) => {
-      const precio =
-        obtenerPrecio(
-          cotizacion
-        );
-
-      const ok =
+      const confirmar =
         window.confirm(
-          `¿Confirmar que el trabajo "${cotizacion.nombre}" está completamente terminado?\n\nLas fotografías seleccionadas se guardarán como evidencia del trabajo final y el proyecto pasará a Mis Proyectos del cliente.`
+          `¿Quieres eliminar ${
+            seleccionadas.length
+          } ${
+            seleccionadas.length ===
+            1
+              ? "cotización"
+              : "cotizaciones"
+          }?\n\nSi todavía no ha sido aceptada o confirmada, se eliminará de las cotizaciones activas de Wealth y el administrador recibirá un aviso de que la cancelaste.`
         );
 
-      if (!ok) return;
+      if (!confirmar) {
+        return;
+      }
 
       try {
-        setLoading(true);
-        setSubiendoFinales(true);
-        setErrorFinalizar("");
-
-        const fotosTrabajoFinal =
-          fotosFinales.length > 0
-            ? await Promise.all(
-                fotosFinales.map(
-                  subirFotoCloudinary
-                )
-              )
-            : [];
+        setProcesando(
+          true
+        );
 
         const batch =
           writeBatch(db);
 
-        // ================================================
-        // PROYECTO CLIENTE
-        // ================================================
+        seleccionadas.forEach(
+          (id) => {
+            const cotizacion =
+              cotizaciones.find(
+                (item) =>
+                  item.id === id
+              );
 
-        const proyectoRef =
-          doc(
-            db,
-            "proyectosClientes",
-            cotizacion.id
-          );
+            if (!cotizacion) {
+              return;
+            }
 
-        batch.set(
-          proyectoRef,
-          {
-            uid:
-              cotizacion.uid ||
-              null,
+            // Solo permitimos eliminación definitiva desde el cliente
+            // mientras el trabajo todavía NO ha sido confirmado.
+            const yaEsTrabajo =
+              [
+                "aceptada_cliente",
+                "confirmada_admin",
+                "anticipo_pendiente",
+                "anticipo_pagado",
+                "anticipo_recibido",
+                "en_proceso",
+                "proceso",
+                "instalacion_programada",
+                "instalacion",
+              ].includes(
+                cotizacion.estado
+              );
 
-            usuario:
-              cotizacion.usuario ||
-              "",
+            if (yaEsTrabajo) {
+              return;
+            }
 
-            cotizacionId:
-              cotizacion.id,
+            // 1. Guardar aviso administrativo mínimo.
+            //    Así Wealth sabe quién eliminó la solicitud,
+            //    pero la cotización ya no se acumula entre las activas.
+            const avisoRef =
+              doc(
+                collection(
+                  db,
+                  "cotizacionesEliminadas"
+                )
+              );
 
-            nombre:
-              cotizacion.nombre ||
-              "Proyecto Wealth",
+            batch.set(
+              avisoRef,
+              {
+                cotizacionId:
+                  cotizacion.id,
 
-            descripcion:
-              cotizacion.descripcion ||
-              "",
+                uid:
+                  cotizacion.uid ||
+                  auth.currentUser?.uid ||
+                  null,
 
-            tipo:
-              cotizacion.tipo ||
-              "",
+                usuario:
+                  cotizacion.usuario ||
+                  auth.currentUser?.email ||
+                  "",
 
-            proyectoReferenciaId:
-              cotizacion.proyectoReferenciaId ||
-              null,
+                nombreCliente:
+                  cotizacion.nombreCliente ||
+                  cotizacion.clienteNombre ||
+                  "",
 
-            proyectoReferenciaNombre:
-              cotizacion.proyectoReferenciaNombre ||
-              null,
+                telefono:
+                  cotizacion.telefono ||
+                  "",
 
-            proyectoReferenciaCategoria:
-              cotizacion.proyectoReferenciaCategoria ||
-              null,
+                nombreProyecto:
+                  cotizacion.nombre ||
+                  "Cotización",
 
-            ubicacion:
-              cotizacion.ubicacion ||
-              "",
+                descripcion:
+                  cotizacion.descripcion ||
+                  "",
 
-            latitud:
-              cotizacion.latitud ??
-              null,
+                estadoAnterior:
+                  cotizacion.estado ||
+                  "pendiente",
 
-            longitud:
-              cotizacion.longitud ??
-              null,
+                precioTotal:
+                  cotizacion.precioTotal ??
+                  cotizacion.presupuestoAdmin ??
+                  null,
 
-            medidas:
-              cotizacion.medidas ||
-              "",
+                eliminadoPorCliente:
+                  true,
 
-            fechaDeseada:
-              cotizacion.fechaDeseada ||
-              null,
+                vistoPorAdmin:
+                  false,
 
-            // Fotos y referencias originales
-            imagenes:
-              cotizacion.imagenes ||
-              [],
+                fechaEliminacion:
+                  serverTimestamp(),
+              }
+            );
 
-            imagenesProyecto:
-              cotizacion.imagenesProyecto ||
-              [],
-
-            imagenesCliente:
-              cotizacion.imagenesCliente ||
-              [],
-
-            // NUEVO: fotos reales del trabajo terminado
-            imagenesTrabajoFinal:
-              fotosTrabajoFinal,
-
-            imagenResultado:
-              fotosTrabajoFinal[0] ||
-              null,
-
-            // La portada prioriza el resultado final
-            imagen:
-              fotosTrabajoFinal[0] ||
-              cotizacion.imagen ||
-              cotizacion.imagenes?.[0] ||
-              null,
-
-            precioTotal:
-              precio !== null
-                ? Number(precio)
-                : null,
-
-            anticipo:
-              cotizacion.anticipo ??
-              cotizacion.montoAnticipo ??
-              null,
-
-            saldo:
-              cotizacion.saldo ??
-              cotizacion.saldoPendiente ??
-              null,
-
-            porcentajeAnticipo:
-              cotizacion.porcentajeAnticipo ??
-              null,
-
-            tiempoEstimado:
-              cotizacion.tiempoEstimado ||
-              "",
-
-            garantia:
-              cotizacion.garantia ||
-              "",
-
-            observaciones:
-              cotizacion.observaciones ??
-              cotizacion.observacionesAdmin ??
-              "",
-
-            versionPropuesta:
-              cotizacion.versionPropuesta ||
-              1,
-
-            versionAceptada:
-              cotizacion.versionAceptada ||
-              null,
-
-            precioAceptado:
-              cotizacion.precioAceptado ??
-              precio ??
-              null,
-
-            historialPropuestas:
-              cotizacion.historialPropuestas ||
-              [],
-
-            estado:
-              "terminado",
-
-            fechaSolicitud:
-              cotizacion.fecha ||
-              null,
-
-            fechaConfirmacionAdmin:
-              cotizacion.fechaConfirmacionAdmin ||
-              null,
-
-            fechaInicioProyecto:
-              cotizacion.fechaInicioProyecto ||
-              null,
-
-            fechaInstalacion:
-              cotizacion.fechaInstalacion ||
-              null,
-
-            fechaFinalizacion:
-              serverTimestamp(),
-
-            fechaCreacion:
-              serverTimestamp(),
-          },
-
-          {
-            merge: true,
-          }
-        );
-
-        // ================================================
-        // ARCHIVAR COTIZACIÓN
-        // ================================================
-
-        const cotizacionRef =
-          doc(
-            db,
-            "cotizaciones",
-            cotizacion.id
-          );
-
-        batch.update(
-          cotizacionRef,
-          {
-            estado:
-              "finalizada",
-
-            vistoPorCliente:
-              false,
-
-            vistoPorAdmin:
-              true,
-
-            mensajeClienteSistema:
-              fotosTrabajoFinal.length > 0
-                ? "Tu proyecto ha sido finalizado por Wealth. Ya puedes consultarlo en Mis Proyectos y ver las fotografías del trabajo terminado."
-                : "Tu proyecto ha sido finalizado por Wealth. Ya puedes consultarlo en la sección Mis Proyectos.",
-
-            imagenesTrabajoFinal:
-              fotosTrabajoFinal,
-
-            fechaFinalizacion:
-              serverTimestamp(),
-
-            fechaActualizacion:
-              serverTimestamp(),
+            // 2. Eliminar la cotización original.
+            batch.delete(
+              doc(
+                db,
+                "cotizaciones",
+                id
+              )
+            );
           }
         );
 
         await batch.commit();
 
-        cerrarFinalizacion();
+        setSeleccionadas(
+          []
+        );
 
-        setModalCotizacion(
+        setModoSeleccion(
           false
         );
 
-        setCotizacionActiva(
-          null
+        setMensajeGeneral(
+          "✅ La cotización fue eliminada. Wealth recibió un aviso de la cancelación."
         );
 
-        alert(
-          fotosTrabajoFinal.length > 0
-            ? `✅ Trabajo terminado.\n\nSe guardaron ${fotosTrabajoFinal.length} fotografía(s) del trabajo y el proyecto ya aparece en Mis Proyectos del cliente.`
-            : "✅ Trabajo terminado.\n\nEl proyecto ya fue enviado a Mis Proyectos del cliente."
-        );
       } catch (error) {
         console.error(
-          "Error terminando proyecto:",
+          "Error eliminando cotizaciones:",
           error
         );
 
-        setErrorFinalizar(
-          error?.message ||
-            "No se pudo finalizar el proyecto."
+        setErrorGeneral(
+          "No se pudieron eliminar las cotizaciones."
         );
+
       } finally {
-        setLoading(false);
-        setSubiendoFinales(false);
+        setProcesando(
+          false
+        );
       }
     };
 
-  // ======================================================
-  // RECHAZAR
-  // ======================================================
+  /* ======================================================
+     MARCAR VISTA
+  ====================================================== */
 
-  const rechazarCotizacion =
-    async (cotizacion) => {
+  const marcarComoVista =
+    async (
+      cotizacion
+    ) => {
       if (
-        !window.confirm(
-          `¿Seguro que deseas rechazar "${cotizacion.nombre}"?`
-        )
+        cotizacion.vistoPorCliente !==
+        false
       ) {
         return;
       }
@@ -1404,1284 +1287,1879 @@ function CotizacionesAdmin() {
             cotizacion.id
           ),
           {
-            estado:
-              "rechazada",
-
             vistoPorCliente:
-              false,
-
-            vistoPorAdmin:
               true,
-
-            mensajeClienteSistema:
-              "Wealth rechazó la solicitud.",
-
-            fechaActualizacion:
-              serverTimestamp(),
           }
         );
       } catch (error) {
-        console.error(error);
-      }
-    };
-
-  // ======================================================
-  // EN REVISIÓN
-  // ======================================================
-
-  const marcarEnRevision =
-    async (cotizacion) => {
-      try {
-        await updateDoc(
-          doc(
-            db,
-            "cotizaciones",
-            cotizacion.id
-          ),
-          {
-            estado:
-              "en_revision",
-
-            vistoPorCliente:
-              false,
-
-            vistoPorAdmin:
-              true,
-
-            mensajeClienteSistema:
-              "Wealth está revisando tu solicitud.",
-
-            fechaActualizacion:
-              serverTimestamp(),
-          }
+        console.error(
+          "Error marcando vista:",
+          error
         );
-      } catch (error) {
-        console.error(error);
       }
     };
 
-  // ======================================================
-  // ELIMINAR
-  // ======================================================
+  /* ======================================================
+     VER DETALLES
+  ====================================================== */
 
-  const eliminar =
-    async (id) => {
+  const verPropuesta =
+    async (
+      cotizacion
+    ) => {
+      setCotizacionSeleccionada(
+        cotizacion
+      );
+
+      setPropuestaOpen(
+        true
+      );
+
+      await marcarComoVista(
+        cotizacion
+      );
+    };
+
+  /* ======================================================
+     ABRIR EDICIÓN
+  ====================================================== */
+
+  const abrirEdicion =
+    (cotizacion) => {
       if (
-        !window.confirm(
-          "¿Eliminar esta cotización definitivamente?"
+        !puedeEditarSolicitud(
+          cotizacion
         )
+      ) {
+        window.alert(
+          "Esta solicitud ya no puede modificarse."
+        );
+
+        return;
+      }
+
+      setCotizacionEditando(
+        cotizacion
+      );
+
+      setPasoEditar(
+        1
+      );
+
+      setEditNombre(
+        cotizacion.nombre ||
+        ""
+      );
+
+      setEditDescripcion(
+        cotizacion.descripcion ||
+        ""
+      );
+
+      setEditTipo(
+        cotizacion.tipo ||
+        "Construcción"
+      );
+
+      setEditUbicacion(
+        cotizacion.ubicacion ||
+        ""
+      );
+
+      setEditMedidas(
+        cotizacion.medidas ||
+        ""
+      );
+
+      setEditFechaDeseada(
+        cotizacion.fechaDeseada ||
+        ""
+      );
+
+      setEditPresupuesto(
+        cotizacion.presupuestoEstimadoCliente ??
+          ""
+      );
+
+      setEditTelefono(
+        cotizacion.telefono ||
+        ""
+      );
+
+      setEditMetodoContacto(
+        cotizacion.metodoContacto ||
+        "WhatsApp"
+      );
+
+      const lat =
+        Number(
+          cotizacion.latitud
+        );
+
+      const lng =
+        Number(
+          cotizacion.longitud
+        );
+
+      if (
+        Number.isFinite(lat) &&
+        Number.isFinite(lng)
+      ) {
+        setEditPosicion({
+          lat,
+          lng,
+        });
+      } else {
+        setEditPosicion(
+          POSICION_CAMPECHE
+        );
+      }
+
+      const referencias =
+        Array.isArray(
+          cotizacion.imagenesProyecto
+        )
+          ? cotizacion.imagenesProyecto.filter(
+              Boolean
+            )
+          : [];
+
+      const cliente =
+        Array.isArray(
+          cotizacion.imagenesCliente
+        )
+          ? cotizacion.imagenesCliente.filter(
+              Boolean
+            )
+          : [];
+
+      setImagenesProyectoEdit(
+        referencias
+      );
+
+      setImagenesClienteEdit(
+        cliente
+      );
+
+      setNuevasImagenes(
+        []
+      );
+
+      setErrorGeneral(
+        ""
+      );
+
+      setEditarOpen(
+        true
+      );
+    };
+
+  /* ======================================================
+     CERRAR EDICIÓN
+  ====================================================== */
+
+  const cerrarEdicion =
+    () => {
+      setEditarOpen(
+        false
+      );
+
+      setCotizacionEditando(
+        null
+      );
+
+      setNuevasImagenes(
+        []
+      );
+
+      setErrorGeneral(
+        ""
+      );
+    };
+
+  /* ======================================================
+     VALIDACIÓN EDICIÓN
+  ====================================================== */
+
+  const validarPasoEditar =
+    () => {
+      setErrorGeneral("");
+
+      if (
+        pasoEditar ===
+        1
+      ) {
+        if (
+          !editNombre.trim()
+        ) {
+          setErrorGeneral(
+            "Escribe el nombre del proyecto."
+          );
+
+          return false;
+        }
+
+        if (
+          editDescripcion
+            .trim()
+            .length <
+          10
+        ) {
+          setErrorGeneral(
+            "La descripción debe tener al menos 10 caracteres."
+          );
+
+          return false;
+        }
+      }
+
+      if (
+        pasoEditar ===
+        2
+      ) {
+        if (
+          !editUbicacion.trim()
+        ) {
+          setErrorGeneral(
+            "Escribe o selecciona una ubicación."
+          );
+
+          return false;
+        }
+      }
+
+      if (
+        pasoEditar ===
+        4
+      ) {
+        const numero =
+          editTelefono.replace(
+            /\D/g,
+            ""
+          );
+
+        if (
+          numero.length <
+          10
+        ) {
+          setErrorGeneral(
+            "Escribe un teléfono válido."
+          );
+
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+  /* ======================================================
+     PASOS EDICIÓN
+  ====================================================== */
+
+  const siguienteEditar =
+    () => {
+      if (
+        !validarPasoEditar()
       ) {
         return;
       }
 
+      if (
+        pasoEditar <
+        totalPasosEditar
+      ) {
+        setPasoEditar(
+          (actual) =>
+            actual + 1
+        );
+
+        setErrorGeneral(
+          ""
+        );
+      }
+    };
+
+  const anteriorEditar =
+    () => {
+      if (
+        pasoEditar >
+        1
+      ) {
+        setPasoEditar(
+          (actual) =>
+            actual - 1
+        );
+
+        setErrorGeneral(
+          ""
+        );
+      }
+    };
+
+  /* ======================================================
+     BUSCAR DIRECCIÓN
+  ====================================================== */
+
+  const buscarDireccionEditar =
+    async () => {
+      if (
+        !editUbicacion.trim()
+      ) {
+        setErrorGeneral(
+          "Escribe una dirección."
+        );
+
+        return;
+      }
+
       try {
-        await deleteDoc(
-          doc(
-            db,
-            "cotizaciones",
-            id
+        setBuscandoUbicacion(
+          true
+        );
+
+        setErrorGeneral(
+          ""
+        );
+
+        const params =
+          new URLSearchParams({
+            q:
+              editUbicacion.trim(),
+
+            format:
+              "jsonv2",
+
+            addressdetails:
+              "1",
+
+            limit:
+              "1",
+
+            countrycodes:
+              "mx",
+
+            "accept-language":
+              "es",
+          });
+
+        const response =
+          await fetch(
+            `https://nominatim.openstreetmap.org/search?${params.toString()}`
+          );
+
+        if (!response.ok) {
+          throw new Error(
+            "Error buscando ubicación"
+          );
+        }
+
+        const resultados =
+          await response.json();
+
+        if (
+          resultados.length ===
+          0
+        ) {
+          setErrorGeneral(
+            "No encontramos esa dirección."
+          );
+
+          return;
+        }
+
+        const resultado =
+          resultados[0];
+
+        setEditPosicion({
+          lat:
+            Number(
+              resultado.lat
+            ),
+
+          lng:
+            Number(
+              resultado.lon
+            ),
+        });
+
+        setEditUbicacion(
+          resultado.display_name ||
+          editUbicacion
+        );
+
+      } catch (error) {
+        console.error(
+          "Error buscando:",
+          error
+        );
+
+        setErrorGeneral(
+          "No pudimos buscar esa ubicación."
+        );
+
+      } finally {
+        setBuscandoUbicacion(
+          false
+        );
+      }
+    };
+
+  /* ======================================================
+     GPS
+  ====================================================== */
+
+  const usarMiUbicacionEditar =
+    () => {
+      setErrorGeneral("");
+
+      if (
+        !navigator.geolocation
+      ) {
+        setErrorGeneral(
+          "Tu navegador no permite obtener tu ubicación."
+        );
+
+        return;
+      }
+
+      setObteniendoGPS(
+        true
+      );
+
+      navigator.geolocation.getCurrentPosition(
+        async (
+          position
+        ) => {
+          const lat =
+            position.coords.latitude;
+
+          const lng =
+            position.coords.longitude;
+
+          setEditPosicion({
+            lat,
+            lng,
+          });
+
+          try {
+            const direccion =
+              await obtenerDireccion(
+                lat,
+                lng
+              );
+
+            setEditUbicacion(
+              direccion ||
+              `${lat}, ${lng}`
+            );
+          } catch {
+            setEditUbicacion(
+              `${lat}, ${lng}`
+            );
+          } finally {
+            setObteniendoGPS(
+              false
+            );
+          }
+        },
+
+        () => {
+          setObteniendoGPS(
+            false
+          );
+
+          setErrorGeneral(
+            "No pudimos obtener tu ubicación."
+          );
+        },
+
+        {
+          enableHighAccuracy:
+            true,
+
+          timeout:
+            10000,
+
+          maximumAge:
+            0,
+        }
+      );
+    };
+
+  /* ======================================================
+     NUEVAS FOTOS
+  ====================================================== */
+
+  const handleNuevasImagenes =
+    (e) => {
+      setErrorGeneral("");
+
+      const archivos =
+        Array.from(
+          e.target.files ||
+          []
+        );
+
+      const total =
+        imagenesClienteEdit.length +
+        nuevasImagenes.length +
+        archivos.length;
+
+      if (
+        total >
+        6
+      ) {
+        setErrorGeneral(
+          "Puedes tener máximo 6 fotografías propias."
+        );
+
+        e.target.value =
+          "";
+
+        return;
+      }
+
+      for (
+        const file of archivos
+      ) {
+        if (
+          !file.type.startsWith(
+            "image/"
           )
-        );
-      } catch (error) {
-        console.error(error);
+        ) {
+          setErrorGeneral(
+            "Solo puedes subir imágenes."
+          );
+
+          e.target.value =
+            "";
+
+          return;
+        }
+
+        if (
+          file.size >
+          5 *
+            1024 *
+            1024
+        ) {
+          setErrorGeneral(
+            `La imagen "${file.name}" supera los 5 MB.`
+          );
+
+          e.target.value =
+            "";
+
+          return;
+        }
       }
+
+      setNuevasImagenes(
+        (actuales) => [
+          ...actuales,
+          ...archivos,
+        ]
+      );
+
+      e.target.value =
+        "";
     };
 
-  // ======================================================
-  // REINICIAR
-  // ======================================================
+  const quitarImagenCliente =
+    (indice) => {
+      setImagenesClienteEdit(
+        (actuales) =>
+          actuales.filter(
+            (_, i) =>
+              i !== indice
+          )
+      );
+    };
 
-  const resetEstado =
-    async (id) => {
+  const quitarNuevaImagen =
+    (indice) => {
+      setNuevasImagenes(
+        (actuales) =>
+          actuales.filter(
+            (_, i) =>
+              i !== indice
+          )
+      );
+    };
+
+  /* ======================================================
+     SUBIR CLOUDINARY
+  ====================================================== */
+
+  const subirImagen =
+    async (file) => {
+      const formData =
+        new FormData();
+
+      formData.append(
+        "file",
+        file
+      );
+
+      formData.append(
+        "upload_preset",
+        "wealth"
+      );
+
+      const response =
+        await fetch(
+          "https://api.cloudinary.com/v1_1/dxj4iczvk/image/upload",
+          {
+            method:
+              "POST",
+
+            body:
+              formData,
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "No se pudo subir una imagen."
+        );
+      }
+
+      const data =
+        await response.json();
+
       if (
-        !window.confirm(
-          "¿Reiniciar esta cotización? Se limpiará la propuesta actual."
-        )
+        !data.secure_url
+      ) {
+        throw new Error(
+          "Cloudinary no devolvió una URL."
+        );
+      }
+
+      return data.secure_url;
+    };
+
+  /* ======================================================
+     GUARDAR EDICIÓN
+  ====================================================== */
+
+  const guardarCambiosSolicitud =
+    async () => {
+      if (
+        !cotizacionEditando
+      ) {
+        return;
+      }
+
+      if (
+        !validarPasoEditar()
       ) {
         return;
       }
 
       try {
+        setProcesando(
+          true
+        );
+
+        setErrorGeneral(
+          ""
+        );
+
+        let nuevasUrls =
+          [];
+
+        if (
+          nuevasImagenes.length >
+          0
+        ) {
+          nuevasUrls =
+            await Promise.all(
+              nuevasImagenes.map(
+                (file) =>
+                  subirImagen(
+                    file
+                  )
+              )
+            );
+        }
+
+        const imagenesClienteFinal =
+          [
+            ...new Set([
+              ...imagenesClienteEdit,
+              ...nuevasUrls,
+            ]),
+          ];
+
+        const todasLasImagenes =
+          [
+            ...new Set([
+              ...imagenesProyectoEdit,
+              ...imagenesClienteFinal,
+            ]),
+          ];
+
         await updateDoc(
           doc(
             db,
             "cotizaciones",
-            id
+            cotizacionEditando.id
           ),
+
+          {
+            nombre:
+              editNombre.trim(),
+
+            descripcion:
+              editDescripcion.trim(),
+
+            tipo:
+              editTipo,
+
+            ubicacion:
+              editUbicacion.trim(),
+
+            latitud:
+              editPosicion.lat,
+
+            longitud:
+              editPosicion.lng,
+
+            medidas:
+              editMedidas.trim(),
+
+            fechaDeseada:
+              editFechaDeseada ||
+              null,
+
+            presupuestoEstimadoCliente:
+              editPresupuesto !==
+              ""
+                ? Number(
+                    editPresupuesto
+                  )
+                : null,
+
+            telefono:
+              editTelefono.trim(),
+
+            metodoContacto:
+              editMetodoContacto,
+
+            imagenesProyecto:
+              imagenesProyectoEdit,
+
+            imagenesCliente:
+              imagenesClienteFinal,
+
+            imagenes:
+              todasLasImagenes,
+
+            imagen:
+              todasLasImagenes[0] ||
+              null,
+
+            solicitudModificadaCliente:
+              true,
+
+            fechaModificacionCliente:
+              serverTimestamp(),
+
+            fechaActualizacion:
+              serverTimestamp(),
+
+            vistoPorAdmin:
+              false,
+
+            vistoPorCliente:
+              true,
+
+            mensajeAdmin:
+              "El cliente modificó su solicitud.",
+          }
+        );
+
+        setEditarOpen(
+          false
+        );
+
+        setCotizacionEditando(
+          null
+        );
+
+        setNuevasImagenes(
+          []
+        );
+
+        setMensajeGeneral(
+          "✅ La cotización fue modificada correctamente."
+        );
+
+      } catch (error) {
+        console.error(
+          "Error modificando cotización:",
+          error
+        );
+
+        setErrorGeneral(
+          "No se pudieron guardar los cambios."
+        );
+
+      } finally {
+        setProcesando(
+          false
+        );
+      }
+    };
+
+  /* ======================================================
+     CANCELAR SOLICITUD
+  ====================================================== */
+
+  const cancelarSolicitud =
+    async (
+      cotizacion
+    ) => {
+      if (
+        !puedeCancelarSolicitud(
+          cotizacion
+        )
+      ) {
+        return;
+      }
+
+      const confirmar =
+        window.confirm(
+          `¿Cancelar la solicitud "${cotizacion.nombre}"?\n\nWealth dejará de procesarla.`
+        );
+
+      if (!confirmar) {
+        return;
+      }
+
+      try {
+        setProcesando(
+          true
+        );
+
+        await updateDoc(
+          doc(
+            db,
+            "cotizaciones",
+            cotizacion.id
+          ),
+
           {
             estado:
-              "pendiente",
-
-            precioTotal:
-              null,
-
-            anticipo:
-              null,
-
-            saldo:
-              null,
-
-            presupuestoAdmin:
-              null,
-
-            porcentajeAnticipo:
-              null,
-
-            montoAnticipo:
-              null,
-
-            saldoPendiente:
-              null,
-
-            tiempoEstimado:
-              "",
-
-            garantia:
-              "",
-
-            observaciones:
-              "",
-
-            observacionesAdmin:
-              "",
+              "cancelada_cliente",
 
             respuestaCliente:
-              "sin_respuesta",
+              "cancelada",
 
-            mensajeCliente:
-              "",
-
-            estadoPago:
-              "sin_pago",
-
-            vistoPorCliente:
-              false,
-
-            vistoPorAdmin:
-              true,
-
-            versionAceptada:
-              null,
-
-            precioAceptado:
-              null,
+            fechaCancelacionCliente:
+              serverTimestamp(),
 
             fechaActualizacion:
               serverTimestamp(),
+
+            vistoPorAdmin:
+              false,
+
+            vistoPorCliente:
+              true,
+
+            mensajeAdmin:
+              "El cliente canceló la solicitud.",
           }
         );
+
+        setMensajeGeneral(
+          "Solicitud cancelada."
+        );
+
       } catch (error) {
-        console.error(error);
+        console.error(
+          "Error cancelando:",
+          error
+        );
+
+        setErrorGeneral(
+          "No se pudo cancelar la solicitud."
+        );
+
+      } finally {
+        setProcesando(
+          false
+        );
       }
     };
 
-  // ======================================================
-  // ESTADO COLOR
-  // ======================================================
+  /* ======================================================
+     ACEPTAR PROPUESTA
+  ====================================================== */
 
-  const getEstadoColor =
-    (estado) => {
-      switch (estado) {
-        case "en_revision":
-          return "bg-blue-500/10 text-blue-400 border border-blue-500/30";
-
-        case "cotizada":
-        case "propuesta_enviada":
-          return "bg-yellow-500/10 text-yellow-400 border border-yellow-500/30";
-
-        case "propuesta_modificada":
-          return "bg-orange-500/10 text-orange-400 border border-orange-500/30";
-
-        case "aceptada_cliente":
-          return "bg-green-500/10 text-green-400 border border-green-500/30";
-
-        case "cambios_solicitados":
-          return "bg-orange-500/10 text-orange-400 border border-orange-500/30";
-
-        case "rechazada_cliente":
-        case "cancelada_cliente":
-        case "rechazada":
-          return "bg-red-500/10 text-red-400 border border-red-500/30";
-
-        case "confirmada_admin":
-          return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
-
-        case "anticipo_pendiente":
-          return "bg-amber-500/10 text-amber-400 border border-amber-500/30";
-
-        case "anticipo_recibido":
-        case "anticipo_pagado":
-          return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
-
-        case "en_proceso":
-        case "proceso":
-          return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/30";
-
-        case "instalacion_programada":
-        case "instalacion":
-          return "bg-purple-500/10 text-purple-400 border border-purple-500/30";
-
-        default:
-          return "bg-zinc-800 text-zinc-300 border border-zinc-700";
-      }
-    };
-
-  // ======================================================
-  // ESTADO TEXTO
-  // ======================================================
-
-  const getEstadoTexto =
-    (estado) => {
-      switch (estado) {
-        case "en_revision":
-          return "En revisión";
-
-        case "cotizada":
-        case "propuesta_enviada":
-          return "Propuesta enviada";
-
-        case "propuesta_modificada":
-          return "Propuesta modificada";
-
-        case "aceptada_cliente":
-          return "Aceptada por cliente";
-
-        case "cambios_solicitados":
-          return "Cliente pidió cambios";
-
-        case "rechazada_cliente":
-        case "cancelada_cliente":
-          return "Rechazada por cliente";
-
-        case "confirmada_admin":
-          return "Trabajo confirmado";
-
-        case "anticipo_pendiente":
-          return "Anticipo pendiente";
-
-        case "anticipo_recibido":
-        case "anticipo_pagado":
-          return "Anticipo recibido";
-
-        case "en_proceso":
-        case "proceso":
-          return "Trabajo en proceso";
-
-        case "instalacion_programada":
-        case "instalacion":
-          return "Instalación programada";
-
-        case "rechazada":
-          return "Rechazada";
-
-        default:
-          return "Pendiente";
-      }
-    };
-
-  // ======================================================
-  // RESPUESTA CLIENTE
-  // ======================================================
-
-  const getRespuestaCliente =
-    (c) => {
+  const confirmarPropuesta =
+    async () => {
       if (
-        c.estado ===
-        "aceptada_cliente"
+        !cotizacionSeleccionada
       ) {
-        return {
-          titulo:
-            "El cliente aceptó la propuesta",
-
-          texto:
-            "Puedes confirmar el trabajo para continuar con el proyecto.",
-
-          color:
-            "bg-green-500/5 border-green-500/30",
-
-          icono: (
-            <FaCheckCircle className="text-green-500" />
-          ),
-        };
+        return;
       }
 
+      const propuesta =
+        obtenerPropuestaActual(
+          cotizacionSeleccionada
+        );
+
+      const precio =
+        propuesta.precioTotal;
+
+      const confirmar =
+        window.confirm(
+          `¿Aceptar la propuesta${
+            precio
+              ? ` por ${moneda(
+                  precio
+                )}`
+              : ""
+          }?`
+        );
+
+      if (!confirmar) {
+        return;
+      }
+
+      try {
+        setProcesando(
+          true
+        );
+
+        await updateDoc(
+          doc(
+            db,
+            "cotizaciones",
+            cotizacionSeleccionada.id
+          ),
+
+          {
+            estado:
+              "aceptada_cliente",
+
+            respuestaCliente:
+              "aceptada",
+
+            precioAceptado:
+              precio !==
+                undefined &&
+              precio !==
+                null
+                ? Number(
+                    precio
+                  )
+                : null,
+
+            versionAceptada:
+              propuesta.version ||
+              1,
+
+            fechaRespuestaCliente:
+              serverTimestamp(),
+
+            fechaActualizacion:
+              serverTimestamp(),
+
+            vistoPorAdmin:
+              false,
+
+            vistoPorCliente:
+              true,
+
+            mensajeAdmin:
+              "El cliente aceptó la propuesta.",
+          }
+        );
+
+        window.alert(
+          "✅ Propuesta aceptada."
+        );
+
+      } catch (error) {
+        console.error(
+          "Error aceptando:",
+          error
+        );
+
+      } finally {
+        setProcesando(
+          false
+        );
+      }
+    };
+
+  /* ======================================================
+     SOLICITAR MODIFICACIÓN PROPUESTA
+  ====================================================== */
+
+  const solicitarModificacion =
+    async () => {
       if (
-        c.estado ===
-        "cambios_solicitados"
+        !cotizacionSeleccionada
       ) {
-        return {
-          titulo:
-            "El cliente solicitó modificaciones",
-
-          texto:
-            c.mensajeCliente ||
-            "El cliente desea modificar la propuesta.",
-
-          color:
-            "bg-orange-500/5 border-orange-500/30",
-
-          icono: (
-            <FaExclamationTriangle className="text-orange-400" />
-          ),
-        };
+        return;
       }
+
+      const motivo =
+        window.prompt(
+          "Describe qué deseas modificar:"
+        );
 
       if (
-        c.estado ===
-          "rechazada_cliente" ||
-        c.estado ===
-          "cancelada_cliente"
+        motivo ===
+          null ||
+        !motivo.trim()
       ) {
-        return {
-          titulo:
-            "El cliente rechazó la propuesta",
-
-          texto:
-            "Puedes editarla y enviar una nueva versión si deseas continuar.",
-
-          color:
-            "bg-red-500/5 border-red-500/30",
-
-          icono: (
-            <FaTimes className="text-red-500" />
-          ),
-        };
+        return;
       }
 
-      return null;
+      try {
+        setProcesando(
+          true
+        );
+
+        await updateDoc(
+          doc(
+            db,
+            "cotizaciones",
+            cotizacionSeleccionada.id
+          ),
+
+          {
+            estado:
+              "cambios_solicitados",
+
+            respuestaCliente:
+              "solicita_modificacion",
+
+            mensajeCliente:
+              motivo.trim(),
+
+            fechaRespuestaCliente:
+              serverTimestamp(),
+
+            fechaActualizacion:
+              serverTimestamp(),
+
+            vistoPorAdmin:
+              false,
+
+            vistoPorCliente:
+              true,
+
+            mensajeAdmin:
+              "El cliente solicitó cambios.",
+          }
+        );
+
+        window.alert(
+          "Solicitud de cambios enviada."
+        );
+
+      } catch (error) {
+        console.error(
+          error
+        );
+
+      } finally {
+        setProcesando(
+          false
+        );
+      }
     };
 
-  // ======================================================
-  // GALERÍA
-  // ======================================================
+  /* ======================================================
+     RECHAZAR PROPUESTA
+  ====================================================== */
 
-  const openModal = (
-    imagenes,
-    i = 0
-  ) => {
-    if (!imagenes) return;
+  const rechazarPropuesta =
+    async () => {
+      if (
+        !cotizacionSeleccionada
+      ) {
+        return;
+      }
 
-    const imgs =
-      Array.isArray(imagenes)
-        ? imagenes
-        : [imagenes];
+      const confirmar =
+        window.confirm(
+          "¿Seguro que deseas rechazar esta propuesta?"
+        );
 
-    setImagenesActivas(
-      imgs
-    );
+      if (!confirmar) {
+        return;
+      }
 
-    setIndex(i);
+      try {
+        setProcesando(
+          true
+        );
 
-    setModalOpen(true);
-  };
+        await updateDoc(
+          doc(
+            db,
+            "cotizaciones",
+            cotizacionSeleccionada.id
+          ),
 
-  const next = () => {
-    setIndex((prev) =>
-      prev + 1 >=
-      imagenesActivas.length
-        ? 0
-        : prev + 1
-    );
-  };
+          {
+            estado:
+              "rechazada_cliente",
 
-  const prev = () => {
-    setIndex((prev) =>
-      prev === 0
-        ? imagenesActivas.length -
-          1
-        : prev - 1
-    );
-  };
+            respuestaCliente:
+              "rechazada",
 
-  // ======================================================
-  // FECHAS
-  // ======================================================
+            fechaRespuestaCliente:
+              serverTimestamp(),
+
+            fechaActualizacion:
+              serverTimestamp(),
+
+            vistoPorAdmin:
+              false,
+
+            vistoPorCliente:
+              true,
+          }
+        );
+
+        window.alert(
+          "Propuesta rechazada."
+        );
+
+      } catch (error) {
+        console.error(
+          error
+        );
+
+      } finally {
+        setProcesando(
+          false
+        );
+      }
+    };
+
+  /* ======================================================
+     GALERÍA
+  ====================================================== */
+
+  const abrirGaleria =
+    (
+      imagenes,
+      indiceInicial = 0
+    ) => {
+      const lista =
+        Array.isArray(
+          imagenes
+        )
+          ? imagenes.filter(
+              Boolean
+            )
+          : imagenes
+          ? [imagenes]
+          : [];
+
+      if (
+        lista.length ===
+        0
+      ) {
+        return;
+      }
+
+      setImgs(
+        lista
+      );
+
+      setIndex(
+        indiceInicial
+      );
+
+      setGaleriaOpen(
+        true
+      );
+    };
+
+  const siguienteImagen =
+    () => {
+      setIndex(
+        (actual) =>
+          actual + 1 >=
+          imgs.length
+            ? 0
+            : actual + 1
+      );
+    };
+
+  const anteriorImagen =
+    () => {
+      setIndex(
+        (actual) =>
+          actual === 0
+            ? imgs.length -
+              1
+            : actual - 1
+      );
+    };
+
+  /* ======================================================
+     MONEDA
+  ====================================================== */
+
+  const moneda =
+    (cantidad) => {
+      if (
+        cantidad ===
+          undefined ||
+        cantidad ===
+          null ||
+        cantidad ===
+          ""
+      ) {
+        return "Pendiente";
+      }
+
+      const numero =
+        Number(
+          cantidad
+        );
+
+      if (
+        Number.isNaN(
+          numero
+        )
+      ) {
+        return String(
+          cantidad
+        );
+      }
+
+      return numero.toLocaleString(
+        "es-MX",
+        {
+          style:
+            "currency",
+
+          currency:
+            "MXN",
+
+          maximumFractionDigits:
+            0,
+        }
+      );
+    };
+
+  /* ======================================================
+     PROPUESTA NORMALIZADA
+  ====================================================== */
+
+  const obtenerPropuestaActual =
+    (cotizacion) => {
+      const propuesta =
+        cotizacion?.propuestaActual ||
+        {};
+
+      const precio =
+        propuesta.precioTotal ??
+        cotizacion?.precioTotal ??
+        cotizacion?.presupuestoAdmin ??
+        cotizacion?.total ??
+        cotizacion?.precio ??
+        cotizacion?.propuestaPrecio ??
+        null;
+
+      const porcentajeAnticipo =
+        propuesta.porcentajeAnticipo ??
+        cotizacion?.porcentajeAnticipo ??
+        null;
+
+      let anticipo =
+        propuesta.anticipo ??
+        cotizacion?.anticipo ??
+        cotizacion?.montoAnticipo ??
+        null;
+
+      if (
+        anticipo === null &&
+        precio !== null &&
+        porcentajeAnticipo !== null
+      ) {
+        anticipo =
+          Number(precio) *
+          Number(porcentajeAnticipo) /
+          100;
+      }
+
+      let saldo =
+        propuesta.saldo ??
+        cotizacion?.saldo ??
+        cotizacion?.saldoPendiente ??
+        null;
+
+      if (
+        saldo === null &&
+        precio !== null &&
+        anticipo !== null
+      ) {
+        saldo =
+          Number(precio) -
+          Number(anticipo);
+      }
+
+      return {
+        version:
+          propuesta.version ??
+          cotizacion?.versionPropuesta ??
+          1,
+
+        precioTotal:
+          precio,
+
+        porcentajeAnticipo,
+        anticipo,
+        saldo,
+
+        tiempoEstimado:
+          propuesta.tiempoEstimado ??
+          cotizacion?.tiempoEstimado ??
+          cotizacion?.tiempo ??
+          "",
+
+        garantia:
+          propuesta.garantia ??
+          cotizacion?.garantia ??
+          "",
+
+        observaciones:
+          propuesta.observaciones ??
+          cotizacion?.observacionesAdmin ??
+          cotizacion?.observaciones ??
+          cotizacion?.detallesPropuesta ??
+          cotizacion?.mensajePropuesta ??
+          "",
+
+        fecha:
+          propuesta.fecha ??
+          cotizacion?.fechaPropuesta ??
+          cotizacion?.fechaActualizacion ??
+          null,
+      };
+    };
+
+  /* ======================================================
+     FECHA
+  ====================================================== */
 
   const formatearFecha =
     (fecha) => {
       if (!fecha) {
-        return "No especificada";
-      }
-
-      if (fecha?.toDate) {
-        return fecha
-          .toDate()
-          .toLocaleDateString(
-            "es-MX"
-          );
-      }
-
-      if (
-        typeof fecha ===
-        "string"
-      ) {
-        return fecha;
-      }
-
-      return "No especificada";
-    };
-
-  const formatearActividad =
-    (timestamp) => {
-      if (!timestamp) {
-        return "Sin fecha";
+        return "";
       }
 
       try {
-        return new Date(
-          timestamp
-        ).toLocaleString(
-          "es-MX",
-          {
-            dateStyle:
-              "medium",
+        if (
+          fecha.toDate
+        ) {
+          return fecha
+            .toDate()
+            .toLocaleString(
+              "es-MX"
+            );
+        }
 
-            timeStyle:
-              "short",
-          }
+        return new Date(
+          fecha
+        ).toLocaleString(
+          "es-MX"
         );
+
       } catch {
-        return "Sin fecha";
+        return "";
       }
     };
 
-  // ======================================================
-  // RENDER
-  // ======================================================
+  /* ======================================================
+     PROGRESO
+  ====================================================== */
+
+  const porcentajeEditar =
+    (
+      (pasoEditar - 1) /
+      (totalPasosEditar - 1)
+    ) *
+    100;
+
+  /* ======================================================
+     LOADING
+  ====================================================== */
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+
+        <div className="text-center">
+
+          <div className="w-10 h-10 border-4 border-zinc-700 border-t-yellow-500 rounded-full animate-spin mx-auto" />
+
+          <p className="text-zinc-400 mt-4">
+            Cargando cotizaciones...
+          </p>
+
+        </div>
+
+      </div>
+    );
+  }
+
+  /* ======================================================
+     RENDER
+  ====================================================== */
 
   return (
-    <div className="w-full min-h-screen bg-black text-white p-4 md:p-7">
+    <div className="min-h-screen bg-black text-white px-4 md:px-6 py-6">
 
-      {/* ================================================= */}
-      {/* HEADER */}
-      {/* ================================================= */}
+      {/* =================================================
+          BARRA SUPERIOR
+      ================================================= */}
 
-      <div className="mb-8">
+      {cotizaciones.length >
+        0 && (
+        <section className="max-w-7xl mx-auto mb-6">
 
-        <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl px-5 py-4">
 
-          <div>
-
-            <p className="text-xs uppercase tracking-[0.22em] text-yellow-500 font-semibold mb-2">
-              Administración
-            </p>
-
-            <h1 className="text-3xl md:text-4xl font-bold text-white">
-              Clientes y cotizaciones
-            </h1>
-
-            <p className="text-zinc-400 mt-2">
-              Administra las solicitudes agrupadas por cliente y da seguimiento a cada trabajo.
-            </p>
-
-          </div>
-
-          {cantidadNovedadesAdmin >
-            0 && (
-            <div className="bg-zinc-900 border border-red-500/40 rounded-2xl px-5 py-4 flex items-center gap-4">
-
-              <div className="relative w-10 h-10 rounded-xl bg-yellow-500/10 flex items-center justify-center">
-
-                <FaBell className="text-yellow-500" />
-
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] min-w-[20px] h-5 px-1 rounded-full flex items-center justify-center font-bold">
-                  {
-                    cantidadNovedadesAdmin
-                  }
-                </span>
-
-              </div>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
 
               <div>
 
-                <p className="font-bold text-white">
-                  {cantidadNovedadesAdmin ===
-                  1
-                    ? "Tienes una novedad"
-                    : `Tienes ${cantidadNovedadesAdmin} novedades`}
+                <h1 className="text-xl font-bold">
+                  Mis cotizaciones
+                </h1>
+
+                <p className="text-sm text-zinc-500 mt-1">
+
+                  {modoSeleccion
+                    ? `${seleccionadas.length} seleccionada${
+                        seleccionadas.length ===
+                        1
+                          ? ""
+                          : "s"
+                      }`
+                    : `${cotizaciones.length} cotización${
+                        cotizaciones.length ===
+                        1
+                          ? ""
+                          : "es"
+                      }`}
+
                 </p>
 
-                <p className="text-xs text-zinc-500">
-                  Los clientes con actividad nueva aparecen primero.
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+
+                {modoSeleccion && (
+                  <button
+                    type="button"
+                    onClick={
+                      seleccionarTodas
+                    }
+                    className="
+                      px-4
+                      py-3
+
+                      bg-zinc-900
+
+                      border
+                      border-zinc-700
+
+                      hover:border-yellow-500/50
+
+                      rounded-xl
+
+                      flex
+                      items-center
+                      gap-2
+
+                      font-semibold
+                      text-sm
+
+                      transition
+                    "
+                  >
+
+                    {todasSeleccionadas ? (
+                      <FaCheckSquare className="text-yellow-500" />
+                    ) : (
+                      <FaSquare />
+                    )}
+
+                    {todasSeleccionadas
+                      ? "Quitar todas"
+                      : "Seleccionar todas"}
+
+                  </button>
+                )}
+
+                {modoSeleccion &&
+                  seleccionadas.length >
+                    0 && (
+                  <button
+                    type="button"
+                    onClick={
+                      eliminarSeleccionadas
+                    }
+                    disabled={
+                      procesando
+                    }
+                    className="
+                      px-4
+                      py-3
+
+                      bg-red-600
+                      hover:bg-red-500
+
+                      rounded-xl
+
+                      flex
+                      items-center
+                      gap-2
+
+                      font-bold
+                      text-sm
+
+                      disabled:opacity-50
+
+                      transition
+                    "
+                  >
+
+                    <FaTrashAlt />
+
+                    Eliminar seleccionadas
+
+                    <span className="bg-black/20 px-2 py-0.5 rounded-full">
+                      {
+                        seleccionadas.length
+                      }
+                    </span>
+
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={
+                    alternarModoSeleccion
+                  }
+                  className={`
+                    px-5
+                    py-3
+
+                    rounded-xl
+
+                    border
+
+                    flex
+                    items-center
+                    gap-2
+
+                    font-semibold
+                    text-sm
+
+                    transition
+
+                    ${
+                      modoSeleccion
+                        ? `
+                          bg-yellow-500
+                          border-yellow-500
+                          text-black
+                        `
+                        : `
+                          bg-zinc-900
+                          border-zinc-700
+                          text-white
+
+                          hover:border-yellow-500/50
+                        `
+                    }
+                  `}
+                >
+
+                  {modoSeleccion ? (
+                    <FaTimes />
+                  ) : (
+                    <FaCheckSquare />
+                  )}
+
+                  {modoSeleccion
+                    ? "Terminar selección"
+                    : "Seleccionar"}
+
+                </button>
+
+              </div>
+
+            </div>
+
+            {modoSeleccion && (
+              <div className="mt-4 bg-yellow-500/5 border border-yellow-500/20 rounded-xl p-3">
+
+                <p className="text-xs text-zinc-400">
+                  Selecciona las cotizaciones que quieras quitar de tu panel. El registro seguirá disponible para Wealth.
+                </p>
+
+              </div>
+            )}
+
+          </div>
+
+        </section>
+      )}
+
+      {/* =================================================
+          MENSAJES
+      ================================================= */}
+
+      <div className="max-w-7xl mx-auto">
+
+        {mensajeGeneral && (
+          <div className="mb-6 bg-green-500/10 border border-green-500/30 text-green-300 rounded-2xl p-4 flex items-center gap-3">
+
+            <FaCheckCircle />
+
+            {
+              mensajeGeneral
+            }
+
+          </div>
+        )}
+
+        {errorGeneral &&
+          !editarOpen && (
+          <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-300 rounded-2xl p-4">
+
+            {
+              errorGeneral
+            }
+
+          </div>
+        )}
+
+        {cantidadNuevas >
+          0 &&
+          !modoSeleccion && (
+          <div className="mb-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-5">
+
+            <div className="flex items-center gap-4">
+
+              <FaBell className="text-yellow-500 text-2xl" />
+
+              <div>
+
+                <p className="font-bold">
+
+                  {cantidadNuevas ===
+                  1
+                    ? "Tienes una actualización"
+                    : `Tienes ${cantidadNuevas} actualizaciones`}
+
+                </p>
+
+                <p className="text-zinc-400 text-sm mt-1">
+                  Wealth realizó cambios en tus cotizaciones.
                 </p>
 
               </div>
 
             </div>
-          )}
 
-        </div>
-
-      </div>
-
-      {/* ================================================= */}
-      {/* RESUMEN */}
-      {/* ================================================= */}
-
-      <div className="grid sm:grid-cols-3 gap-5 mb-8">
-
-        <CajaResumen
-          titulo="Clientes activos"
-          valor={clientes.length}
-          icon={<FaUser />}
-        />
-
-        <CajaResumen
-          titulo="Cotizaciones activas"
-          valor={
-            cotizacionesActivas.length
-          }
-          icon={<FaBriefcase />}
-        />
-
-        <CajaResumen
-          titulo="Novedades"
-          valor={
-            cantidadNovedadesAdmin
-          }
-          icon={<FaBell />}
-        />
+          </div>
+        )}
 
       </div>
 
-      {/* ================================================= */}
-      {/* BUSCADOR */}
-      {/* ================================================= */}
+      {/* =================================================
+          SIN COTIZACIONES
+      ================================================= */}
 
-      <div className="relative mb-8">
-
-        <FaSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500" />
-
-        <input
-          type="text"
-          value={
-            busquedaCliente
-          }
-          onChange={(e) =>
-            setBusquedaCliente(
-              e.target.value
-            )
-          }
-          placeholder="Buscar cliente, correo, teléfono o proyecto..."
-          className="
-            w-full
-            bg-zinc-900
-            border
-            border-zinc-700
-            rounded-2xl
-            py-4
-            pl-12
-            pr-5
-            text-white
-            placeholder:text-zinc-600
-            outline-none
-            focus:border-yellow-500/70
-            transition
-          "
-        />
-
-      </div>
-
-      {/* ================================================= */}
-      {/* SIN CLIENTES */}
-      {/* ================================================= */}
-
-      {clientesFiltrados.length ===
+      {cotizaciones.length ===
         0 && (
-        <div className="bg-zinc-900 border border-zinc-700 rounded-3xl p-12 text-center">
+        <div className="max-w-7xl mx-auto">
 
-          <FaUser className="text-zinc-600 text-4xl mx-auto" />
+          <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-12 text-center">
 
-          <p className="text-zinc-400 mt-4">
-            No hay clientes con cotizaciones activas.
-          </p>
+            <FaMoneyBillWave className="mx-auto text-zinc-700 text-5xl" />
+
+            <h2 className="text-2xl font-bold mt-5">
+              Aún no tienes cotizaciones
+            </h2>
+
+            <p className="text-zinc-500 mt-2">
+              Tus solicitudes aparecerán aquí.
+            </p>
+
+          </div>
 
         </div>
       )}
 
-      {/* ================================================= */}
-      {/* CLIENTES */}
-      {/* ================================================= */}
+      {/* =================================================
+          TARJETAS
+      ================================================= */}
 
-      <div className="space-y-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-        {clientesFiltrados.map(
-          (cliente) => {
-            const abierto =
-              clienteAbierto ===
-              cliente.clave;
+        {cotizaciones.map(
+          (cotizacion) => {
+            const imagenes =
+              Array.isArray(
+                cotizacion.imagenes
+              ) &&
+              cotizacion.imagenes.length >
+                0
+                ? cotizacion.imagenes
+                : cotizacion.imagen
+                ? [
+                    cotizacion.imagen,
+                  ]
+                : [];
+
+            const estado =
+              obtenerEstado(
+                cotizacion.estado
+              );
+
+            const mensajeEstado =
+              obtenerMensajeEstado(
+                cotizacion
+              );
+
+            const seleccionada =
+              seleccionadas.includes(
+                cotizacion.id
+              );
+
+            const editable =
+              puedeEditarSolicitud(
+                cotizacion
+              );
+
+            const cancelable =
+              puedeCancelarSolicitud(
+                cotizacion
+              );
+
+            const propuesta =
+              obtenerPropuestaActual(
+                cotizacion
+              );
+
+            const precio =
+              propuesta.precioTotal;
 
             return (
-              <div
+              <article
                 key={
-                  cliente.clave
+                  cotizacion.id
                 }
+                onClick={() => {
+                  if (
+                    modoSeleccion
+                  ) {
+                    seleccionarCotizacion(
+                      cotizacion.id
+                    );
+                  }
+                }}
                 className={`
                   relative
-                  rounded-[28px]
                   overflow-hidden
+
+                  bg-zinc-950
+
+                  rounded-3xl
+
                   border
-                  bg-zinc-900
-                  shadow-[0_10px_35px_rgba(0,0,0,0.40)]
+
                   transition-all
                   duration-300
+
                   ${
-                    cliente.nuevas > 0
-                      ? "border-yellow-500/80 shadow-[0_0_22px_rgba(234,179,8,0.08)]"
-                      : "border-zinc-600 hover:border-yellow-500/40"
+                    modoSeleccion
+                      ? "cursor-pointer"
+                      : ""
+                  }
+
+                  ${
+                    seleccionada
+                      ? `
+                        border-yellow-500
+                        ring-2
+                        ring-yellow-500/20
+                      `
+                      : `
+                        border-zinc-800
+                      `
+                  }
+
+                  ${
+                    cotizacion.estado ===
+                    "cancelada_cliente"
+                      ? "opacity-75"
+                      : ""
                   }
                 `}
               >
 
-                {/* PEQUEÑA LÍNEA LATERAL */}
-
-                <div
-                  className={`absolute left-0 top-0 bottom-0 w-[3px] ${
-                    cliente.nuevas >
-                    0
-                      ? "bg-yellow-500"
-                      : "bg-zinc-600"
-                  }`}
-                />
-
-                {/* ======================================= */}
-                {/* CABECERA CLIENTE */}
-                {/* ======================================= */}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    toggleCliente(
-                      cliente.clave
-                    )
-                  }
-                  className="
-                    w-full
-                    text-left
-                    p-6
-                    md:p-7
-                    bg-zinc-900
-                    hover:bg-zinc-800/70
-                    transition-all
-                    duration-300
-                  "
-                >
-
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
-
-                    <div className="flex items-start gap-4">
-
-                      <div className="relative w-14 h-14 rounded-2xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center shrink-0">
-
-                        <FaUser className="text-yellow-500 text-xl" />
-
-                        {cliente.nuevas >
-                          0 && (
-                          <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold min-w-[22px] h-[22px] px-1 rounded-full flex items-center justify-center">
-                            {
-                              cliente.nuevas
-                            }
-                          </span>
-                        )}
-
-                      </div>
-
-                      <div className="min-w-0">
-
-                        <div className="flex flex-wrap items-center gap-2">
-
-                          <h2 className="text-xl font-bold text-white break-all">
-                            {
-                              cliente.nombre
-                            }
-                          </h2>
-
-                          {cliente.nuevas >
-                            0 && (
-                            <span className="bg-red-500/10 border border-red-500/40 text-red-400 text-[10px] px-2.5 py-1 rounded-full font-bold">
-                              NUEVO
-                            </span>
-                          )}
-
-                        </div>
-
-                        <p className="text-sm text-zinc-400 mt-1 break-all">
-                          {
-                            cliente.usuario
-                          }
-                        </p>
-
-                        {cliente.telefono && (
-                          <p className="text-sm text-zinc-500 mt-1.5 flex items-center gap-2">
-
-                            <FaPhone />
-
-                            {
-                              cliente.telefono
-                            }
-
-                          </p>
-                        )}
-
-                      </div>
-
-                    </div>
-
-                    <div className="flex flex-wrap md:justify-end items-center gap-3">
-
-                      {/* COTIZACIONES */}
-
-                      <span className="bg-black border border-zinc-700 rounded-xl px-4 py-2 text-sm">
-
-                        <strong className="text-white">
-                          {
-                            cliente
-                              .cotizaciones
-                              .length
-                          }
-                        </strong>
-
-                        <span className="text-zinc-500">
-                          {" "}
-                          {cliente
-                            .cotizaciones
-                            .length ===
-                          1
-                            ? "cotización"
-                            : "cotizaciones"}
-                        </span>
-
-                      </span>
-
-                      {/* EN EJECUCIÓN */}
-
-                      {cliente.confirmados >
-                        0 && (
-                        <span className="bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl px-4 py-2 text-sm font-medium">
-                          {
-                            cliente.confirmados
-                          }{" "}
-                          en ejecución
-                        </span>
-                      )}
-
-                      <span className="text-zinc-500 text-xs hidden lg:block">
-                        Última actividad:{" "}
-                        {formatearActividad(
-                          cliente.ultimaActividad
-                        )}
-                      </span>
-
-                      {/* FLECHA */}
-
-                      <div className="w-11 h-11 rounded-xl bg-black border border-zinc-700 flex items-center justify-center text-zinc-300">
-
-                        {abierto ? (
-                          <FaChevronUp />
-                        ) : (
-                          <FaChevronDown />
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                </button>
-
-                {/* ======================================= */}
-                {/* COTIZACIONES CLIENTE */}
-                {/* ======================================= */}
-
-                {abierto && (
-                  <div className="border-t border-zinc-600 bg-black p-5 md:p-7">
-
-                    <div className="mb-6">
-
-                      <p className="font-bold text-white text-lg">
-                        Cotizaciones activas
-                      </p>
-
-                      <p className="text-sm text-zinc-500 mt-1">
-                        Selecciona una para revisar o actualizar su estado.
-                      </p>
-
-                    </div>
-
-                    <div className="space-y-6">
-
-                      {cliente.cotizaciones.map(
-                        (c) => {
-                          const respuesta =
-                            getRespuestaCliente(
-                              c
-                            );
-
-                          const precioActual =
-                            obtenerPrecio(
-                              c
-                            );
-
-                          return (
-                            <article
-                              key={
-                                c.id
-                              }
-                              className={`
-                                relative
-                                bg-zinc-950
-                                border
-                                rounded-3xl
-                                p-5
-                                md:p-6
-                                transition-all
-                                duration-300
-                                ${
-                                  c.vistoPorAdmin ===
-                                  false
-                                    ? "border-yellow-500/60"
-                                    : "border-zinc-700 hover:border-zinc-500"
-                                }
-                              `}
-                            >
-
-                              {c.vistoPorAdmin ===
-                                false && (
-                                <span className="absolute top-4 right-4 bg-red-500/10 border border-red-500/40 text-red-400 text-[10px] font-bold px-3 py-1 rounded-full">
-                                  NUEVO
-                                </span>
-                              )}
-
-                              <div className="flex flex-col xl:flex-row gap-6">
-
-                                {/* INFORMACIÓN */}
-
-                                <div className="flex-1">
-
-                                  <div className="flex flex-wrap items-center gap-3 pr-16">
-
-                                    <h3 className="text-xl font-bold text-white">
-                                      {
-                                        c.nombre
-                                      }
-                                    </h3>
-
-                                    <span
-                                      className={`px-3 py-1.5 rounded-full text-xs font-medium ${getEstadoColor(
-                                        c.estado
-                                      )}`}
-                                    >
-                                      {getEstadoTexto(
-                                        c.estado
-                                      )}
-                                    </span>
-
-                                    {c.versionPropuesta && (
-                                      <span className="bg-zinc-800 border border-zinc-700 px-3 py-1.5 rounded-full text-xs text-zinc-300">
-                                        v
-                                        {
-                                          c.versionPropuesta
-                                        }
-                                      </span>
-                                    )}
-
-                                  </div>
-
-                                  <p className="text-zinc-400 text-sm mt-3 line-clamp-2">
-                                    {
-                                      c.descripcion
-                                    }
-                                  </p>
-
-                                  {/* RESPUESTA */}
-
-                                  {respuesta && (
-                                    <div
-                                      className={`mt-4 border rounded-2xl p-4 ${respuesta.color}`}
-                                    >
-
-                                      <div className="flex gap-3">
-
-                                        <div className="mt-1">
-                                          {
-                                            respuesta.icono
-                                          }
-                                        </div>
-
-                                        <div>
-
-                                          <p className="font-bold text-white text-sm">
-                                            {
-                                              respuesta.titulo
-                                            }
-                                          </p>
-
-                                          <p className="text-zinc-400 text-sm mt-1">
-                                            {
-                                              respuesta.texto
-                                            }
-                                          </p>
-
-                                        </div>
-
-                                      </div>
-
-                                    </div>
-                                  )}
-
-                                  {/* DATOS */}
-
-                                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-5">
-
-                                    <DatoRapido
-                                      icon={
-                                        <FaMapMarkerAlt />
-                                      }
-                                      titulo="Ubicación"
-                                      valor={
-                                        c.ubicacion ||
-                                        "No especificada"
-                                      }
-                                    />
-
-                                    <DatoRapido
-                                      icon={
-                                        <FaRulerCombined />
-                                      }
-                                      titulo="Medidas"
-                                      valor={
-                                        c.medidas ||
-                                        "No especificadas"
-                                      }
-                                    />
-
-                                    <DatoRapido
-                                      icon={
-                                        <FaCalendarAlt />
-                                      }
-                                      titulo="Fecha deseada"
-                                      valor={formatearFecha(
-                                        c.fechaDeseada
-                                      )}
-                                    />
-
-                                  </div>
-
-                                  {/* PRECIO */}
-
-                                  {precioActual !==
-                                    null && (
-                                    <div className="grid sm:grid-cols-3 gap-3 mt-5">
-
-                                      <InfoPrecioCaja
-                                        titulo="Total"
-                                        valor={`$${Number(
-                                          precioActual
-                                        ).toLocaleString(
-                                          "es-MX"
-                                        )} MXN`}
-                                      />
-
-                                      <InfoPrecioCaja
-                                        titulo="Anticipo"
-                                        valor={`$${Number(
-                                          c.anticipo ??
-                                            c.montoAnticipo ??
-                                            0
-                                        ).toLocaleString(
-                                          "es-MX"
-                                        )} MXN`}
-                                      />
-
-                                      <InfoPrecioCaja
-                                        titulo="Saldo"
-                                        valor={`$${Number(
-                                          c.saldo ??
-                                            c.saldoPendiente ??
-                                            0
-                                        ).toLocaleString(
-                                          "es-MX"
-                                        )} MXN`}
-                                      />
-
-                                    </div>
-                                  )}
-
-                                </div>
-
-                                {/* IMÁGENES */}
-
-                                <div className="xl:w-[240px]">
-
-                                  {c.imagenes?.length >
-                                  0 ? (
-                                    <div>
-
-                                      <p className="text-xs text-zinc-500 mb-2 flex items-center gap-2">
-
-                                        <FaImages />
-
-                                        Imágenes
-
-                                      </p>
-
-                                      <div className="grid grid-cols-3 gap-2">
-
-                                        {c.imagenes
-                                          .slice(
-                                            0,
-                                            6
-                                          )
-                                          .map(
-                                            (
-                                              img,
-                                              i
-                                            ) => (
-                                              <img
-                                                key={
-                                                  i
-                                                }
-                                                src={
-                                                  img
-                                                }
-                                                alt="Referencia"
-                                                onClick={() =>
-                                                  openModal(
-                                                    c.imagenes,
-                                                    i
-                                                  )
-                                                }
-                                                className="w-full aspect-square object-cover rounded-xl border border-zinc-700 cursor-zoom-in hover:border-yellow-500/60 transition"
-                                              />
-                                            )
-                                          )}
-
-                                      </div>
-
-                                    </div>
-                                  ) : (
-                                    <div className="border border-dashed border-zinc-700 rounded-2xl h-24 flex items-center justify-center text-zinc-600 text-xs">
-                                      Sin imágenes
-                                    </div>
-                                  )}
-
-                                </div>
-
-                              </div>
-
-                              {/* ================================= */}
-                              {/* BOTONES */}
-                              {/* ================================= */}
-
-                              <div className="flex flex-wrap gap-3 mt-6 pt-5 border-t border-zinc-800">
-
-                                {/* VER / EDITAR */}
-
-                                <button
-                                  onClick={() =>
-                                    abrirCotizacion(
-                                      c
-                                    )
-                                  }
-                                  className={`${botonBase} border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500`}
-                                >
-
-                                  {tienePropuesta(
-                                    c
-                                  ) ? (
-                                    <FaEdit />
-                                  ) : (
-                                    <FaEye />
-                                  )}
-
-                                  {tienePropuesta(
-                                    c
-                                  )
-                                    ? "Ver / editar"
-                                    : "Revisar"}
-
-                                </button>
-
-                                {/* EN REVISIÓN */}
-
-                                {(!c.estado ||
-                                  c.estado ===
-                                    "pendiente") && (
-                                  <button
-                                    onClick={() =>
-                                      marcarEnRevision(
-                                        c
-                                      )
-                                    }
-                                    className={`${botonBase} border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500`}
-                                  >
-                                    <FaEdit />
-                                    En revisión
-                                  </button>
-                                )}
-
-                                {/* CONFIRMAR */}
-
-                                {c.estado ===
-                                  "aceptada_cliente" && (
-                                  <button
-                                    onClick={() =>
-                                      confirmarTrabajo(
-                                        c
-                                      )
-                                    }
-                                    className={`${botonBase} border-green-500/40 text-green-400 hover:bg-green-500/10 hover:border-green-500`}
-                                  >
-                                    <FaCheckCircle />
-                                    Confirmar trabajo
-                                  </button>
-                                )}
-
-                                {/* INICIAR */}
-
-                                {c.estado ===
-                                  "confirmada_admin" && (
-                                  <button
-                                    onClick={() =>
-                                      iniciarTrabajo(
-                                        c
-                                      )
-                                    }
-                                    className={`${botonBase} border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500`}
-                                  >
-                                    <FaPlay />
-                                    Iniciar trabajo
-                                  </button>
-                                )}
-
-                                {/* PROCESO */}
-
-                                {[
-                                  "en_proceso",
-                                  "proceso",
-                                ].includes(
-                                  c.estado
-                                ) && (
-                                  <>
-                                    <button
-                                      onClick={() =>
-                                        programarInstalacion(
-                                          c
-                                        )
-                                      }
-                                      className={`${botonBase} border-purple-500/40 text-purple-400 hover:bg-purple-500/10 hover:border-purple-500`}
-                                    >
-                                      <FaTools />
-                                      Programar instalación
-                                    </button>
-
-                                    <button
-                                      onClick={() =>
-                                        abrirFinalizacion(
-                                          c
-                                        )
-                                      }
-                                      className={`${botonBase} border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500`}
-                                    >
-                                      <FaFlagCheckered />
-                                      Trabajo terminado
-                                    </button>
-                                  </>
-                                )}
-
-                                {/* INSTALACIÓN */}
-
-                                {[
-                                  "instalacion_programada",
-                                  "instalacion",
-                                ].includes(
-                                  c.estado
-                                ) && (
-                                  <button
-                                    onClick={() =>
-                                      terminarTrabajo(
-                                        c
-                                      )
-                                    }
-                                    className={`${botonBase} border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500`}
-                                  >
-                                    <FaFlagCheckered />
-                                    Trabajo terminado
-                                  </button>
-                                )}
-
-                                {/* RECHAZAR */}
-
-                                {![
-                                  "rechazada",
-                                  "confirmada_admin",
-                                  "en_proceso",
-                                  "proceso",
-                                  "instalacion_programada",
-                                  "instalacion",
-                                ].includes(
-                                  c.estado
-                                ) && (
-                                  <button
-                                    onClick={() =>
-                                      rechazarCotizacion(
-                                        c
-                                      )
-                                    }
-                                    className={`${botonBase} border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500`}
-                                  >
-                                    <FaTimes />
-                                    Rechazar
-                                  </button>
-                                )}
-
-                                {/* REINICIAR */}
-
-                                {c.estado &&
-                                  c.estado !==
-                                    "pendiente" &&
-                                  ![
-                                    "confirmada_admin",
-                                    "en_proceso",
-                                    "proceso",
-                                    "instalacion_programada",
-                                    "instalacion",
-                                  ].includes(
-                                    c.estado
-                                  ) && (
-                                    <button
-                                      onClick={() =>
-                                        resetEstado(
-                                          c.id
-                                        )
-                                      }
-                                      className={`${botonBase} border-zinc-600 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500`}
-                                    >
-                                      <FaUndo />
-                                      Reiniciar
-                                    </button>
-                                  )}
-
-                                {/* ELIMINAR */}
-
-                                <button
-                                  onClick={() =>
-                                    eliminar(
-                                      c.id
-                                    )
-                                  }
-                                  className={`${botonBase} border-red-500/30 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/60 ml-auto`}
-                                >
-                                  <FaTrash />
-                                  Eliminar
-                                </button>
-
-                              </div>
-
-                            </article>
-                          );
+                {/* CHECK */}
+
+                {modoSeleccion && (
+                  <div className="absolute top-4 left-4 z-20">
+
+                    <div
+                      className={`
+                        w-12
+                        h-12
+
+                        rounded-xl
+
+                        border
+
+                        flex
+                        items-center
+                        justify-center
+
+                        shadow-xl
+
+                        ${
+                          seleccionada
+                            ? `
+                              bg-yellow-500
+                              border-yellow-400
+                              text-black
+                            `
+                            : `
+                              bg-black/85
+                              border-white/30
+                              text-white
+                            `
                         }
+                      `}
+                    >
+
+                      {seleccionada ? (
+                        <FaCheck />
+                      ) : (
+                        <FaSquare />
                       )}
 
                     </div>
@@ -2689,902 +3167,1948 @@ function CotizacionesAdmin() {
                   </div>
                 )}
 
-              </div>
+                {/* IMAGEN */}
+
+                <div className="relative h-64 bg-black">
+
+                  {imagenes.length >
+                  0 ? (
+                    <img
+                      src={
+                        imagenes[0]
+                      }
+                      alt={
+                        cotizacion.nombre ||
+                        "Cotización Wealth"
+                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        if (
+                          modoSeleccion
+                        ) {
+                          seleccionarCotizacion(
+                            cotizacion.id
+                          );
+
+                          return;
+                        }
+
+                        abrirGaleria(
+                          imagenes
+                        );
+                      }}
+                      className="
+                        w-full
+                        h-full
+                        object-contain
+
+                        cursor-pointer
+                      "
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-600">
+
+                      Sin imagen
+
+                    </div>
+                  )}
+
+                  {imagenes.length >
+                    1 && (
+                    <span className="absolute bottom-3 right-3 bg-black/80 border border-white/10 text-white text-xs px-3 py-1.5 rounded-xl flex items-center gap-2">
+
+                      <FaImages />
+
+                      {
+                        imagenes.length
+                      } fotos
+
+                    </span>
+                  )}
+
+                </div>
+
+                {/* CONTENIDO */}
+
+                <div className="p-6">
+
+                  <div className="flex justify-between items-start gap-4">
+
+                    <h2 className="text-xl font-bold capitalize">
+                      {cotizacion.nombre ||
+                        "Cotización"}
+                    </h2>
+
+                    <span
+                      className={`
+                        px-3
+                        py-1.5
+
+                        rounded-full
+
+                        text-xs
+                        font-bold
+
+                        shrink-0
+
+                        ${estado.color}
+                      `}
+                    >
+
+                      {
+                        estado.texto
+                      }
+
+                    </span>
+
+                  </div>
+
+                  {cotizacion.descripcion && (
+                    <p className="text-zinc-400 text-sm leading-relaxed mt-4 line-clamp-4">
+
+                      {
+                        cotizacion.descripcion
+                      }
+
+                    </p>
+                  )}
+
+                  <div className="flex items-center gap-2 text-zinc-500 text-sm mt-5">
+
+                    <FaCalendarAlt />
+
+                    {cotizacion.fecha?.toDate
+                      ? cotizacion.fecha
+                          .toDate()
+                          .toLocaleDateString(
+                            "es-MX"
+                          )
+                      : "Sin fecha"}
+
+                  </div>
+
+                  {mensajeEstado &&
+                    !modoSeleccion && (
+                    <div
+                      className={`
+                        mt-5
+
+                        border
+
+                        rounded-2xl
+
+                        p-4
+
+                        ${mensajeEstado.clase}
+                      `}
+                    >
+
+                      <div className="flex items-start gap-3">
+
+                        <span className="text-xl mt-0.5">
+                          {
+                            mensajeEstado.icono
+                          }
+                        </span>
+
+                        <div>
+
+                          <p className="font-bold text-sm">
+                            {
+                              mensajeEstado.titulo
+                            }
+                          </p>
+
+                          <p className="text-zinc-400 text-xs mt-1">
+                            {
+                              mensajeEstado.texto
+                            }
+                          </p>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+                  )}
+
+                  {precio !==
+                    undefined &&
+                    precio !==
+                      null &&
+                    !modoSeleccion && (
+                    <div className="mt-5 bg-black border border-zinc-800 rounded-2xl p-4">
+
+                      <p className="text-yellow-500 text-xs uppercase tracking-wider font-bold">
+                        Propuesta actual
+                      </p>
+
+                      <p className="text-2xl font-bold mt-2">
+
+                        {
+                          moneda(
+                            precio
+                          )
+                        }
+
+                      </p>
+
+                    </div>
+                  )}
+
+                  {/* BOTONES */}
+
+                  {!modoSeleccion &&
+                    (editable ||
+                      cancelable) && (
+                    <div className="grid grid-cols-2 gap-3 mt-5">
+
+                      {editable && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            abrirEdicion(
+                              cotizacion
+                            );
+                          }}
+                          className="
+                            py-3
+
+                            bg-blue-500/10
+                            hover:bg-blue-600
+
+                            border
+                            border-blue-500/30
+
+                            text-blue-400
+                            hover:text-white
+
+                            rounded-xl
+
+                            font-semibold
+
+                            flex
+                            items-center
+                            justify-center
+                            gap-2
+
+                            transition
+                          "
+                        >
+
+                          <FaEdit />
+
+                          Modificar
+
+                        </button>
+                      )}
+
+                      {cancelable && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            cancelarSolicitud(
+                              cotizacion
+                            );
+                          }}
+                          className="
+                            py-3
+
+                            bg-red-500/10
+                            hover:bg-red-600
+
+                            border
+                            border-red-500/30
+
+                            text-red-400
+                            hover:text-white
+
+                            rounded-xl
+
+                            font-semibold
+
+                            flex
+                            items-center
+                            justify-center
+                            gap-2
+
+                            transition
+                          "
+                        >
+
+                          <FaTimesCircle />
+
+                          Cancelar
+
+                        </button>
+                      )}
+
+                    </div>
+                  )}
+
+                  {!modoSeleccion && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        verPropuesta(
+                          cotizacion
+                        )
+                      }
+                      className="
+                        w-full
+
+                        mt-4
+
+                        py-3.5
+
+                        bg-yellow-500
+                        hover:bg-yellow-400
+
+                        text-black
+
+                        rounded-xl
+
+                        font-bold
+
+                        flex
+                        items-center
+                        justify-center
+                        gap-2
+
+                        transition
+                      "
+                    >
+
+                      <FaEye />
+
+                      Ver detalles
+
+                    </button>
+                  )}
+
+                  {modoSeleccion && (
+                    <div
+                      className={`
+                        mt-5
+
+                        py-3
+
+                        text-center
+
+                        rounded-xl
+
+                        border
+
+                        text-sm
+                        font-semibold
+
+                        ${
+                          seleccionada
+                            ? `
+                              bg-yellow-500/10
+                              border-yellow-500/40
+                              text-yellow-400
+                            `
+                            : `
+                              bg-zinc-900
+                              border-zinc-800
+                              text-zinc-500
+                            `
+                        }
+                      `}
+                    >
+
+                      {seleccionada
+                        ? "✓ Seleccionada"
+                        : "Seleccionar"}
+
+                    </div>
+                  )}
+
+                </div>
+
+              </article>
             );
           }
         )}
 
       </div>
 
-      {/* ================================================= */}
-      {/* MODAL COTIZACIÓN */}
-      {/* ================================================= */}
+      {/* =================================================
+          MODAL EDITAR
+      ================================================= */}
 
-      {modalCotizacion &&
-        cotizacionActiva && (
-          <div
-            className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() =>
-              setModalCotizacion(
-                false
-              )
-            }
-          >
+      {editarOpen &&
+        cotizacionEditando && (
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md overflow-y-auto">
 
-            <div
-              className="bg-zinc-900 border border-zinc-600 rounded-3xl w-full max-w-4xl max-h-[92vh] overflow-y-auto shadow-2xl"
-              onClick={(e) =>
-                e.stopPropagation()
-              }
-            >
+          <div className="min-h-full px-3 md:px-6 py-6">
+
+            <div className="max-w-5xl mx-auto bg-zinc-900 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
 
               {/* HEADER */}
 
-              <div className="sticky top-0 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-700 p-6 md:p-8 z-10">
+              <header className="relative p-6 sm:p-8 md:p-10 border-b border-zinc-800">
 
-                <div className="flex justify-between gap-4">
+                <button
+                  type="button"
+                  onClick={
+                    cerrarEdicion
+                  }
+                  className="
+                    absolute
+                    right-6
+                    top-6
 
-                  <div>
+                    w-11
+                    h-11
 
-                    <p className="text-xs uppercase tracking-widest text-yellow-500 font-semibold">
-                      Cotización
-                    </p>
+                    bg-black
 
-                    <h2 className="text-2xl font-bold text-white mt-1">
-                      {
-                        cotizacionActiva.nombre
+                    border
+                    border-zinc-700
+
+                    hover:border-zinc-500
+
+                    rounded-xl
+
+                    flex
+                    items-center
+                    justify-center
+
+                    text-zinc-400
+                    hover:text-white
+                  "
+                >
+                  <FaTimes />
+                </button>
+
+                <p className="text-yellow-500 text-xs uppercase tracking-[0.25em] font-semibold">
+                  Wealth
+                </p>
+
+                <h1 className="text-3xl md:text-4xl font-bold mt-3 pr-14">
+                  Modificar cotización
+                </h1>
+
+                <p className="text-zinc-400 mt-3 max-w-2xl">
+                  Actualiza la información de tu solicitud manteniendo el mismo formato utilizado al crearla.
+                </p>
+
+                {/* PROGRESO */}
+
+                <div className="mt-8">
+
+                  <div className="flex justify-between text-xs sm:text-sm mb-3">
+
+                    <span
+                      className={
+                        pasoEditar >=
+                        1
+                          ? "text-yellow-500"
+                          : "text-zinc-500"
                       }
-                    </h2>
+                    >
+                      Proyecto
+                    </span>
 
-                    <div className="flex flex-wrap gap-2 mt-3">
-
-                      <span
-                        className={`px-3 py-1.5 rounded-full text-xs ${getEstadoColor(
-                          cotizacionActiva.estado
-                        )}`}
-                      >
-                        {getEstadoTexto(
-                          cotizacionActiva.estado
-                        )}
-                      </span>
-
-                      {cotizacionActiva.versionPropuesta && (
-                        <span className="bg-zinc-800 border border-zinc-700 text-zinc-300 px-3 py-1.5 rounded-full text-xs">
-                          Versión{" "}
-                          {
-                            cotizacionActiva.versionPropuesta
-                          }
-                        </span>
-                      )}
-
-                    </div>
-
-                    <p className="text-zinc-500 text-sm mt-2">
-                      {
-                        cotizacionActiva.usuario
+                    <span
+                      className={
+                        pasoEditar >=
+                        2
+                          ? "text-yellow-500"
+                          : "text-zinc-500"
                       }
-                    </p>
+                    >
+                      Detalles
+                    </span>
+
+                    <span
+                      className={
+                        pasoEditar >=
+                        3
+                          ? "text-yellow-500"
+                          : "text-zinc-500"
+                      }
+                    >
+                      Imágenes
+                    </span>
+
+                    <span
+                      className={
+                        pasoEditar >=
+                        4
+                          ? "text-yellow-500"
+                          : "text-zinc-500"
+                      }
+                    >
+                      Confirmar
+                    </span>
 
                   </div>
 
-                  <button
-                    onClick={() =>
-                      setModalCotizacion(
-                        false
-                      )
-                    }
-                    className="
-                      w-11
-                      h-11
-                      bg-black
-                      border
-                      border-zinc-700
-                      hover:border-zinc-500
-                      rounded-xl
-                      flex
-                      items-center
-                      justify-center
-                      text-zinc-400
-                      hover:text-white
-                      transition
-                    "
-                  >
-                    <FaTimes />
-                  </button>
+                  <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+
+                    <div
+                      className="h-full bg-yellow-500 rounded-full transition-all duration-300"
+                      style={{
+                        width:
+                          `${porcentajeEditar}%`,
+                      }}
+                    />
+
+                  </div>
+
+                  <p className="text-zinc-500 text-xs mt-2">
+                    Paso {pasoEditar} de {totalPasosEditar}
+                  </p>
 
                 </div>
 
-              </div>
+              </header>
 
-              <div className="p-6 md:p-8 space-y-8">
+              {/* CUERPO */}
 
-                {/* RESPUESTA */}
+              <div className="p-6 sm:p-8 md:p-10">
 
-                {getRespuestaCliente(
-                  cotizacionActiva
-                ) && (
-                  <section
-                    className={`border rounded-2xl p-5 ${
-                      getRespuestaCliente(
-                        cotizacionActiva
-                      ).color
-                    }`}
-                  >
+                {errorGeneral && (
+                  <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-300 rounded-2xl p-4">
 
-                    <div className="flex gap-3">
+                    {
+                      errorGeneral
+                    }
 
-                      <div className="mt-1">
+                  </div>
+                )}
 
-                        {
-                          getRespuestaCliente(
-                            cotizacionActiva
-                          ).icono
-                        }
+                {/* =======================================
+                    PASO 1
+                ======================================= */}
 
-                      </div>
+                {pasoEditar ===
+                  1 && (
+                  <div className="space-y-6">
 
+                    <div>
+
+                      <h2 className="text-2xl font-semibold">
+                        Actualiza tu proyecto
+                      </h2>
+
+                      <p className="text-zinc-400 mt-1">
+                        Puedes modificar la información principal.
+                      </p>
+
+                    </div>
+
+                    {imagenesProyectoEdit.length >
+                      0 && (
                       <div>
 
-                        <p className="font-bold text-white">
-                          {
-                            getRespuestaCliente(
-                              cotizacionActiva
-                            ).titulo
-                          }
-                        </p>
+                        <div className="flex items-center gap-2 text-zinc-400 text-sm mb-3">
 
-                        <p className="text-zinc-400 text-sm mt-1">
-                          {
-                            getRespuestaCliente(
-                              cotizacionActiva
-                            ).texto
-                          }
-                        </p>
+                          <FaImages className="text-yellow-500" />
 
-                      </div>
+                          Proyecto de referencia
 
-                    </div>
+                        </div>
 
-                  </section>
-                )}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
 
-                {/* INFORMACIÓN */}
+                          {imagenesProyectoEdit.map(
+                            (
+                              imagen,
+                              indice
+                            ) => (
+                              <div
+                                key={`${imagen}-${indice}`}
+                                className="aspect-square rounded-2xl overflow-hidden bg-black border border-yellow-500/20"
+                              >
 
-                <section>
-
-                  <h3 className="font-semibold text-lg text-white mb-4">
-                    Información enviada por el cliente
-                  </h3>
-
-                  <div className="bg-black border border-zinc-700 rounded-2xl p-5 space-y-4">
-
-                    <Detalle
-                      titulo="Descripción"
-                      valor={
-                        cotizacionActiva.descripcion
-                      }
-                    />
-
-                    <Detalle
-                      titulo="Tipo"
-                      valor={
-                        cotizacionActiva.tipo
-                      }
-                    />
-
-                    <Detalle
-                      titulo="Ubicación"
-                      valor={
-                        cotizacionActiva.ubicacion ||
-                        "No especificada"
-                      }
-                    />
-
-                    <Detalle
-                      titulo="Medidas"
-                      valor={
-                        cotizacionActiva.medidas ||
-                        "No especificadas"
-                      }
-                    />
-
-                    <Detalle
-                      titulo="Fecha deseada"
-                      valor={formatearFecha(
-                        cotizacionActiva.fechaDeseada
-                      )}
-                    />
-
-                    <Detalle
-                      titulo="Contacto"
-                      valor={`${
-                        cotizacionActiva.telefono ||
-                        "No registrado"
-                      } · ${
-                        cotizacionActiva.metodoContacto ||
-                        "Sin preferencia"
-                      }`}
-                    />
-
-                  </div>
-
-                </section>
-
-                {/* IMÁGENES SEPARADAS */}
-
-                {(cotizacionActiva.imagenesProyecto?.length >
-                  0 ||
-                  cotizacionActiva.imagenesCliente?.length >
-                    0) && (
-                  <section>
-
-                    <h3 className="font-semibold text-lg text-white mb-4">
-                      Imágenes
-                    </h3>
-
-                    {cotizacionActiva.imagenesProyecto?.length >
-                      0 && (
-                      <BloqueImagenes
-                        titulo="Proyecto de referencia"
-                        imagenes={
-                          cotizacionActiva.imagenesProyecto
-                        }
-                        openModal={
-                          openModal
-                        }
-                      />
-                    )}
-
-                    {cotizacionActiva.imagenesCliente?.length >
-                      0 && (
-                      <div className="mt-6">
-
-                        <BloqueImagenes
-                          titulo="Fotos del espacio del cliente"
-                          imagenes={
-                            cotizacionActiva.imagenesCliente
-                          }
-                          openModal={
-                            openModal
-                          }
-                        />
-
-                      </div>
-                    )}
-
-                  </section>
-                )}
-
-                {/* PROPUESTA */}
-
-                <section>
-
-                  <div className="mb-5">
-
-                    <h3 className="font-semibold text-xl text-white">
-                      {tienePropuesta(
-                        cotizacionActiva
-                      )
-                        ? "Editar propuesta económica"
-                        : "Preparar propuesta económica"}
-                    </h3>
-
-                    <p className="text-zinc-400 text-sm mt-2">
-                      {tienePropuesta(
-                        cotizacionActiva
-                      )
-                        ? "Si modificas la propuesta se creará una nueva versión y el cliente deberá aceptarla nuevamente."
-                        : "Prepara la propuesta económica que recibirá el cliente."}
-                    </p>
-
-                  </div>
-
-                  {error && (
-                    <div className="mb-5 bg-red-500/5 border border-red-500/30 text-red-300 px-4 py-3 rounded-2xl">
-                      {error}
-                    </div>
-                  )}
-
-                  <div className="grid md:grid-cols-2 gap-5">
-
-                    <CampoAdmin
-                      icon={
-                        <FaDollarSign />
-                      }
-                      titulo="Precio total"
-                    >
-
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={
-                          presupuestoAdmin
-                        }
-                        onChange={(e) =>
-                          setPresupuestoAdmin(
-                            e.target.value
-                          )
-                        }
-                        placeholder="Ej: 18500"
-                        className={
-                          inputClass
-                        }
-                      />
-
-                    </CampoAdmin>
-
-                    <CampoAdmin
-                      icon={
-                        <FaDollarSign />
-                      }
-                      titulo="Anticipo requerido (%)"
-                    >
-
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={
-                          porcentajeAnticipo
-                        }
-                        onChange={(e) =>
-                          setPorcentajeAnticipo(
-                            e.target.value
-                          )
-                        }
-                        placeholder="50"
-                        className={
-                          inputClass
-                        }
-                      />
-
-                    </CampoAdmin>
-
-                  </div>
-
-                  {/* CÁLCULOS */}
-
-                  <div className="grid sm:grid-cols-3 gap-4 mt-5">
-
-                    <CajaCalculo
-                      titulo="Precio total"
-                      valor={`$${Number(
-                        presupuestoAdmin ||
-                          0
-                      ).toLocaleString(
-                        "es-MX"
-                      )} MXN`}
-                    />
-
-                    <CajaCalculo
-                      titulo={`Anticipo ${
-                        porcentajeAnticipo ||
-                        0
-                      }%`}
-                      valor={`$${Number(
-                        montoAnticipo
-                      ).toLocaleString(
-                        "es-MX"
-                      )} MXN`}
-                    />
-
-                    <CajaCalculo
-                      titulo="Saldo"
-                      valor={`$${Number(
-                        saldoPendiente
-                      ).toLocaleString(
-                        "es-MX"
-                      )} MXN`}
-                    />
-
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-5 mt-6">
-
-                    <CampoAdmin
-                      icon={
-                        <FaClock />
-                      }
-                      titulo="Tiempo estimado"
-                    >
-
-                      <input
-                        value={
-                          tiempoEstimado
-                        }
-                        onChange={(e) =>
-                          setTiempoEstimado(
-                            e.target.value
-                          )
-                        }
-                        placeholder="Ej: 7 a 15 días"
-                        className={
-                          inputClass
-                        }
-                      />
-
-                    </CampoAdmin>
-
-                    <CampoAdmin
-                      icon={
-                        <FaShieldAlt />
-                      }
-                      titulo="Garantía"
-                    >
-
-                      <input
-                        value={
-                          garantia
-                        }
-                        onChange={(e) =>
-                          setGarantia(
-                            e.target.value
-                          )
-                        }
-                        placeholder="Ej: 3 meses"
-                        className={
-                          inputClass
-                        }
-                      />
-
-                    </CampoAdmin>
-
-                  </div>
-
-                  <div className="mt-5">
-
-                    <CampoAdmin
-                      icon={
-                        <FaEdit />
-                      }
-                      titulo="Observaciones para el cliente"
-                    >
-
-                      <textarea
-                        rows="5"
-                        value={
-                          observacionesAdmin
-                        }
-                        onChange={(e) =>
-                          setObservacionesAdmin(
-                            e.target.value
-                          )
-                        }
-                        placeholder="Detalles de la propuesta..."
-                        className={
-                          inputClass
-                        }
-                      />
-
-                    </CampoAdmin>
-
-                  </div>
-
-                </section>
-
-                {/* HISTORIAL */}
-
-                {Array.isArray(
-                  cotizacionActiva.historialPropuestas
-                ) &&
-                  cotizacionActiva
-                    .historialPropuestas
-                    .length >
-                    0 && (
-                    <section>
-
-                      <h3 className="font-bold text-white mb-4">
-                        Historial de propuestas
-                      </h3>
-
-                      <div className="space-y-3">
-
-                        {cotizacionActiva.historialPropuestas.map(
-                          (
-                            propuesta,
-                            indice
-                          ) => (
-                            <div
-                              key={
-                                indice
-                              }
-                              className="bg-black border border-zinc-700 rounded-2xl p-4 flex justify-between gap-4"
-                            >
-
-                              <div>
-
-                                <p className="font-bold">
-                                  Propuesta #
-                                  {propuesta.version ||
-                                    indice +
-                                      1}
-                                </p>
-
-                                <p className="text-xs text-zinc-500 mt-1">
-                                  {
-                                    propuesta.estadoAnterior
+                                <img
+                                  src={
+                                    imagen
                                   }
-                                </p>
+                                  alt={`Referencia ${
+                                    indice +
+                                    1
+                                  }`}
+                                  className="w-full h-full object-cover"
+                                />
 
                               </div>
+                            )
+                          )}
 
-                              <p className="text-yellow-500 font-bold">
-                                $
-                                {Number(
-                                  propuesta.precioTotal ||
-                                    0
-                                ).toLocaleString(
-                                  "es-MX"
-                                )}{" "}
-                                MXN
-                              </p>
-
-                            </div>
-                          )
-                        )}
+                        </div>
 
                       </div>
+                    )}
 
-                    </section>
-                  )}
+                    <Campo>
 
-                {/* ======================================= */}
-                {/* BOTONES MODAL - MISMO ESTILO */}
-                {/* ======================================= */}
+                      <Label
+                        icon={
+                          <FaPen />
+                        }
+                      >
+                        Nombre del proyecto
+                      </Label>
 
-                <div className="flex flex-wrap justify-end gap-3 border-t border-zinc-700 pt-6">
-
-                  {/* CERRAR */}
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setModalCotizacion(
-                        false
-                      )
-                    }
-                    className={`${botonBase} border-zinc-600 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500`}
-                  >
-                    <FaTimes />
-                    Cerrar
-                  </button>
-
-                  {/* CONFIRMAR */}
-
-                  {cotizacionActiva.estado ===
-                    "aceptada_cliente" && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        confirmarTrabajo(
-                          cotizacionActiva
-                        )
-                      }
-                      className={`${botonBase} border-green-500/40 text-green-400 hover:bg-green-500/10 hover:border-green-500`}
-                    >
-                      <FaCheckCircle />
-                      Confirmar trabajo
-                    </button>
-                  )}
-
-                  {/* INICIAR */}
-
-                  {cotizacionActiva.estado ===
-                    "confirmada_admin" && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        iniciarTrabajo(
-                          cotizacionActiva
-                        )
-                      }
-                      className={`${botonBase} border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 hover:border-cyan-500`}
-                    >
-                      <FaPlay />
-                      Iniciar trabajo
-                    </button>
-                  )}
-
-                  {/* INSTALACIÓN */}
-
-                  {[
-                    "en_proceso",
-                    "proceso",
-                  ].includes(
-                    cotizacionActiva.estado
-                  ) && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        programarInstalacion(
-                          cotizacionActiva
-                        )
-                      }
-                      className={`${botonBase} border-purple-500/40 text-purple-400 hover:bg-purple-500/10 hover:border-purple-500`}
-                    >
-                      <FaTools />
-                      Programar instalación
-                    </button>
-                  )}
-
-                  {/* TERMINAR */}
-
-                  {[
-                    "en_proceso",
-                    "proceso",
-                    "instalacion_programada",
-                    "instalacion",
-                  ].includes(
-                    cotizacionActiva.estado
-                  ) && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        abrirFinalizacion(
-                          cotizacionActiva
-                        )
-                      }
-                      disabled={
-                        loading
-                      }
-                      className={`${botonBase} border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 disabled:opacity-50`}
-                    >
-                      <FaFlagCheckered />
-
-                      {loading
-                        ? "Finalizando..."
-                        : "Trabajo terminado"}
-                    </button>
-                  )}
-
-                  {/* PROPUESTA */}
-
-                  {![
-                    "confirmada_admin",
-                    "en_proceso",
-                    "proceso",
-                    "instalacion_programada",
-                    "instalacion",
-                  ].includes(
-                    cotizacionActiva.estado
-                  ) && (
-                    <button
-                      type="button"
-                      onClick={
-                        enviarPropuesta
-                      }
-                      disabled={
-                        loading
-                      }
-                      className={`${botonBase} border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500 disabled:opacity-50`}
-                    >
-
-                      {tienePropuesta(
-                        cotizacionActiva
-                      ) ? (
-                        <FaSyncAlt />
-                      ) : (
-                        <FaPaperPlane />
-                      )}
-
-                      {loading
-                        ? "Guardando..."
-                        : tienePropuesta(
-                            cotizacionActiva
+                      <input
+                        type="text"
+                        value={
+                          editNombre
+                        }
+                        onChange={(e) =>
+                          setEditNombre(
+                            e.target.value
                           )
-                        ? "Guardar nueva versión"
-                        : "Enviar propuesta"}
+                        }
+                        className={
+                          inputClass
+                        }
+                      />
 
-                    </button>
-                  )}
+                    </Campo>
 
-                </div>
+                    <Campo>
 
-              </div>
+                      <Label
+                        icon={
+                          <FaTag />
+                        }
+                      >
+                        Tipo de proyecto
+                      </Label>
 
-            </div>
+                      <select
+                        value={
+                          editTipo
+                        }
+                        onChange={(e) =>
+                          setEditTipo(
+                            e.target.value
+                          )
+                        }
+                        className={
+                          inputClass
+                        }
+                      >
+                        <option>
+                          Construcción
+                        </option>
 
-          </div>
-        )}
+                        <option>
+                          Vidrio
+                        </option>
 
+                        <option>
+                          Aluminio
+                        </option>
 
-      {/* ================================================= */}
-      {/* MODAL FINALIZAR TRABAJO */}
-      {/* ================================================= */}
+                        <option>
+                          Vidrio y aluminio
+                        </option>
 
-      {modalFinalizar &&
-        cotizacionFinalizar && (
-          <div
-            className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[55] p-4"
-            onClick={() => {
-              if (!subiendoFinales) {
-                cerrarFinalizacion();
-              }
-            }}
-          >
-            <div
-              className="bg-zinc-900 border border-zinc-600 rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl"
-              onClick={(e) =>
-                e.stopPropagation()
-              }
-            >
-              <div className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-700 p-6 md:p-7">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-emerald-400 font-semibold">
-                      Finalizar proyecto
-                    </p>
+                        <option>
+                          Remodelación
+                        </option>
 
-                    <h2 className="text-2xl font-bold text-white mt-1">
-                      {cotizacionFinalizar.nombre}
-                    </h2>
+                        <option>
+                          Inmobiliario
+                        </option>
 
-                    <p className="text-sm text-zinc-400 mt-2">
-                      Agrega fotografías del trabajo ya terminado. Estas serán las imágenes principales que verá el cliente en Mis Proyectos.
-                    </p>
-                  </div>
+                        <option>
+                          Otro
+                        </option>
+                      </select>
 
-                  <button
-                    type="button"
-                    disabled={subiendoFinales}
-                    onClick={cerrarFinalizacion}
-                    className="w-11 h-11 bg-black border border-zinc-700 hover:border-zinc-500 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white transition disabled:opacity-40"
-                  >
-                    <FaTimes />
-                  </button>
-                </div>
-              </div>
+                    </Campo>
 
-              <div className="p-6 md:p-7 space-y-6">
-                {errorFinalizar && (
-                  <div className="bg-red-500/5 border border-red-500/30 text-red-300 px-4 py-3 rounded-2xl">
-                    {errorFinalizar}
+                    <Campo>
+
+                      <Label
+                        icon={
+                          <FaPen />
+                        }
+                      >
+                        ¿Qué necesitas realizar?
+                      </Label>
+
+                      <textarea
+                        rows={6}
+                        value={
+                          editDescripcion
+                        }
+                        onChange={(e) =>
+                          setEditDescripcion(
+                            e.target.value
+                          )
+                        }
+                        maxLength={
+                          1000
+                        }
+                        className={
+                          inputClass
+                        }
+                      />
+
+                      <p className="text-xs text-zinc-600 text-right mt-2">
+                        {
+                          editDescripcion.length
+                        }
+                        /1000
+                      </p>
+
+                    </Campo>
+
                   </div>
                 )}
 
-                <section className="bg-black border border-zinc-700 rounded-2xl p-5">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                      <h3 className="font-bold text-white">
-                        Fotografías del trabajo terminado
-                      </h3>
+                {/* =======================================
+                    PASO 2
+                ======================================= */}
 
-                      <p className="text-sm text-zinc-500 mt-1">
-                        Puedes seleccionar hasta 6 imágenes. Si no agregas fotos, el proyecto también puede finalizarse.
+                {pasoEditar ===
+                  2 && (
+                  <div className="space-y-7">
+
+                    <div>
+
+                      <h2 className="text-2xl font-semibold">
+                        Detalles de tu espacio
+                      </h2>
+
+                      <p className="text-zinc-400 mt-1">
+                        Actualiza ubicación, medidas, fecha o presupuesto.
                       </p>
+
                     </div>
 
-                    <label className={`${botonBase} border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500 cursor-pointer shrink-0`}>
-                      <FaImages />
-                      Agregar fotos
+                    <div className="grid lg:grid-cols-2 gap-6">
 
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        disabled={subiendoFinales}
-                        onChange={seleccionarFotosFinales}
-                        className="hidden"
-                      />
-                    </label>
-                  </div>
+                      <div className="space-y-4">
 
-                  {previewsFinales.length > 0 ? (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5">
-                      {previewsFinales.map(
-                        (preview, indice) => (
-                          <div
-                            key={preview}
-                            className="relative group"
+                        <Campo>
+
+                          <Label
+                            icon={
+                              <FaMapMarkerAlt />
+                            }
                           >
-                            <img
-                              src={preview}
-                              alt={`Trabajo terminado ${indice + 1}`}
-                              className="w-full aspect-square object-cover rounded-2xl border border-zinc-700"
+                            Dirección o referencia
+                          </Label>
+
+                          <div className="flex gap-2">
+
+                            <input
+                              value={
+                                editUbicacion
+                              }
+                              onChange={(e) =>
+                                setEditUbicacion(
+                                  e.target.value
+                                )
+                              }
+                              className={
+                                inputClass
+                              }
                             />
 
                             <button
                               type="button"
-                              disabled={subiendoFinales}
-                              onClick={() =>
-                                eliminarFotoFinal(
-                                  indice
-                                )
+                              onClick={
+                                buscarDireccionEditar
                               }
-                              className="absolute top-2 right-2 w-9 h-9 rounded-xl bg-black/85 border border-red-500/40 text-red-400 flex items-center justify-center hover:bg-red-500/20 transition disabled:opacity-40"
-                              title="Quitar fotografía"
+                              disabled={
+                                buscandoUbicacion
+                              }
+                              className="
+                                px-5
+
+                                bg-yellow-500
+                                hover:bg-yellow-400
+
+                                text-black
+
+                                rounded-2xl
+
+                                flex
+                                items-center
+                                justify-center
+
+                                disabled:opacity-50
+                              "
                             >
-                              <FaTrash />
+
+                              <FaSearch />
+
                             </button>
 
-                            {indice === 0 && (
-                              <span className="absolute left-2 bottom-2 bg-yellow-500 text-black text-[10px] font-bold px-2 py-1 rounded-full">
-                                PORTADA
-                              </span>
-                            )}
                           </div>
-                        )
-                      )}
+
+                        </Campo>
+
+                        <button
+                          type="button"
+                          onClick={
+                            usarMiUbicacionEditar
+                          }
+                          disabled={
+                            obteniendoGPS
+                          }
+                          className="
+                            w-full
+
+                            bg-zinc-800
+                            hover:bg-zinc-700
+
+                            border
+                            border-zinc-700
+
+                            rounded-2xl
+
+                            px-4
+                            py-3
+
+                            flex
+                            items-center
+                            justify-center
+                            gap-2
+                          "
+                        >
+
+                          <FaCrosshairs className="text-yellow-500" />
+
+                          {obteniendoGPS
+                            ? "Obteniendo ubicación..."
+                            : "Usar mi ubicación actual"}
+
+                        </button>
+
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
+
+                          <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                            Coordenadas
+                          </p>
+
+                          <div className="grid grid-cols-2 gap-4 mt-3">
+
+                            <div>
+
+                              <p className="text-xs text-zinc-600">
+                                Latitud
+                              </p>
+
+                              <p className="text-sm">
+                                {editPosicion.lat.toFixed(
+                                  6
+                                )}
+                              </p>
+
+                            </div>
+
+                            <div>
+
+                              <p className="text-xs text-zinc-600">
+                                Longitud
+                              </p>
+
+                              <p className="text-sm">
+                                {editPosicion.lng.toFixed(
+                                  6
+                                )}
+                              </p>
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                      <div className="rounded-3xl overflow-hidden border border-zinc-700">
+
+                        <MapContainer
+                          center={[
+                            editPosicion.lat,
+                            editPosicion.lng,
+                          ]}
+                          zoom={15}
+                          scrollWheelZoom
+                          style={{
+                            height:
+                              "390px",
+
+                            width:
+                              "100%",
+                          }}
+                        >
+
+                          <TileLayer
+                            attribution="&copy; OpenStreetMap contributors"
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+
+                          <RecentrarMapa
+                            posicion={
+                              editPosicion
+                            }
+                          />
+
+                          <SelectorUbicacionEditar
+                            posicion={
+                              editPosicion
+                            }
+                            setPosicion={
+                              setEditPosicion
+                            }
+                            setUbicacion={
+                              setEditUbicacion
+                            }
+                            setError={
+                              setErrorGeneral
+                            }
+                          />
+
+                        </MapContainer>
+
+                      </div>
+
                     </div>
-                  ) : (
-                    <div className="mt-5 min-h-40 border border-dashed border-zinc-700 rounded-2xl flex flex-col items-center justify-center text-center p-6">
-                      <FaImages className="text-zinc-600 text-3xl" />
-                      <p className="text-zinc-400 mt-3">
-                        Todavía no has agregado fotografías finales.
+
+                    <div className="grid md:grid-cols-2 gap-5">
+
+                      <Campo>
+
+                        <Label
+                          icon={
+                            <FaRulerCombined />
+                          }
+                        >
+                          Medidas aproximadas
+                        </Label>
+
+                        <input
+                          value={
+                            editMedidas
+                          }
+                          onChange={(e) =>
+                            setEditMedidas(
+                              e.target.value
+                            )
+                          }
+                          placeholder="Ej: 1.20 x 2 m"
+                          className={
+                            inputClass
+                          }
+                        />
+
+                      </Campo>
+
+                      <Campo>
+
+                        <Label
+                          icon={
+                            <FaCalendarAlt />
+                          }
+                        >
+                          Fecha deseada
+                        </Label>
+
+                        <input
+                          type="date"
+                          value={
+                            editFechaDeseada
+                          }
+                          onChange={(e) =>
+                            setEditFechaDeseada(
+                              e.target.value
+                            )
+                          }
+                          className={
+                            inputClass
+                          }
+                        />
+
+                      </Campo>
+
+                    </div>
+
+                    <Campo>
+
+                      <Label
+                        icon={
+                          <FaDollarSign />
+                        }
+                      >
+                        Presupuesto aproximado
+                      </Label>
+
+                      <input
+                        type="number"
+                        min={0}
+                        value={
+                          editPresupuesto
+                        }
+                        onChange={(e) =>
+                          setEditPresupuesto(
+                            e.target.value
+                          )
+                        }
+                        className={
+                          inputClass
+                        }
+                      />
+
+                    </Campo>
+
+                  </div>
+                )}
+
+                {/* =======================================
+                    PASO 3
+                ======================================= */}
+
+                {pasoEditar ===
+                  3 && (
+                  <div className="space-y-8">
+
+                    <div>
+
+                      <h2 className="text-2xl font-semibold">
+                        Imágenes
+                      </h2>
+
+                      <p className="text-zinc-400 mt-1">
+                        Conserva, elimina o agrega fotografías de tu espacio.
                       </p>
+
                     </div>
+
+                    {imagenesProyectoEdit.length >
+                      0 && (
+                      <section>
+
+                        <div className="flex items-center gap-2">
+
+                          <FaImages className="text-yellow-500" />
+
+                          <h3 className="font-bold">
+                            Proyecto de referencia
+                          </h3>
+
+                        </div>
+
+                        <p className="text-zinc-500 text-xs mt-1">
+                          Estas imágenes pertenecen al proyecto original y se conservan.
+                        </p>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+
+                          {imagenesProyectoEdit.map(
+                            (
+                              imagen,
+                              indice
+                            ) => (
+                              <div
+                                key={`${imagen}-${indice}`}
+                                className="aspect-square rounded-2xl overflow-hidden border border-yellow-500/20"
+                              >
+
+                                <img
+                                  src={
+                                    imagen
+                                  }
+                                  alt="Referencia"
+                                  className="w-full h-full object-cover"
+                                />
+
+                              </div>
+                            )
+                          )}
+
+                        </div>
+
+                      </section>
+                    )}
+
+                    {imagenesClienteEdit.length >
+                      0 && (
+                      <section>
+
+                        <div className="flex items-center gap-2">
+
+                          <FaCamera className="text-blue-400" />
+
+                          <h3 className="font-bold">
+                            Fotografías de tu espacio
+                          </h3>
+
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+
+                          {imagenesClienteEdit.map(
+                            (
+                              imagen,
+                              indice
+                            ) => (
+                              <div
+                                key={`${imagen}-${indice}`}
+                                className="relative aspect-square rounded-2xl overflow-hidden border border-blue-500/20"
+                              >
+
+                                <img
+                                  src={
+                                    imagen
+                                  }
+                                  alt="Cliente"
+                                  className="w-full h-full object-cover"
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    quitarImagenCliente(
+                                      indice
+                                    )
+                                  }
+                                  className="absolute top-2 right-2 w-9 h-9 bg-black/80 hover:bg-red-600 rounded-full flex items-center justify-center"
+                                >
+
+                                  <FaTimes />
+
+                                </button>
+
+                              </div>
+                            )
+                          )}
+
+                        </div>
+
+                      </section>
+                    )}
+
+                    <label
+                      htmlFor="nuevasFotosCotizacion"
+                      className="
+                        block
+
+                        border-2
+                        border-dashed
+                        border-zinc-700
+
+                        hover:border-yellow-500/60
+
+                        rounded-3xl
+
+                        p-10
+
+                        text-center
+
+                        cursor-pointer
+
+                        transition
+                      "
+                    >
+
+                      <FaCloudUploadAlt className="text-yellow-500 text-4xl mx-auto" />
+
+                      <p className="font-semibold mt-3">
+                        Agregar fotografías
+                      </p>
+
+                      <p className="text-zinc-500 text-sm mt-2">
+                        Máximo 6 fotografías propias.
+                      </p>
+
+                      <input
+                        id="nuevasFotosCotizacion"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={
+                          handleNuevasImagenes
+                        }
+                        className="hidden"
+                      />
+
+                    </label>
+
+                    {previewsNuevos.length >
+                      0 && (
+                      <div>
+
+                        <h3 className="text-sm text-zinc-400 mb-3">
+                          Nuevas fotografías
+                        </h3>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+
+                          {previewsNuevos.map(
+                            (
+                              preview,
+                              indice
+                            ) => (
+                              <div
+                                key={`${preview.file.name}-${indice}`}
+                                className="relative aspect-square rounded-2xl overflow-hidden border border-green-500/20"
+                              >
+
+                                <img
+                                  src={
+                                    preview.url
+                                  }
+                                  alt="Nueva"
+                                  className="w-full h-full object-cover"
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    quitarNuevaImagen(
+                                      indice
+                                    )
+                                  }
+                                  className="absolute top-2 right-2 w-9 h-9 bg-black/80 hover:bg-red-600 rounded-full flex items-center justify-center"
+                                >
+
+                                  <FaTimes />
+
+                                </button>
+
+                              </div>
+                            )
+                          )}
+
+                        </div>
+
+                      </div>
+                    )}
+
+                  </div>
+                )}
+
+                {/* =======================================
+                    PASO 4
+                ======================================= */}
+
+                {pasoEditar ===
+                  4 && (
+                  <div className="space-y-7">
+
+                    <div>
+
+                      <h2 className="text-2xl font-semibold">
+                        Confirma los cambios
+                      </h2>
+
+                      <p className="text-zinc-400 mt-1">
+                        Revisa la información antes de guardar.
+                      </p>
+
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-5">
+
+                      <Campo>
+
+                        <Label
+                          icon={
+                            <FaPhone />
+                          }
+                        >
+                          Teléfono
+                        </Label>
+
+                        <input
+                          type="tel"
+                          value={
+                            editTelefono
+                          }
+                          onChange={(e) =>
+                            setEditTelefono(
+                              e.target.value
+                            )
+                          }
+                          className={
+                            inputClass
+                          }
+                        />
+
+                      </Campo>
+
+                      <Campo>
+
+                        <Label
+                          icon={
+                            <FaWhatsapp />
+                          }
+                        >
+                          Medio de contacto
+                        </Label>
+
+                        <select
+                          value={
+                            editMetodoContacto
+                          }
+                          onChange={(e) =>
+                            setEditMetodoContacto(
+                              e.target.value
+                            )
+                          }
+                          className={
+                            inputClass
+                          }
+                        >
+
+                          <option>
+                            WhatsApp
+                          </option>
+
+                          <option>
+                            Teléfono
+                          </option>
+
+                          <option>
+                            Correo electrónico
+                          </option>
+
+                        </select>
+
+                      </Campo>
+
+                    </div>
+
+                    <div className="bg-zinc-950 border border-zinc-800 rounded-3xl p-6">
+
+                      <p className="text-yellow-500 text-xs uppercase tracking-widest font-semibold">
+                        Resumen actualizado
+                      </p>
+
+                      <h3 className="text-xl font-bold mt-2">
+                        {
+                          editNombre
+                        }
+                      </h3>
+
+                      <div className="space-y-4 mt-6">
+
+                        <ResumenItem
+                          titulo="Tipo"
+                          valor={
+                            editTipo
+                          }
+                        />
+
+                        <ResumenItem
+                          titulo="Descripción"
+                          valor={
+                            editDescripcion
+                          }
+                        />
+
+                        <ResumenItem
+                          titulo="Ubicación"
+                          valor={
+                            editUbicacion
+                          }
+                        />
+
+                        <ResumenItem
+                          titulo="Medidas"
+                          valor={
+                            editMedidas ||
+                            "No especificadas"
+                          }
+                        />
+
+                        <ResumenItem
+                          titulo="Fecha"
+                          valor={
+                            editFechaDeseada ||
+                            "Sin fecha"
+                          }
+                        />
+
+                        <ResumenItem
+                          titulo="Presupuesto"
+                          valor={
+                            editPresupuesto
+                              ? `$${Number(
+                                  editPresupuesto
+                                ).toLocaleString(
+                                  "es-MX"
+                                )} MXN`
+                              : "No especificado"
+                          }
+                        />
+
+                        <ResumenItem
+                          titulo="Imágenes de referencia"
+                          valor={
+                            imagenesProyectoEdit.length
+                          }
+                        />
+
+                        <ResumenItem
+                          titulo="Fotos propias"
+                          valor={
+                            imagenesClienteEdit.length +
+                            nuevasImagenes.length
+                          }
+                        />
+
+                        <ResumenItem
+                          titulo="Contacto"
+                          valor={`${editTelefono} · ${editMetodoContacto}`}
+                        />
+
+                      </div>
+
+                    </div>
+
+                    <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
+
+                      <p className="text-zinc-300 text-sm">
+                        Wealth recibirá una notificación indicando que modificaste esta solicitud.
+                      </p>
+
+                    </div>
+
+                  </div>
+                )}
+
+                {/* NAVEGACIÓN */}
+
+                <div className="flex flex-col-reverse sm:flex-row justify-between gap-3 mt-10 pt-6 border-t border-zinc-800">
+
+                  {pasoEditar >
+                  1 ? (
+                    <button
+                      type="button"
+                      onClick={
+                        anteriorEditar
+                      }
+                      disabled={
+                        procesando
+                      }
+                      className="
+                        px-6
+                        py-4
+
+                        border
+                        border-zinc-700
+
+                        hover:bg-zinc-800
+
+                        rounded-2xl
+
+                        flex
+                        items-center
+                        justify-center
+                        gap-2
+                      "
+                    >
+
+                      <FaArrowLeft />
+
+                      Anterior
+
+                    </button>
+                  ) : (
+                    <div />
                   )}
-                </section>
 
-                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5">
-                  <p className="font-bold text-emerald-400">
-                    Al finalizar
-                  </p>
+                  {pasoEditar <
+                    totalPasosEditar && (
+                    <button
+                      type="button"
+                      onClick={
+                        siguienteEditar
+                      }
+                      className="
+                        px-8
+                        py-4
 
-                  <p className="text-sm text-zinc-400 mt-2">
-                    La cotización se archivará, se creará o actualizará el documento en proyectosClientes y las fotografías quedarán guardadas como imagenesTrabajoFinal.
-                  </p>
+                        bg-yellow-500
+                        hover:bg-yellow-400
+
+                        text-black
+
+                        rounded-2xl
+
+                        font-bold
+
+                        flex
+                        items-center
+                        justify-center
+                        gap-2
+                      "
+                    >
+
+                      Continuar
+
+                      <FaArrowRight />
+
+                    </button>
+                  )}
+
+                  {pasoEditar ===
+                    totalPasosEditar && (
+                    <button
+                      type="button"
+                      onClick={
+                        guardarCambiosSolicitud
+                      }
+                      disabled={
+                        procesando
+                      }
+                      className="
+                        px-8
+                        py-4
+
+                        bg-yellow-500
+                        hover:bg-yellow-400
+
+                        text-black
+
+                        rounded-2xl
+
+                        font-bold
+
+                        flex
+                        items-center
+                        justify-center
+                        gap-2
+
+                        disabled:opacity-50
+                      "
+                    >
+
+                      <FaSave />
+
+                      {procesando
+                        ? "Guardando..."
+                        : "Guardar cambios"}
+
+                    </button>
+                  )}
+
                 </div>
 
-                <div className="flex flex-wrap justify-end gap-3 border-t border-zinc-700 pt-6">
-                  <button
-                    type="button"
-                    disabled={subiendoFinales}
-                    onClick={cerrarFinalizacion}
-                    className={`${botonBase} border-zinc-600 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 disabled:opacity-40`}
-                  >
-                    <FaTimes />
-                    Cancelar
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={subiendoFinales}
-                    onClick={() =>
-                      terminarTrabajo(
-                        cotizacionFinalizar
-                      )
-                    }
-                    className={`${botonBase} border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 disabled:opacity-50`}
-                  >
-                    <FaFlagCheckered />
-
-                    {subiendoFinales
-                      ? "Subiendo y finalizando..."
-                      : fotosFinales.length > 0
-                      ? `Finalizar con ${fotosFinales.length} foto(s)`
-                      : "Finalizar sin fotos"}
-                  </button>
-                </div>
               </div>
+
             </div>
+
           </div>
-        )}
 
-      {/* ================================================= */}
-      {/* GALERÍA */}
-      {/* ================================================= */}
+        </div>
+      )}
 
-      {modalOpen && (
+      {/* =================================================
+          MODAL DETALLES
+      ================================================= */}
+
+      {propuestaOpen &&
+        cotizacionSeleccionada && (
         <div
-          className="fixed inset-0 bg-black/95 flex items-center justify-center z-[60]"
+          className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() =>
-            setModalOpen(
+            setPropuestaOpen(
               false
             )
           }
         >
 
-          {imagenesActivas.length >
+          <div
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+            className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-zinc-950 border border-zinc-700 rounded-3xl"
+          >
+
+            {(() => {
+              const c =
+                cotizacionSeleccionada;
+
+              const estado =
+                obtenerEstado(
+                  c.estado
+                );
+
+              const propuesta =
+                obtenerPropuestaActual(
+                  c
+                );
+
+              const precio =
+                propuesta.precioTotal;
+
+              const puedeResponder =
+                [
+                  "cotizada",
+                  "propuesta_enviada",
+                  "propuesta_modificada",
+                ].includes(
+                  c.estado
+                );
+
+              return (
+                <>
+
+                  <header className="p-6 md:p-8 border-b border-zinc-800 flex justify-between gap-4">
+
+                    <div>
+
+                      <p className="text-yellow-500 text-xs uppercase tracking-widest font-bold">
+                        Cotización Wealth
+                      </p>
+
+                      <h2 className="text-3xl font-bold mt-2">
+                        {
+                          c.nombre
+                        }
+                      </h2>
+
+                      <span
+                        className={`inline-block mt-3 px-3 py-1 rounded-full text-xs font-bold ${estado.color}`}
+                      >
+
+                        {
+                          estado.texto
+                        }
+
+                      </span>
+
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPropuestaOpen(
+                          false
+                        )
+                      }
+                      className="text-zinc-400 hover:text-white text-3xl"
+                    >
+                      ×
+                    </button>
+
+                  </header>
+
+                  <div className="p-6 md:p-8">
+
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+
+                      <p className="text-xs text-zinc-500 uppercase tracking-wider">
+                        Tu solicitud
+                      </p>
+
+                      <p className="text-zinc-300 mt-3 whitespace-pre-line">
+                        {
+                          c.descripcion
+                        }
+                      </p>
+
+                    </div>
+
+                    {puedeEditarSolicitud(
+                      c
+                    ) && (
+                      <div className="grid md:grid-cols-2 gap-3 mt-5">
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPropuestaOpen(
+                              false
+                            );
+
+                            abrirEdicion(
+                              c
+                            );
+                          }}
+                          className="bg-blue-500/10 border border-blue-500/30 text-blue-400 hover:bg-blue-600 hover:text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2"
+                        >
+
+                          <FaEdit />
+
+                          Modificar solicitud
+
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            cancelarSolicitud(
+                              c
+                            )
+                          }
+                          className="bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-600 hover:text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2"
+                        >
+
+                          <FaTimesCircle />
+
+                          Cancelar solicitud
+
+                        </button>
+
+                      </div>
+                    )}
+
+                    {precio !==
+                      undefined &&
+                      precio !==
+                      null && (
+                      <section className="mt-6">
+
+                        <div className="mb-4">
+
+                          <p className="text-xs uppercase tracking-[0.2em] text-yellow-500 font-bold">
+                            Propuesta de Wealth
+                          </p>
+
+                          <p className="text-zinc-500 text-sm mt-1">
+                            Versión {propuesta.version}
+                          </p>
+
+                        </div>
+
+                        <div className="grid sm:grid-cols-3 gap-4">
+
+                          <div className="bg-black border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                              Precio total
+                            </p>
+                            <p className="text-2xl font-bold mt-2">
+                              {moneda(propuesta.precioTotal)}
+                            </p>
+                          </div>
+
+                          <div className="bg-black border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                              Anticipo
+                            </p>
+                            <p className="text-xl font-bold mt-2">
+                              {moneda(propuesta.anticipo)}
+                            </p>
+                            {propuesta.porcentajeAnticipo !== null && (
+                              <p className="text-yellow-500 text-xs mt-2">
+                                {propuesta.porcentajeAnticipo}% del total
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="bg-black border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                              Saldo
+                            </p>
+                            <p className="text-xl font-bold mt-2">
+                              {moneda(propuesta.saldo)}
+                            </p>
+                          </div>
+
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4 mt-4">
+
+                          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-sm">
+                              Tiempo estimado
+                            </p>
+                            <p className="text-white font-semibold mt-2">
+                              {propuesta.tiempoEstimado || "No especificado"}
+                            </p>
+                          </div>
+
+                          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+                            <p className="text-zinc-500 text-sm">
+                              Garantía
+                            </p>
+                            <p className="text-white font-semibold mt-2">
+                              {propuesta.garantia || "No especificada"}
+                            </p>
+                          </div>
+
+                        </div>
+
+                        {propuesta.observaciones && (
+                          <div className="mt-4 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-5">
+
+                            <p className="text-xs uppercase tracking-wider text-yellow-500 font-bold">
+                              Observaciones de Wealth
+                            </p>
+
+                            <p className="text-zinc-300 mt-3 whitespace-pre-wrap leading-relaxed">
+                              {propuesta.observaciones}
+                            </p>
+
+                          </div>
+                        )}
+
+                        {propuesta.fecha && (
+                          <p className="text-xs text-zinc-500 mt-4">
+                            Actualizada: {formatearFecha(propuesta.fecha)}
+                          </p>
+                        )}
+
+                      </section>
+                    )}
+
+                    {puedeResponder && (
+                      <div className="mt-8 pt-6 border-t border-zinc-800">
+
+                        <h3 className="text-xl font-bold">
+                          ¿Qué deseas hacer?
+                        </h3>
+
+                        <button
+                          type="button"
+                          onClick={
+                            confirmarPropuesta
+                          }
+                          disabled={
+                            procesando
+                          }
+                          className="w-full bg-green-600 hover:bg-green-500 mt-5 py-4 rounded-2xl font-bold flex items-center justify-center gap-2"
+                        >
+
+                          <FaCheckCircle />
+
+                          Aceptar propuesta
+
+                        </button>
+
+                        <div className="grid md:grid-cols-2 gap-3 mt-3">
+
+                          <button
+                            type="button"
+                            onClick={
+                              solicitarModificacion
+                            }
+                            className="bg-orange-500/10 border border-orange-500/40 text-orange-400 py-4 rounded-2xl font-semibold"
+                          >
+                            Solicitar modificación
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={
+                              rechazarPropuesta
+                            }
+                            className="bg-red-500/10 border border-red-500/40 text-red-400 py-4 rounded-2xl font-semibold"
+                          >
+                            Rechazar propuesta
+                          </button>
+
+                        </div>
+
+                      </div>
+                    )}
+
+                    {Array.isArray(
+                      c.historialPropuestas
+                    ) &&
+                      c.historialPropuestas.length >
+                        0 && (
+                        <div className="mt-8 pt-6 border-t border-zinc-800">
+
+                          <div className="flex items-center gap-2">
+
+                            <FaHistory className="text-yellow-500" />
+
+                            <h3 className="font-bold">
+                              Historial de propuestas
+                            </h3>
+
+                          </div>
+
+                          <div className="space-y-3 mt-4">
+
+                            {c.historialPropuestas.map(
+                              (
+                                propuesta,
+                                indice
+                              ) => (
+                                <div
+                                  key={
+                                    indice
+                                  }
+                                  className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4"
+                                >
+
+                                  <p className="font-semibold">
+                                    Propuesta #
+                                    {propuesta.version ??
+                                      indice +
+                                        1}
+                                  </p>
+
+                                  {propuesta.fecha && (
+                                    <p className="text-xs text-zinc-500 mt-1">
+
+                                      {formatearFecha(
+                                        propuesta.fecha
+                                      )}
+
+                                    </p>
+                                  )}
+
+                                </div>
+                              )
+                            )}
+
+                          </div>
+
+                        </div>
+                      )}
+
+                  </div>
+
+                </>
+              );
+            })()}
+
+          </div>
+
+        </div>
+      )}
+
+      {/* =================================================
+          GALERÍA GRANDE
+      ================================================= */}
+
+      {galeriaOpen &&
+        imgs.length >
+          0 && (
+        <div
+          className="fixed inset-0 z-[130] bg-black/95 flex items-center justify-center"
+          onClick={() =>
+            setGaleriaOpen(
+              false
+            )
+          }
+        >
+
+          {imgs.length >
             1 && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
 
-                prev();
+                anteriorImagen();
               }}
-              className="absolute left-5 w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-600 hover:border-yellow-500 text-white flex items-center justify-center text-2xl transition"
+              className="absolute left-5 text-white text-5xl z-10"
             >
               ❮
             </button>
@@ -3592,51 +5116,41 @@ function CotizacionesAdmin() {
 
           <img
             src={
-              imagenesActivas[
-                index
-              ]
+              imgs[index]
             }
-            alt="Vista ampliada"
-            className="max-w-[90%] max-h-[90%] rounded-2xl object-contain"
+            alt="Cotización"
+            className="max-w-[90%] max-h-[90%] object-contain rounded-xl"
             onClick={(e) =>
               e.stopPropagation()
             }
           />
 
-          {imagenesActivas.length >
+          {imgs.length >
             1 && (
             <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation();
 
-                next();
+                siguienteImagen();
               }}
-              className="absolute right-5 w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-600 hover:border-yellow-500 text-white flex items-center justify-center text-2xl transition"
+              className="absolute right-5 text-white text-5xl z-10"
             >
               ❯
             </button>
           )}
 
           <button
+            type="button"
             onClick={() =>
-              setModalOpen(
+              setGaleriaOpen(
                 false
               )
             }
-            className="absolute top-6 right-6 w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-600 hover:border-red-500 text-zinc-300 hover:text-red-400 flex items-center justify-center transition"
+            className="absolute top-5 right-5 text-white text-5xl"
           >
-            <FaTimes />
+            ×
           </button>
-
-          {imagenesActivas.length >
-            1 && (
-            <div className="absolute bottom-6 bg-zinc-900 border border-zinc-700 text-white text-sm px-4 py-2 rounded-xl">
-              {index + 1} /{" "}
-              {
-                imagenesActivas.length
-              }
-            </div>
-          )}
 
         </div>
       )}
@@ -3645,250 +5159,83 @@ function CotizacionesAdmin() {
   );
 }
 
-// ======================================================
-// ESTILOS GENERALES
-// ======================================================
+/* ======================================================
+   COMPONENTES AUXILIARES
+====================================================== */
 
-const inputClass = `
-  w-full
-  p-4
-  rounded-2xl
-  bg-black
-  border
-  border-zinc-700
-  text-white
-  placeholder:text-zinc-600
-  outline-none
-  focus:border-yellow-500
-  focus:ring-2
-  focus:ring-yellow-500/10
-  transition
-`;
-
-// ======================================================
-// NUEVO ESTILO ÚNICO PARA BOTONES
-// ======================================================
-
-const botonBase = `
-  bg-black
-  border
-  px-4
-  py-2.5
-  rounded-xl
-  font-medium
-  flex
-  items-center
-  justify-center
-  gap-2
-  transition-all
-  duration-200
-  hover:-translate-y-[1px]
-  active:translate-y-0
-`;
-
-// ======================================================
-// COMPONENTES
-// ======================================================
-
-function CajaResumen({
-  titulo,
-  valor,
-  icon,
-}) {
-  return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5">
-
-      <div className="flex items-center gap-3">
-
-        <div className="w-11 h-11 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center">
-          {icon}
-        </div>
-
-        <div>
-
-          <p className="text-xs text-zinc-500">
-            {titulo}
-          </p>
-
-          <p className="text-2xl font-bold text-white">
-            {valor}
-          </p>
-
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-function DatoRapido({
-  icon,
-  titulo,
-  valor,
-}) {
-  return (
-    <div className="bg-black border border-zinc-800 rounded-xl p-3">
-
-      <div className="flex items-center gap-2 text-zinc-500 text-xs mb-1">
-
-        <span className="text-yellow-500">
-          {icon}
-        </span>
-
-        {titulo}
-
-      </div>
-
-      <p className="text-zinc-300 text-sm break-words">
-        {valor}
-      </p>
-
-    </div>
-  );
-}
-
-function InfoPrecioCaja({
-  titulo,
-  valor,
-}) {
-  return (
-    <div className="bg-black border border-zinc-700 rounded-xl p-3">
-
-      <p className="text-xs text-zinc-500">
-        {titulo}
-      </p>
-
-      <p className="text-white font-semibold mt-1">
-        {valor}
-      </p>
-
-    </div>
-  );
-}
-
-function Detalle({
-  titulo,
-  valor,
-}) {
-  return (
-    <div className="grid md:grid-cols-[220px_1fr] gap-1 md:gap-4">
-
-      <span className="text-zinc-500 text-sm">
-        {titulo}
-      </span>
-
-      <span className="text-zinc-200 text-sm break-words">
-        {valor ||
-          "No especificado"}
-      </span>
-
-    </div>
-  );
-}
-
-function CampoAdmin({
-  icon,
-  titulo,
+function Campo({
   children,
 }) {
   return (
     <div>
-
-      <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
-
-        <span className="text-yellow-500">
-          {icon}
-        </span>
-
-        {titulo}
-
-      </label>
-
       {children}
-
     </div>
   );
 }
 
-function CajaCalculo({
+function Label({
+  children,
+  icon,
+}) {
+  return (
+    <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
+
+      <span className="text-yellow-500">
+        {icon}
+      </span>
+
+      {children}
+
+    </label>
+  );
+}
+
+function ResumenItem({
   titulo,
   valor,
 }) {
   return (
-    <div className="bg-black border border-zinc-700 rounded-2xl p-4">
+    <div className="grid sm:grid-cols-[190px_1fr] gap-1 sm:gap-4 text-sm">
 
-      <p className="text-xs text-zinc-500">
+      <span className="text-zinc-500">
         {titulo}
-      </p>
+      </span>
 
-      <p className="text-lg text-white font-bold mt-1">
+      <span className="text-zinc-200 break-words">
         {valor}
-      </p>
+      </span>
 
     </div>
   );
 }
 
-function BloqueImagenes({
-  titulo,
-  imagenes,
-  openModal,
-}) {
-  return (
-    <div>
+/* ======================================================
+   ESTILO INPUT
+====================================================== */
 
-      <p className="text-sm text-zinc-400 mb-3 flex items-center gap-2">
+const inputClass = `
+  w-full
 
-        <FaImage className="text-yellow-500" />
+  p-4
 
-        {titulo}
+  rounded-2xl
 
-      </p>
+  bg-zinc-800
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+  border
+  border-zinc-700
 
-        {imagenes.map(
-          (
-            imagen,
-            index
-          ) => (
-            <img
-              key={
-                index
-              }
-              src={
-                imagen
-              }
-              alt={
-                titulo
-              }
-              onClick={() =>
-                openModal(
-                  imagenes,
-                  index
-                )
-              }
-              className="
-                w-full
-                aspect-square
-                object-cover
-                rounded-2xl
-                border
-                border-zinc-700
-                cursor-zoom-in
-                hover:border-yellow-500/60
-                hover:opacity-90
-                transition
-              "
-            />
-          )
-        )}
+  text-white
 
-      </div>
+  placeholder:text-zinc-600
 
-    </div>
-  );
-}
+  outline-none
 
-export default CotizacionesAdmin;
+  focus:border-yellow-500
+  focus:ring-2
+  focus:ring-yellow-500/10
+
+  transition
+`;
+
+export default Cotizaciones;

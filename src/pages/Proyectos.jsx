@@ -200,19 +200,10 @@ function Proyectos() {
   // ======================================================
 
   useEffect(() => {
+    // Sin sesión no mostramos favoritos de ningún navegador
+    // ni reutilizamos información de otra cuenta.
     if (!usuario) {
-      try {
-        const guardados =
-          JSON.parse(
-            localStorage.getItem("favoritos")
-          ) ?? [];
-
-        setFavoritos(guardados);
-
-      } catch {
-        setFavoritos([]);
-      }
-
+      setFavoritos([]);
       return;
     }
 
@@ -240,15 +231,6 @@ function Proyectos() {
           );
 
         setFavoritos(data);
-
-        localStorage.setItem(
-          "favoritos",
-          JSON.stringify(data)
-        );
-
-        window.dispatchEvent(
-          new Event("storage")
-        );
       },
 
       (error) => {
@@ -256,6 +238,8 @@ function Proyectos() {
           "Error cargando favoritos:",
           error
         );
+
+        setFavoritos([]);
       }
     );
 

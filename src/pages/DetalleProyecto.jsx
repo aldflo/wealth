@@ -1,13 +1,33 @@
-import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { db } from "../firebase.config";
-import { doc, getDoc } from "firebase/firestore";
+import { useNavigate, useParams } from "react-router-dom";
+
+import { db, auth } from "../firebase.config";
 
 import {
-  FaPhone,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from "firebase/firestore";
+
+import {
+  onAuthStateChanged,
+} from "firebase/auth";
+
+import {
+  FaArrowLeft,
+  FaFileInvoiceDollar,
   FaMapMarkerAlt,
+  FaPhone,
   FaWhatsapp,
-  FaUser,
+  FaImages,
+  FaHeart,
+  FaRegHeart,
 } from "react-icons/fa";
 
 function DetalleProyecto() {
@@ -17,310 +37,923 @@ function DetalleProyecto() {
   const [proyecto, setProyecto] = useState(null);
   const [index, setIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+
   const [modalAbierto, setModalAbierto] = useState(false);
-const [imagenModal, setImagenModal] = useState("");
-const [touchStart, setTouchStart] = useState(null);
-const [touchEnd, setTouchEnd] = useState(null);
+  const [imagenModal, setImagenModal] = useState("");
 
-const minSwipeDistance = 50;
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
 
-const onTouchStart = (e) => {
-  setTouchEnd(null);
-  setTouchStart(e.targetTouches[0].clientX);
-};
+  const [
+    usuario,
+    setUsuario,
+  ] = useState(null);
 
-const onTouchMove = (e) => {
-  setTouchEnd(e.targetTouches[0].clientX);
-};
+  const [
+    esFavorito,
+    setEsFavorito,
+  ] = useState(false);
 
-const onTouchEnd = () => {
-  if (!touchStart || !touchEnd) return;
+  const [
+    guardandoFavorito,
+    setGuardandoFavorito,
+  ] = useState(false);
 
-  const distance = touchStart - touchEnd;
+  const minSwipeDistance = 50;
 
-  if (distance > minSwipeDistance) {
-    siguienteImagen();
-  }
+  // ======================================================
+  // CARGAR PROYECTO
+  // ======================================================
 
-  if (distance < -minSwipeDistance) {
-    anteriorImagen();
-  }
-};
   useEffect(() => {
-    const fetch = async () => {
-      const ref = doc(db, "proyectos", id);
-      const snap = await getDoc(ref);
+    const cargarProyecto = async () => {
+      try {
+        setLoading(true);
 
-      setProyecto(
-        snap.exists() ? { id: snap.id, ...snap.data() } : null
-      );
+        const ref = doc(
+          db,
+          "proyectos",
+          id
+        );
 
-      setLoading(false);
+        const snap =
+          await getDoc(ref);
+
+        if (snap.exists()) {
+          setProyecto({
+            id: snap.id,
+            ...snap.data(),
+          });
+        } else {
+          setProyecto(null);
+        }
+      } catch (error) {
+        console.error(
+          "Error cargando proyecto:",
+          error
+        );
+
+        setProyecto(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetch();
+    cargarProyecto();
   }, [id]);
+
+  // ======================================================
+  // SESIÓN
+  // ======================================================
+
+  useEffect(() => {
+    const unsub =
+      onAuthStateChanged(
+        auth,
+        (user) => {
+          setUsuario(
+            user || null
+          );
+
+          if (!user) {
+            setEsFavorito(
+              false
+            );
+          }
+        }
+      );
+
+    return () => unsub();
+  }, []);
+
+  // ======================================================
+  // FAVORITO DEL USUARIO ACTUAL
+  // ======================================================
+
+  useEffect(() => {
+    if (
+      !usuario ||
+      !id
+    ) {
+      setEsFavorito(
+        false
+      );
+
+      return;
+    }
+
+    const q = query(
+      collection(
+        db,
+        "favoritos"
+      ),
+      where(
+        "uid",
+        "==",
+        usuario.uid
+      ),
+      where(
+        "proyectoId",
+        "==",
+        id
+      )
+    );
+
+    const unsub =
+      onSnapshot(
+        q,
+        (snapshot) => {
+          setEsFavorito(
+            !snapshot.empty
+          );
+        },
+        (error) => {
+          console.error(
+            "Error verificando favorito:",
+            error
+          );
+        }
+      );
+
+    return () => unsub();
+
+  }, [
+    usuario,
+    id,
+  ]);
+
+  // ======================================================
+  // LOADING
+  // ======================================================
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        Cargando...
+      <div className="min-h-[70vh] bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-11 h-11 border-4 border-zinc-800 border-t-yellow-500 rounded-full animate-spin mx-auto" />
+
+          <p className="text-zinc-500 mt-4">
+            Cargando proyecto...
+          </p>
+        </div>
       </div>
     );
   }
+
+  // ======================================================
+  // NO ENCONTRADO
+  // ======================================================
 
   if (!proyecto) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        Proyecto no encontrado
+      <div className="min-h-[70vh] bg-black text-white flex items-center justify-center px-5">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold">
+            Proyecto no encontrado
+          </h1>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate("/proyectos")
+            }
+            className="mt-5 bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3 rounded-xl font-bold transition"
+          >
+            Volver a proyectos
+          </button>
+        </div>
       </div>
     );
   }
 
-  const imagenes =
-    Array.isArray(proyecto.imagenes) && proyecto.imagenes.length > 0
-      ? proyecto.imagenes
-      : [proyecto.imagen];
-// 👉 Cambiar imagen
-const siguienteImagen = () => {
-  setIndex((prev) => (prev + 1) % imagenes.length);
-};
+  // ======================================================
+  // IMÁGENES
+  // ======================================================
 
-const anteriorImagen = () => {
-  setIndex((prev) =>
-    prev === 0 ? imagenes.length - 1 : prev - 1
-  );
-};
-  // 👉 WHATSAPP
-  const enviarWhatsApp = () => {
-    const telefono = "529811574778";
-    const mensaje = `Hola 👋, me gustaría cotizar el proyecto: *${proyecto.nombre}*`;
-    const url = `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`;
+  const imagenes = [
+    ...new Set(
+      [
+        ...(Array.isArray(
+          proyecto.imagenes
+        )
+          ? proyecto.imagenes
+          : []),
 
-    window.open(url, "_blank");
+        proyecto.imagen,
+      ].filter(Boolean)
+    ),
+  ];
+
+  const imagenPrincipal =
+    imagenes[index] ||
+    null;
+
+  // ======================================================
+  // CAMBIAR IMAGEN
+  // ======================================================
+
+  const siguienteImagen = () => {
+    if (imagenes.length <= 1) {
+      return;
+    }
+
+    setIndex(
+      (prev) =>
+        (prev + 1) %
+        imagenes.length
+    );
   };
 
-  // 👉 MAPS
-  const abrirUbicacion = () => {
-    const url =
-      "https://www.google.com/maps/search/?api=1&query=Av+Aviaci%C3%B3n+89+H%C3%A9roe+de+Nacozari+Campeche";
+  const anteriorImagen = () => {
+    if (imagenes.length <= 1) {
+      return;
+    }
 
-    window.open(url, "_blank");
+    setIndex((prev) =>
+      prev === 0
+        ? imagenes.length - 1
+        : prev - 1
+    );
   };
 
-  // 🔵 LOGIN / REGISTER
-  const handleAuth = () => {
-    navigate("/login", {
-      state: {
-        from: "detalleProyecto",
-        proyectoId: proyecto.id,
+  // ======================================================
+  // SWIPE CELULAR
+  // ======================================================
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null);
+
+    setTouchStart(
+      e.targetTouches[0].clientX
+    );
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(
+      e.targetTouches[0].clientX
+    );
+  };
+
+  const onTouchEnd = () => {
+    if (
+      touchStart === null ||
+      touchEnd === null
+    ) {
+      return;
+    }
+
+    const distance =
+      touchStart - touchEnd;
+
+    if (
+      distance >
+      minSwipeDistance
+    ) {
+      siguienteImagen();
+    }
+
+    if (
+      distance <
+      -minSwipeDistance
+    ) {
+      anteriorImagen();
+    }
+
+    setTouchStart(null);
+    setTouchEnd(null);
+  };
+
+  // ======================================================
+  // ABRIR FOTO
+  // ======================================================
+
+  const abrirImagen = (
+    imagen
+  ) => {
+    if (!imagen) {
+      return;
+    }
+
+    setImagenModal(imagen);
+    setModalAbierto(true);
+  };
+
+  // ======================================================
+  // FAVORITO
+  // ======================================================
+
+  const toggleFavorito =
+    async () => {
+      if (!usuario) {
+        navigate(
+          "/login"
+        );
+
+        return;
       }
-    });
-  };
+
+      const documentoId =
+        `${usuario.uid}_${proyecto.id}`;
+
+      try {
+        setGuardandoFavorito(
+          true
+        );
+
+        if (esFavorito) {
+          await deleteDoc(
+            doc(
+              db,
+              "favoritos",
+              documentoId
+            )
+          );
+
+          return;
+        }
+
+        await setDoc(
+          doc(
+            db,
+            "favoritos",
+            documentoId
+          ),
+          {
+            uid:
+              usuario.uid,
+
+            usuario:
+              usuario.email ||
+              null,
+
+            proyectoId:
+              proyecto.id,
+
+            id:
+              proyecto.id,
+
+            titulo:
+              proyecto.nombre ||
+              "",
+
+            nombre:
+              proyecto.nombre ||
+              "",
+
+            imagen:
+              imagenes[0] ||
+              "",
+
+            imagenes,
+
+            categoria:
+              proyecto.categoria ||
+              "",
+
+            descripcion:
+              proyecto.descripcion ||
+              "",
+
+            fechaGuardado:
+              serverTimestamp(),
+          }
+        );
+
+      } catch (error) {
+        console.error(
+          "Error actualizando favorito:",
+          error
+        );
+
+        alert(
+          "No se pudo actualizar el favorito."
+        );
+
+      } finally {
+        setGuardandoFavorito(
+          false
+        );
+      }
+    };
+
+  // ======================================================
+  // WHATSAPP
+  // ======================================================
+
+  const contactarWhatsApp =
+    () => {
+      const telefono =
+        "529811574778";
+
+      const mensaje =
+        `Hola 👋, vi el proyecto "${proyecto.nombre}" en la página de Wealth y me gustaría recibir información.`;
+
+      const url =
+        `https://wa.me/${telefono}?text=${encodeURIComponent(
+          mensaje
+        )}`;
+
+      window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    };
+
+  // ======================================================
+  // COTIZAR ESTE PROYECTO
+  // ======================================================
+  //
+  // CrearCotizacion ya recibe:
+  // location.state?.proyecto
+  //
+  // Por eso enviamos el proyecto COMPLETO.
+  // Así conserva:
+  // - id
+  // - nombre
+  // - categoría
+  // - descripción
+  // - imagen
+  // - imagenes[]
+  //
+  // CrearCotizacion lo utilizará como proyecto de referencia.
+  // ======================================================
+
+  const cotizarProyecto =
+    () => {
+      navigate(
+        "/crear-cotizacion",
+        {
+          state: {
+            proyecto: {
+              ...proyecto,
+
+              // Dejamos explícitamente el ID
+              // para que quede guardada la referencia.
+              id:
+                proyecto.id,
+
+              proyectoReferenciaId:
+                proyecto.id,
+
+              proyectoReferenciaNombre:
+                proyecto.nombre ||
+                "",
+
+              proyectoReferenciaCategoria:
+                proyecto.categoria ||
+                "",
+            },
+          },
+        }
+      );
+    };
+
+  // ======================================================
+  // MAPS
+  // ======================================================
+
+  const abrirUbicacion =
+    () => {
+      const url =
+        "https://www.google.com/maps/search/?api=1&query=Av+Aviacion+89+Heroe+de+Nacozari+Campeche";
+
+      window.open(
+        url,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    };
 
   return (
     <div className="min-h-screen bg-black text-white">
 
+      {/* ================================================= */}
       {/* NAV */}
-      <div className="flex justify-between items-center px-6 py-5 border-b border-white/10">
+      {/* ================================================= */}
+
+      <div className="flex items-center justify-between gap-4 px-5 md:px-8 py-5 border-b border-white/10">
 
         <button
-          onClick={() => navigate(-1)}
-          className="text-zinc-400 hover:text-white transition"
+          type="button"
+          onClick={() =>
+            navigate(-1)
+          }
+          className="flex items-center gap-2 text-zinc-400 hover:text-white transition"
         >
-          ← Volver
+          <FaArrowLeft />
+          Volver
         </button>
 
-        <h1 className="font-semibold">{proyecto.nombre}</h1>
-
-        
+        <h1 className="font-semibold text-right truncate">
+          {proyecto.nombre}
+        </h1>
 
       </div>
 
+      {/* ================================================= */}
       {/* MAIN */}
-      <div className="grid md:grid-cols-2 gap-10 max-w-7xl mx-auto px-6 py-12">
+      {/* ================================================= */}
 
-        {/* IMAGEN */}
-       <div className="space-y-4">
+      <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 max-w-7xl mx-auto px-5 md:px-8 py-8 md:py-12">
 
-  <div
-  className="relative bg-zinc-900 rounded-3xl overflow-hidden"
-  onTouchStart={onTouchStart}
-  onTouchMove={onTouchMove}
-  onTouchEnd={onTouchEnd}
->
-  {/* CONTADOR */}
-  <div className="absolute top-4 right-4 z-20 bg-black/70 backdrop-blur-md text-white text-sm px-3 py-1 rounded-full">
-    {index + 1} / {imagenes.length}
-  </div>
+        {/* ================================================= */}
+        {/* IMÁGENES */}
+        {/* ================================================= */}
 
-  {/* FLECHA IZQUIERDA */}
-  <button
-    onClick={anteriorImagen}
-    className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 items-center justify-center text-white text-2xl transition"
-  >
-    ❮
-  </button>
+        <div className="space-y-4">
 
-  {/* FLECHA DERECHA */}
-  <button
-    onClick={siguienteImagen}
-    className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 items-center justify-center text-white text-2xl transition"
-  >
-    ❯
-  </button>
+          <div
+            className="relative overflow-hidden bg-zinc-950 border border-zinc-800 rounded-3xl min-h-[360px] md:min-h-[520px] flex items-center justify-center"
+            onTouchStart={
+              onTouchStart
+            }
+            onTouchMove={
+              onTouchMove
+            }
+            onTouchEnd={
+              onTouchEnd
+            }
+          >
 
-  <img
-    src={imagenes[index]}
-    alt={proyecto.nombre}
-    onClick={() => {
-  setIndex(i);
-}}
-    className="w-full h-[500px] object-contain p-6 cursor-zoom-in select-none"
-    draggable={false}
-  />
-</div>
+            {imagenPrincipal ? (
+              <img
+                src={
+                  imagenPrincipal
+                }
+                alt={
+                  proyecto.nombre
+                }
+                onClick={() =>
+                  abrirImagen(
+                    imagenPrincipal
+                  )
+                }
+                className="w-full h-[420px] md:h-[560px] object-contain p-4 md:p-6 cursor-zoom-in select-none"
+                draggable={
+                  false
+                }
+              />
+            ) : (
+              <div className="text-zinc-600 flex flex-col items-center gap-3">
+                <FaImages size={38} />
+                <p>
+                  Sin imágenes
+                </p>
+              </div>
+            )}
 
+            {/* FLECHA IZQUIERDA */}
+
+            {imagenes.length >
+              1 && (
+              <button
+                type="button"
+                onClick={
+                  anteriorImagen
+                }
+                className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 border border-white/10 items-center justify-center text-white text-2xl transition"
+              >
+                ❮
+              </button>
+            )}
+
+            {/* FLECHA DERECHA */}
+
+            {imagenes.length >
+              1 && (
+              <button
+                type="button"
+                onClick={
+                  siguienteImagen
+                }
+                className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 border border-white/10 items-center justify-center text-white text-2xl transition"
+              >
+                ❯
+              </button>
+            )}
+
+            {/* CONTADOR */}
+
+            {imagenes.length >
+              1 && (
+              <span className="absolute bottom-4 right-4 bg-black/80 border border-white/10 px-3 py-1.5 rounded-full text-xs">
+                {index + 1} /{" "}
+                {
+                  imagenes.length
+                }
+              </span>
+            )}
+
+          </div>
 
           {/* MINI GALERÍA */}
-          <div className="flex gap-3 overflow-x-auto">
 
-            {imagenes.map((img, i) => (
-              <img
-                key={i}
-                src={img}
-                alt={`${proyecto.nombre} ${i + 1}`}
-               onClick={() => {
-  setIndex(i);
-  setImagenModal(img);
-  setModalAbierto(true);
-}}
-                className={`w-24 h-20 object-cover rounded-xl cursor-pointer border-2 transition ${
-                  i === index
-                    ? "border-yellow-500"
-                    : "border-transparent opacity-60"
-                }`}
-              />
-            ))}
+          {imagenes.length >
+            1 && (
+            <div className="flex gap-3 overflow-x-auto pb-2">
 
-          </div>
+              {imagenes.map(
+                (img, i) => (
+                  <button
+                    type="button"
+                    key={`${img}-${i}`}
+                    onClick={() =>
+                      setIndex(i)
+                    }
+                    className="shrink-0"
+                  >
+                    <img
+                      src={img}
+                      alt={`${proyecto.nombre} ${
+                        i + 1
+                      }`}
+                      className={`w-24 h-20 object-cover rounded-xl cursor-pointer border-2 transition ${
+                        i === index
+                          ? "border-yellow-500 opacity-100"
+                          : "border-transparent opacity-55 hover:opacity-90"
+                      }`}
+                    />
+                  </button>
+                )
+              )}
+
+            </div>
+          )}
+
         </div>
 
-        {/* INFO */}
+        {/* ================================================= */}
+        {/* INFORMACIÓN */}
+        {/* ================================================= */}
+
         <div className="space-y-6">
 
-          <span className="bg-yellow-500 text-black px-4 py-2 rounded-full text-sm font-bold">
-            {proyecto.categoria}
-          </span>
+          {proyecto.categoria && (
+            <span className="inline-flex bg-yellow-500 text-black px-4 py-2 rounded-full text-sm font-bold">
+              {
+                proyecto.categoria
+              }
+            </span>
+          )}
 
-          <h2 className="text-4xl font-bold">
-            {proyecto.nombre}
-          </h2>
+          <div>
 
-          <p className="text-zinc-400 text-lg leading-relaxed">
-            {proyecto.descripcion}
-          </p>
+            <h2 className="text-3xl md:text-5xl font-bold leading-tight">
+              {
+                proyecto.nombre
+              }
+            </h2>
 
-          {/* BOTÓN WHATSAPP */}
-          <button
-            onClick={enviarWhatsApp}
-            className="w-full flex items-center justify-center gap-3 bg-green-500 hover:bg-green-600 text-white py-4 rounded-2xl font-bold transition"
-          >
-            <FaWhatsapp size={22} />
-            Solicitar cotización
-          </button>
+            {proyecto.descripcion && (
+              <p className="text-zinc-400 text-base md:text-lg leading-relaxed mt-5 whitespace-pre-line">
+                {
+                  proyecto.descripcion
+                }
+              </p>
+            )}
 
-          {/* CONTACTO */}
-          <div className="border border-zinc-800 rounded-2xl p-5 space-y-4">
+          </div>
 
-            <div className="flex items-center gap-3 text-zinc-300">
-              <FaPhone />
-              <span>+52 981 157 4778</span>
-            </div>
+          {/* =============================================== */}
+          {/* ACCIONES */}
+          {/* =============================================== */}
 
-            <div className="flex items-center gap-3 text-zinc-300">
-              <FaWhatsapp />
-              <span>WhatsApp disponible 24/7</span>
-            </div>
+          <div className="grid sm:grid-cols-3 gap-3 pt-2">
 
-            <div
-              onClick={abrirUbicacion}
-              className="flex items-center gap-3 text-zinc-300 cursor-pointer hover:text-yellow-400 transition"
+            {/* COTIZAR */}
+
+            <button
+              type="button"
+              onClick={
+                cotizarProyecto
+              }
+              className="w-full flex items-center justify-center gap-3 bg-yellow-500 hover:bg-yellow-400 text-black py-4 px-5 rounded-2xl font-bold transition"
             >
-              <FaMapMarkerAlt />
-              <span>Ver ubicación en mapa</span>
+              <FaFileInvoiceDollar size={20} />
+
+              Cotizar este proyecto
+            </button>
+
+            {/* FAVORITO */}
+
+            <button
+              type="button"
+              onClick={
+                toggleFavorito
+              }
+              disabled={
+                guardandoFavorito
+              }
+              className={`w-full flex items-center justify-center gap-3 py-4 px-5 rounded-2xl font-bold transition border ${
+                esFavorito
+                  ? "bg-pink-500/10 border-pink-500/40 text-pink-400 hover:bg-pink-500/20"
+                  : "bg-zinc-900 border-zinc-700 text-white hover:border-pink-500/40 hover:text-pink-400"
+              } disabled:opacity-50`}
+            >
+              {esFavorito ? (
+                <FaHeart size={20} />
+              ) : (
+                <FaRegHeart size={20} />
+              )}
+
+              {esFavorito
+                ? "En favoritos"
+                : "Guardar favorito"}
+            </button>
+
+            {/* WHATSAPP */}
+
+            <button
+              type="button"
+              onClick={
+                contactarWhatsApp
+              }
+              className="w-full flex items-center justify-center gap-3 bg-green-600 hover:bg-green-500 text-white py-4 px-5 rounded-2xl font-bold transition"
+            >
+              <FaWhatsapp size={21} />
+
+              Contactar por WhatsApp
+            </button>
+
+          </div>
+
+          {/* EXPLICACIÓN */}
+
+          <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
+            <p className="text-sm text-zinc-300">
+              ¿Te interesa este diseño?{" "}
+              <strong className="text-yellow-400">
+                Cotizar este proyecto
+              </strong>{" "}
+              abrirá la solicitud de cotización usando este trabajo como referencia.
+            </p>
+          </div>
+
+          {/* ================================================= */}
+          {/* CONTACTO */}
+          {/* ================================================= */}
+
+          <div className="border border-zinc-800 bg-zinc-950 rounded-2xl p-5 space-y-4">
+
+            <p className="font-bold text-white">
+              Contacto Wealth
+            </p>
+
+            <a
+              href="tel:+529811574778"
+              className="flex items-center gap-3 text-zinc-300 hover:text-yellow-400 transition"
+            >
+              <FaPhone className="text-yellow-500" />
+
+              <span>
+                +52 981 157 4778
+              </span>
+            </a>
+
+            <button
+              type="button"
+              onClick={
+                contactarWhatsApp
+              }
+              className="w-full flex items-center gap-3 text-zinc-300 hover:text-green-400 transition text-left"
+            >
+              <FaWhatsapp className="text-green-500" />
+
+              <span>
+                WhatsApp disponible
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                abrirUbicacion
+              }
+              className="w-full flex items-center gap-3 text-zinc-300 hover:text-yellow-400 transition text-left"
+            >
+              <FaMapMarkerAlt className="text-yellow-500" />
+
+              <span>
+                Ver ubicación en mapa
+              </span>
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* ================================================= */}
+      {/* GALERÍA DE DISEÑOS */}
+      {/* ================================================= */}
+
+      {Array.isArray(
+        proyecto.galeria
+      ) &&
+        proyecto.galeria.length >
+          0 && (
+        <section className="max-w-7xl mx-auto px-5 md:px-8 pb-16">
+
+          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+
+            <div>
+
+              <p className="text-xs uppercase tracking-[0.22em] text-yellow-500 font-semibold">
+                Más inspiración
+              </p>
+
+              <h3 className="text-2xl font-bold mt-1">
+                Galería de diseños
+              </h3>
+
             </div>
 
-          </div>
-
-        </div>
-        
-           </div>
-
-      {/* GALERÍA DE DISEÑOS */}
-      {proyecto.galeria && proyecto.galeria.length > 0 && (
-        <div className="max-w-7xl mx-auto px-6 pb-16">
-
-        <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
-
-  <p className="text-zinc-400">
-    Explora otros diseños y acabados que también podemos fabricar
-    y personalizar para tu proyecto.
-  </p>
-
-  <button
-  onClick={() => navigate("/galeria")}
-  className="bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 px-5 py-2 rounded-xl font-bold transition-all duration-300 flex items-center gap-2 shadow-lg hover:shadow-yellow-500/20"
->
-  Ver galería completa
-</button>
-
-</div>
-
-         <div className="flex gap-6 overflow-x-auto pb-3 snap-x snap-mandatory">
-
-            {proyecto.galeria.map((img, i) => (
-              <div
-                key={i}
-               className="min-w-[280px] md:min-w-[320px] overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 flex-shrink-0"
-              >
-               <img
-  src={img}
-  alt={`Diseño ${i + 1}`}
-  onClick={() => {
-    setImagenModal(img);
-    setModalAbierto(true);
-  }}
-  className="w-full h-64 object-cover hover:scale-110 transition duration-300 cursor-zoom-in"
-/>
-              </div>
-            ))}
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  "/galeria"
+                )
+              }
+              className="bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 px-5 py-3 rounded-xl font-bold transition"
+            >
+              Ver galería completa
+            </button>
 
           </div>
 
-        </div>
+          <div className="flex gap-5 overflow-x-auto pb-3 snap-x snap-mandatory">
+
+            {proyecto.galeria.map(
+              (img, i) => (
+                <div
+                  key={`${img}-${i}`}
+                  className="min-w-[280px] md:min-w-[320px] overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 flex-shrink-0 snap-start"
+                >
+                  <img
+                    src={img}
+                    alt={`Diseño ${
+                      i + 1
+                    }`}
+                    onClick={() =>
+                      abrirImagen(
+                        img
+                      )
+                    }
+                    className="w-full h-64 object-cover hover:scale-105 transition duration-300 cursor-zoom-in"
+                  />
+                </div>
+              )
+            )}
+
+          </div>
+
+        </section>
       )}
-      {/* MODAL DE IMAGEN */}
-      {modalAbierto && (
+
+      {/* ================================================= */}
+      {/* MODAL IMAGEN */}
+      {/* ================================================= */}
+
+      {modalAbierto &&
+        imagenModal && (
         <div
-          onClick={() => setModalAbierto(false)}
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-6 cursor-zoom-out"
+          onClick={() =>
+            setModalAbierto(
+              false
+            )
+          }
+          className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-5 cursor-zoom-out"
         >
+
           <img
-            src={imagenModal}
+            src={
+              imagenModal
+            }
             alt="Vista previa"
-            onClick={(e) => e.stopPropagation()}
-            className="max-w-full max-h-full rounded-2xl object-contain"
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+            className="max-w-full max-h-[90vh] rounded-2xl object-contain"
           />
 
           <button
-            onClick={() => setModalAbierto(false)}
-            className="absolute top-6 right-6 text-white text-5xl hover:text-yellow-500 transition"
+            type="button"
+            onClick={() =>
+              setModalAbierto(
+                false
+              )
+            }
+            className="absolute top-6 right-6 w-12 h-12 bg-zinc-900 border border-zinc-700 rounded-xl text-white text-3xl hover:text-yellow-500 hover:border-yellow-500/50 transition flex items-center justify-center"
           >
             ×
           </button>
+
         </div>
       )}
+
     </div>
   );
 }

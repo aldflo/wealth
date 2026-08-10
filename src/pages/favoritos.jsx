@@ -1,132 +1,582 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import {
+  auth,
+  db,
+} from "../firebase.config";
+
+import {
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
+  where,
+  writeBatch,
+} from "firebase/firestore";
+
+import {
+  onAuthStateChanged,
+} from "firebase/auth";
+
+import {
+  FaArrowLeft,
+  FaEye,
+  FaFileInvoiceDollar,
   FaHeart,
   FaTrash,
   FaWhatsapp,
-  FaArrowLeft,
 } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
 
 function Favoritos() {
-  const [favoritos, setFavoritos] = useState([]);
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
+
+  const [
+    usuario,
+    setUsuario,
+  ] = useState(null);
+
+  const [
+    cargando,
+    setCargando,
+  ] = useState(true);
+
+  const [
+    favoritos,
+    setFavoritos,
+  ] = useState([]);
+
+  const [
+    eliminando,
+    setEliminando,
+  ] = useState(false);
+
+  // ======================================================
+  // SESIÓN
+  // ======================================================
 
   useEffect(() => {
-    const data =
-      JSON.parse(localStorage.getItem("favoritos")) || [];
+    const unsub =
+      onAuthStateChanged(
+        auth,
+        (user) => {
+          setUsuario(
+            user || null
+          );
 
-    setFavoritos(data);
+          if (!user) {
+            setFavoritos([]);
+            setCargando(false);
+          }
+        }
+      );
+
+    return () => unsub();
   }, []);
 
-  const eliminarFavorito = (id) => {
-    const nuevos = favoritos.filter(
-      (item) => item.id !== id
+  // ======================================================
+  // FAVORITOS FIRESTORE DEL USUARIO ACTUAL
+  // ======================================================
+
+  useEffect(() => {
+    if (!usuario) {
+      return;
+    }
+
+    setCargando(true);
+
+    const q = query(
+      collection(
+        db,
+        "favoritos"
+      ),
+      where(
+        "uid",
+        "==",
+        usuario.uid
+      )
     );
 
-    setFavoritos(nuevos);
+    const unsub =
+      onSnapshot(
+        q,
+        (snapshot) => {
+          const data =
+            snapshot.docs.map(
+              (documento) => ({
+                firebaseId:
+                  documento.id,
 
-    localStorage.setItem(
-      "favoritos",
-      JSON.stringify(nuevos)
+                ...documento.data(),
+              })
+            );
+
+          setFavoritos(
+            data
+          );
+
+          setCargando(
+            false
+          );
+        },
+        (error) => {
+          console.error(
+            "Error cargando favoritos:",
+            error
+          );
+
+          setFavoritos(
+            []
+          );
+
+          setCargando(
+            false
+          );
+        }
+      );
+
+    return () => unsub();
+
+  }, [usuario]);
+
+  // ======================================================
+  // HELPERS
+  // ======================================================
+
+  const obtenerNombre = (
+    proyecto
+  ) => {
+    return (
+      proyecto.nombre ||
+      proyecto.titulo ||
+      "Proyecto Wealth"
     );
   };
 
-  const cotizarProyecto = (proyecto) => {
-    const mensaje = encodeURIComponent(
-      `Hola, me interesa cotizar el proyecto:\n\n${proyecto.titulo}`
+  const obtenerImagen = (
+    proyecto
+  ) => {
+    if (
+      Array.isArray(
+        proyecto.imagenes
+      ) &&
+      proyecto.imagenes.length >
+        0
+    ) {
+      return proyecto.imagenes[0];
+    }
+
+    return (
+      proyecto.imagen ||
+      null
     );
+  };
+
+  const obtenerProyectoId = (
+    proyecto
+  ) => {
+    return (
+      proyecto.proyectoId ||
+      proyecto.id ||
+      null
+    );
+  };
+
+  const favoritosNormalizados =
+    useMemo(() => {
+      return favoritos.map(
+        (proyecto) => ({
+          ...proyecto,
+
+          id:
+            obtenerProyectoId(
+              proyecto
+            ),
+
+          nombre:
+            obtenerNombre(
+              proyecto
+            ),
+
+          imagen:
+            obtenerImagen(
+              proyecto
+            ),
+        })
+      );
+    }, [
+      favoritos,
+    ]);
+
+  // ======================================================
+  // ELIMINAR FAVORITO
+  // ======================================================
+
+  const eliminarFavorito =
+    async (
+      proyecto
+    ) => {
+      if (
+        !usuario
+      ) {
+        return;
+      }
+
+      const firebaseId =
+        proyecto.firebaseId ||
+        `${usuario.uid}_${obtenerProyectoId(
+          proyecto
+        )}`;
+
+      try {
+        await deleteDoc(
+          doc(
+            db,
+            "favoritos",
+            firebaseId
+          )
+        );
+      } catch (error) {
+        console.error(
+          "Error eliminando favorito:",
+          error
+        );
+
+        alert(
+          "No se pudo quitar el proyecto de favoritos."
+        );
+      }
+    };
+
+  // ======================================================
+  // ELIMINAR TODOS
+  // ======================================================
+
+  const eliminarTodos =
+    async () => {
+      if (
+        !usuario ||
+        favoritos.length ===
+          0
+      ) {
+        return;
+      }
+
+      const confirmar =
+        window.confirm(
+          "¿Quitar todos los proyectos de Favoritos?"
+        );
+
+      if (!confirmar) {
+        return;
+      }
+
+      try {
+        setEliminando(
+          true
+        );
+
+        const batch =
+          writeBatch(db);
+
+        favoritos.forEach(
+          (proyecto) => {
+            const firebaseId =
+              proyecto.firebaseId ||
+              `${usuario.uid}_${obtenerProyectoId(
+                proyecto
+              )}`;
+
+            batch.delete(
+              doc(
+                db,
+                "favoritos",
+                firebaseId
+              )
+            );
+          }
+        );
+
+        await batch.commit();
+
+      } catch (error) {
+        console.error(
+          "Error vaciando favoritos:",
+          error
+        );
+
+        alert(
+          "No se pudieron eliminar todos los favoritos."
+        );
+
+      } finally {
+        setEliminando(
+          false
+        );
+      }
+    };
+
+  // ======================================================
+  // VER DETALLE
+  // ======================================================
+
+  const verProyecto = (
+    proyecto
+  ) => {
+    const id =
+      obtenerProyectoId(
+        proyecto
+      );
+
+    if (!id) {
+      return;
+    }
+
+    navigate(
+      `/proyecto/${id}`
+    );
+  };
+
+  // ======================================================
+  // COTIZAR CON REFERENCIA
+  // ======================================================
+
+  const cotizarProyecto = (
+    proyecto
+  ) => {
+    const id =
+      obtenerProyectoId(
+        proyecto
+      );
+
+    navigate(
+      "/crear-cotizacion",
+      {
+        state: {
+          proyecto: {
+            ...proyecto,
+
+            id,
+
+            nombre:
+              obtenerNombre(
+                proyecto
+              ),
+
+            titulo:
+              obtenerNombre(
+                proyecto
+              ),
+
+            proyectoReferenciaId:
+              id,
+
+            proyectoReferenciaNombre:
+              obtenerNombre(
+                proyecto
+              ),
+
+            proyectoReferenciaCategoria:
+              proyecto.categoria ||
+              proyecto.tipo ||
+              "",
+          },
+        },
+      }
+    );
+  };
+
+  // ======================================================
+  // WHATSAPP
+  // ======================================================
+
+  const contactarWhatsApp = (
+    proyecto
+  ) => {
+    const telefono =
+      "529811574778";
+
+    const nombre =
+      obtenerNombre(
+        proyecto
+      );
+
+    const mensaje =
+      `Hola 👋, vi el proyecto "${nombre}" en la página de Wealth y me gustaría recibir información.`;
 
     window.open(
-      `https://wa.me/529932111111?text=${mensaje}`,
-      "_blank"
+      `https://wa.me/${telefono}?text=${encodeURIComponent(
+        mensaje
+      )}`,
+      "_blank",
+      "noopener,noreferrer"
     );
   };
 
-  const cotizarTodos = () => {
-    if (!favoritos.length) return;
+  const consultarTodosWhatsApp =
+    () => {
+      if (
+        favoritosNormalizados.length ===
+        0
+      ) {
+        return;
+      }
 
-    const lista = favoritos
-      .map((p) => `• ${p.titulo}`)
-      .join("\n");
+      const telefono =
+        "529811574778";
 
-    const mensaje = encodeURIComponent(
-      `Hola, me interesa cotizar los siguientes proyectos:\n\n${lista}`
+      const lista =
+        favoritosNormalizados
+          .map(
+            (proyecto) =>
+              `• ${proyecto.nombre}`
+          )
+          .join("\n");
+
+      const mensaje =
+        `Hola 👋, guardé estos proyectos como favoritos y me gustaría recibir información para compararlos:\n\n${lista}`;
+
+      window.open(
+        `https://wa.me/${telefono}?text=${encodeURIComponent(
+          mensaje
+        )}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+    };
+
+  // ======================================================
+  // NO HAY SESIÓN
+  // ======================================================
+
+  if (!usuario && !cargando) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center px-5">
+
+        <div className="w-full max-w-lg bg-zinc-950 border border-zinc-800 rounded-3xl p-8 text-center">
+
+          <div className="w-20 h-20 rounded-full bg-pink-500/10 flex items-center justify-center mx-auto">
+
+            <FaHeart
+              size={32}
+              className="text-pink-500"
+            />
+
+          </div>
+
+          <h1 className="text-3xl font-bold mt-6">
+            Tus favoritos son personales
+          </h1>
+
+          <p className="text-zinc-500 mt-3 leading-relaxed">
+            Inicia sesión para consultar los proyectos guardados en tu cuenta.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                "/login"
+              )
+            }
+            className="w-full mt-7 bg-yellow-500 hover:bg-yellow-400 text-black py-4 rounded-2xl font-bold transition"
+          >
+            Iniciar sesión
+          </button>
+
+        </div>
+
+      </div>
     );
+  }
 
-    window.open(
-      `https://wa.me/529932111111?text=${mensaje}`,
-      "_blank"
-    );
-  };
+  // ======================================================
+  // RENDER
+  // ======================================================
 
   return (
     <div className="min-h-screen bg-black text-white">
 
-      {/* HERO */}
-      <section className="border-b border-white/10 py-24 px-6">
+      <section className="border-b border-white/10 py-14 md:py-20 px-5 md:px-6">
 
         <div className="max-w-7xl mx-auto">
 
           <button
-            onClick={() => navigate(-1)}
-            className="mb-10 flex items-center gap-3 text-zinc-400 hover:text-white transition"
+            type="button"
+            onClick={() =>
+              navigate(-1)
+            }
+            className="mb-8 flex items-center gap-3 text-zinc-400 hover:text-white transition"
           >
             <FaArrowLeft />
             Volver
           </button>
 
-          <div className="flex flex-col lg:flex-row justify-between gap-8">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
 
             <div>
-              <p className="uppercase tracking-[0.3em] text-yellow-500 text-sm mb-4">
-                Wealth
+
+              <p className="text-xs uppercase tracking-[0.22em] text-yellow-500 font-semibold">
+                Mi cuenta
               </p>
 
-              <h1 className="text-5xl md:text-6xl font-semibold tracking-tight">
-                Mis
-                <span className="text-white/60">
-                  {" "}Favoritos
-                </span>
+              <h1 className="text-4xl md:text-5xl font-bold mt-2">
+                Mis favoritos
               </h1>
 
-              <p className="mt-6 text-zinc-400 max-w-2xl text-lg">
-                Guarda proyectos de construcción,
-                inmobiliaria y aluminio para
-                cotizarlos más adelante.
+              <p className="text-zinc-500 mt-3">
+                Estos proyectos pertenecen únicamente a tu cuenta.
               </p>
+
             </div>
 
-            <div className="bg-zinc-900/70 border border-white/10 rounded-3xl p-8 min-w-[250px]">
+            <div className="bg-zinc-900/70 border border-white/10 rounded-3xl p-6 md:p-7 w-full lg:w-auto lg:min-w-[300px]">
 
-              <p className="text-zinc-500 text-sm">
-                PROYECTOS GUARDADOS
+              <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                Proyectos guardados
               </p>
 
               <h2 className="text-5xl font-bold mt-2">
-                {favoritos.length}
+                {
+                  favoritosNormalizados.length
+                }
               </h2>
 
-              {favoritos.length > 0 && (
-                <button
-                  onClick={cotizarTodos}
-                  className="
-                    mt-6
-                    w-full
-                    bg-green-600
-                    hover:bg-green-700
-                    py-4
-                    rounded-2xl
-                    font-semibold
-                    flex
-                    items-center
-                    justify-center
-                    gap-3
-                    transition
-                  "
-                >
-                  <FaWhatsapp />
-                  Cotizar todos
-                </button>
+              {favoritosNormalizados.length >
+                0 && (
+                <div className="grid gap-3 mt-6">
+
+                  <button
+                    type="button"
+                    onClick={
+                      consultarTodosWhatsApp
+                    }
+                    className="w-full bg-green-600 hover:bg-green-500 py-3.5 px-4 rounded-2xl font-semibold flex items-center justify-center gap-3 transition"
+                  >
+                    <FaWhatsapp />
+                    Consultar todos
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={
+                      eliminando
+                    }
+                    onClick={
+                      eliminarTodos
+                    }
+                    className="w-full bg-black hover:bg-red-500/10 border border-zinc-700 hover:border-red-500/40 text-zinc-400 hover:text-red-400 py-3.5 px-4 rounded-2xl font-semibold flex items-center justify-center gap-3 transition disabled:opacity-50"
+                  >
+                    <FaTrash />
+
+                    {eliminando
+                      ? "Eliminando..."
+                      : "Vaciar favoritos"}
+                  </button>
+
+                </div>
               )}
 
             </div>
@@ -137,43 +587,50 @@ function Favoritos() {
 
       </section>
 
-      {/* CONTENIDO */}
-      <section className="max-w-7xl mx-auto px-6 py-16">
+      <section className="max-w-7xl mx-auto px-5 md:px-6 py-12 md:py-16">
 
-        {favoritos.length === 0 ? (
+        {cargando ? (
 
-          <div className="text-center py-28">
+          <div className="py-24 text-center">
 
-            <div className="w-28 h-28 mx-auto rounded-full bg-zinc-900 flex items-center justify-center mb-8">
+            <div className="w-11 h-11 border-4 border-zinc-800 border-t-yellow-500 rounded-full animate-spin mx-auto" />
+
+            <p className="text-zinc-500 mt-4">
+              Cargando favoritos...
+            </p>
+
+          </div>
+
+        ) : favoritosNormalizados.length ===
+        0 ? (
+
+          <div className="text-center py-20 md:py-28">
+
+            <div className="w-24 h-24 md:w-28 md:h-28 mx-auto rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center mb-8">
+
               <FaHeart
-                size={42}
+                size={40}
                 className="text-pink-500"
               />
+
             </div>
 
-            <h2 className="text-4xl font-semibold">
+            <h2 className="text-3xl md:text-4xl font-semibold">
               No tienes favoritos
             </h2>
 
             <p className="text-zinc-500 mt-4 max-w-lg mx-auto">
-              Explora nuestros proyectos y guarda los
-              diseños que más te gusten para cotizarlos
-              posteriormente.
+              Explora nuestros proyectos y guarda los diseños que más te gusten.
             </p>
 
             <button
-              onClick={() => navigate("/proyectos")}
-              className="
-                mt-10
-                bg-yellow-500
-                hover:bg-yellow-400
-                text-black
-                font-semibold
-                px-8
-                py-4
-                rounded-2xl
-                transition
-              "
+              type="button"
+              onClick={() =>
+                navigate(
+                  "/proyectos"
+                )
+              }
+              className="mt-9 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-8 py-4 rounded-2xl transition"
             >
               Explorar proyectos
             </button>
@@ -182,114 +639,139 @@ function Favoritos() {
 
         ) : (
 
-          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-10">
+          <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-7">
 
-            {favoritos.map((proyecto) => (
+            {favoritosNormalizados.map(
+              (proyecto) => (
+              <article
+                key={
+                  proyecto.firebaseId ||
+                  proyecto.id
+                }
+                className="group bg-zinc-950 border border-zinc-800 hover:border-yellow-500/30 rounded-3xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
+              >
 
-<div
-  key={proyecto.id}
-  onClick={() => navigate(`/proyecto/${proyecto.id}`)}
-  className="
-    cursor-pointer
-    group
-    bg-zinc-900/60
-    border
-    border-white/10
-    rounded-[32px]
-    overflow-hidden
-    hover:border-yellow-500/50
-    hover:scale-[1.02]
-    transition-all
-    duration-300
-  "
->
+                <div className="relative overflow-hidden bg-black h-72">
 
-                <div className="relative overflow-hidden">
+                  {proyecto.imagen ? (
 
-                  <img
-                    src={proyecto.imagen}
-                    alt={proyecto.titulo}
-                    className="
-                      h-72
-                      w-full
-                      object-cover
-                      transition
-                      duration-500
-                      group-hover:scale-105
-                    "
-                  />
+                    <img
+                      src={
+                        proyecto.imagen
+                      }
+                      alt={
+                        proyecto.nombre
+                      }
+                      onClick={() =>
+                        verProyecto(
+                          proyecto
+                        )
+                      }
+                      className="h-full w-full object-cover cursor-pointer transition duration-500 group-hover:scale-105"
+                    />
+
+                  ) : (
+
+                    <div className="w-full h-full flex items-center justify-center text-zinc-700">
+                      Sin imagen
+                    </div>
+
+                  )}
+
+                  <span className="absolute top-4 left-4 bg-black/80 border border-white/10 backdrop-blur px-3 py-2 rounded-full text-xs flex items-center gap-2">
+
+                    <FaHeart className="text-pink-500" />
+                    Favorito
+
+                  </span>
 
                   <button
-                    onClick={() =>
-                      eliminarFavorito(proyecto.id)
-                    }
-                    className="
-                      absolute
-                      top-4
-                      right-4
-                      bg-red-600
-                      hover:bg-red-700
-                      p-3
-                      rounded-full
-                      transition
-                    "
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+
+                      eliminarFavorito(
+                        proyecto
+                      );
+                    }}
+                    title="Quitar de favoritos"
+                    className="absolute top-4 right-4 bg-black/80 hover:bg-red-600 border border-white/10 p-3 rounded-full text-white transition"
                   >
                     <FaTrash />
                   </button>
 
                 </div>
 
-                <div className="p-7">
+                <div className="p-6">
 
-                  <span className="
-                    inline-block
-                    px-4
-                    py-2
-                    rounded-full
-                    text-xs
-                    bg-yellow-500/10
-                    text-yellow-400
-                    border
-                    border-yellow-500/20
-                  ">
-                    {proyecto.categoria}
-                  </span>
+                  {proyecto.categoria && (
+                    <span className="inline-block px-3 py-1.5 rounded-full text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                      {
+                        proyecto.categoria
+                      }
+                    </span>
+                  )}
 
-                  <h3 className="text-2xl font-semibold mt-5">
-                    {proyecto.titulo}
+                  <h3 className="text-2xl font-semibold mt-4">
+                    {
+                      proyecto.nombre
+                    }
                   </h3>
 
-                  <p className="text-zinc-500 mt-3 line-clamp-2">
-                    {proyecto.descripcion}
-                  </p>
+                  {proyecto.descripcion && (
+                    <p className="text-zinc-500 mt-3 line-clamp-3 leading-relaxed">
+                      {
+                        proyecto.descripcion
+                      }
+                    </p>
+                  )}
 
                   <button
+                    type="button"
                     onClick={() =>
-                      cotizarProyecto(proyecto)
+                      verProyecto(
+                        proyecto
+                      )
                     }
-                    className="
-                      mt-8
-                      w-full
-                      bg-green-600
-                      hover:bg-green-700
-                      py-4
-                      rounded-2xl
-                      font-semibold
-                      flex
-                      items-center
-                      justify-center
-                      gap-3
-                      transition
-                    "
+                    className="mt-6 w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 py-3.5 rounded-2xl font-semibold flex items-center justify-center gap-3 transition"
                   >
-                    <FaWhatsapp />
-                    Solicitar cotización
+                    <FaEye />
+                    Ver proyecto
                   </button>
+
+                  <div className="grid sm:grid-cols-2 gap-3 mt-3">
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        cotizarProyecto(
+                          proyecto
+                        )
+                      }
+                      className="w-full bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 px-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
+                    >
+                      <FaFileInvoiceDollar />
+                      Cotizar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        contactarWhatsApp(
+                          proyecto
+                        )
+                      }
+                      className="w-full bg-green-600 hover:bg-green-500 text-white py-3.5 px-3 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
+                    >
+                      <FaWhatsapp />
+                      WhatsApp
+                    </button>
+
+                  </div>
 
                 </div>
 
-              </div>
-
+              </article>
             ))}
 
           </div>

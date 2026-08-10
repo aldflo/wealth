@@ -6,7 +6,6 @@ import {
   onSnapshot,
   query,
   where,
-  orderBy,
 } from "firebase/firestore";
 
 import { onAuthStateChanged } from "firebase/auth";
@@ -28,6 +27,7 @@ import {
 function MisProyectos() {
   const [proyectos, setProyectos] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState("");
 
   const [proyectoActivo, setProyectoActivo] =
     useState(null);
@@ -60,6 +60,8 @@ function MisProyectos() {
           return;
         }
 
+        // Filtramos solo por UID para evitar depender de un índice
+        // compuesto de Firestore. El orden se hace abajo en el cliente.
         const q = query(
           collection(
             db,
@@ -69,10 +71,6 @@ function MisProyectos() {
             "uid",
             "==",
             user.uid
-          ),
-          orderBy(
-            "fechaFinalizacion",
-            "desc"
           )
         );
 
@@ -80,14 +78,29 @@ function MisProyectos() {
           q,
           (snapshot) => {
             const data =
-              snapshot.docs.map(
-                (documento) => ({
-                  id:
-                    documento.id,
-                  ...documento.data(),
-                })
-              );
+              snapshot.docs
+                .map(
+                  (documento) => ({
+                    id:
+                      documento.id,
+                    ...documento.data(),
+                  })
+                )
+                .sort((a, b) => {
+                  const fechaA =
+                    a.fechaFinalizacion?.toMillis?.() ||
+                    a.fechaCreacion?.toMillis?.() ||
+                    0;
 
+                  const fechaB =
+                    b.fechaFinalizacion?.toMillis?.() ||
+                    b.fechaCreacion?.toMillis?.() ||
+                    0;
+
+                  return fechaB - fechaA;
+                });
+
+            setErrorCarga("");
             setProyectos(data);
             setCargando(false);
           },
@@ -97,6 +110,9 @@ function MisProyectos() {
               error
             );
 
+            setErrorCarga(
+              "No se pudieron cargar tus proyectos. Revisa la consola de Firebase si el problema continúa."
+            );
             setCargando(false);
           }
         );
@@ -358,11 +374,17 @@ function MisProyectos() {
 
       </div>
 
+      {errorCarga && (
+        <div className="mb-6 bg-red-500/10 border border-red-500/30 text-red-300 rounded-2xl p-4">
+          {errorCarga}
+        </div>
+      )}
+
       {/* ================================================= */}
       {/* SIN PROYECTOS */}
       {/* ================================================= */}
 
-      {proyectos.length ===
+      {!errorCarga && proyectos.length ===
         0 && (
         <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-12 text-center">
 
