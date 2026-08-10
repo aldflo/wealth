@@ -183,20 +183,34 @@ function MisProyectos() {
   // OBTENER IMÁGENES
   // ======================================================
 
-  const obtenerImagenes = (
+  const obtenerFotosFinales = (
     proyecto
   ) => {
     if (
       Array.isArray(
-        proyecto.imagenes
+        proyecto.imagenesTrabajoFinal
       ) &&
-      proyecto.imagenes.length >
+      proyecto.imagenesTrabajoFinal.length >
         0
     ) {
-      return proyecto.imagenes;
+      return [
+        ...new Set(
+          proyecto.imagenesTrabajoFinal
+        ),
+      ];
     }
 
+    return [];
+  };
+
+  const obtenerReferencias = (
+    proyecto
+  ) => {
     const combinadas = [
+      ...(
+        proyecto.imagenes ||
+        []
+      ),
       ...(
         proyecto.imagenesProyecto ||
         []
@@ -205,16 +219,34 @@ function MisProyectos() {
         proyecto.imagenesCliente ||
         []
       ),
-    ];
+    ].filter(Boolean);
 
-    if (
-      combinadas.length > 0
-    ) {
-      return [
-        ...new Set(
-          combinadas
-        ),
-      ];
+    return [
+      ...new Set(
+        combinadas
+      ),
+    ];
+  };
+
+  const obtenerImagenes = (
+    proyecto
+  ) => {
+    const finales =
+      obtenerFotosFinales(
+        proyecto
+      );
+
+    if (finales.length > 0) {
+      return finales;
+    }
+
+    const referencias =
+      obtenerReferencias(
+        proyecto
+      );
+
+    if (referencias.length > 0) {
+      return referencias;
     }
 
     if (proyecto.imagen) {
@@ -574,20 +606,33 @@ function MisProyectos() {
 
               <div className="p-6 md:p-8 space-y-7">
 
-                {/* GALERÍA */}
+                {/* GALERÍA DEL RESULTADO */}
 
-                {obtenerImagenes(
+                {obtenerFotosFinales(
                   proyectoActivo
                 ).length > 0 && (
                   <section>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-widest text-emerald-400 font-bold">
+                          Resultado final
+                        </p>
 
-                    <h3 className="font-bold text-white mb-4">
-                      Imágenes del proyecto
-                    </h3>
+                        <h3 className="font-bold text-white text-lg mt-1">
+                          Fotografías del trabajo realizado
+                        </h3>
+                      </div>
+
+                      <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+                        <FaImages />
+                        {obtenerFotosFinales(
+                          proyectoActivo
+                        ).length} foto(s)
+                      </span>
+                    </div>
 
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-
-                      {obtenerImagenes(
+                      {obtenerFotosFinales(
                         proyectoActivo
                       ).map(
                         (
@@ -596,18 +641,67 @@ function MisProyectos() {
                         ) => (
                           <img
                             key={
-                              index
+                              imagen
                             }
                             src={
                               imagen
                             }
-                            alt={`Proyecto ${
+                            alt={`Trabajo terminado ${
                               index +
                               1
                             }`}
                             onClick={() =>
                               abrirGaleria(
-                                obtenerImagenes(
+                                obtenerFotosFinales(
+                                  proyectoActivo
+                                ),
+                                index
+                              )
+                            }
+                            className="w-full aspect-square object-cover rounded-2xl border border-emerald-500/20 cursor-zoom-in hover:border-emerald-500/50 hover:opacity-90 transition"
+                          />
+                        )
+                      )}
+                    </div>
+                  </section>
+                )}
+
+                {/* REFERENCIAS ORIGINALES */}
+
+                {obtenerReferencias(
+                  proyectoActivo
+                ).length > 0 && (
+                  <section>
+                    <h3 className="font-bold text-white mb-2">
+                      Imágenes de la solicitud
+                    </h3>
+
+                    <p className="text-sm text-zinc-500 mb-4">
+                      Referencias y fotografías que formaron parte de la cotización original.
+                    </p>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {obtenerReferencias(
+                        proyectoActivo
+                      ).map(
+                        (
+                          imagen,
+                          index
+                        ) => (
+                          <img
+                            key={
+                              imagen
+                            }
+                            src={
+                              imagen
+                            }
+                            alt={`Referencia ${
+                              index +
+                              1
+                            }`}
+                            onClick={() =>
+                              abrirGaleria(
+                                obtenerReferencias(
                                   proyectoActivo
                                 ),
                                 index
@@ -617,9 +711,7 @@ function MisProyectos() {
                           />
                         )
                       )}
-
                     </div>
-
                   </section>
                 )}
 

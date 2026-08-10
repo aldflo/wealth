@@ -4,9 +4,11 @@ import { Outlet } from "react-router-dom";
 function Layout() {
   return (
     <>
+      {/* NAVBAR GLOBAL */}
       <Navbar />
 
-      <main className="pt-20">
+      {/* CONTENIDO DE CADA PÁGINA */}
+      <main className="pt-20 min-h-screen bg-black">
         <Outlet />
       </main>
     </>

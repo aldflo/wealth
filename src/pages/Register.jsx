@@ -769,7 +769,7 @@ const botonBase = `
   gap-2
   transition-all
   duration-200
-  hover:-translate-y-[1px]
+  hover:-translate-y-[1px]‹
   active:translate-y-0
 `;
 

@@ -1,7 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { db, auth } from "../firebase.config";
+import {
+  useLocation,
+} from "react-router-dom";
+
+import {
+  db,
+  auth,
+} from "../firebase.config";
 
 import {
   addDoc,
@@ -31,6 +41,7 @@ import {
   FaCrosshairs,
   FaDollarSign,
   FaImage,
+  FaImages,
   FaMapMarkerAlt,
   FaPen,
   FaPhone,
@@ -70,74 +81,184 @@ const POSICION_CAMPECHE = {
 };
 
 // ======================================================
-// CONVERTIR CATEGORÍA DE PROYECTO A TIPO DE COTIZACIÓN
+// CATEGORÍA → TIPO
 // ======================================================
 
-const convertirCategoriaATipo = (categoria) => {
-  if (!categoria) {
-    return "Construcción";
-  }
+const convertirCategoriaATipo =
+  (categoria) => {
+    if (!categoria) {
+      return "Construcción";
+    }
 
-  const valor = categoria.toLowerCase();
+    const valor =
+      categoria.toLowerCase();
 
-  if (valor.includes("constru")) {
-    return "Construcción";
-  }
+    if (
+      valor.includes(
+        "constru"
+      )
+    ) {
+      return "Construcción";
+    }
 
-  if (
-    valor.includes("alumin") &&
-    valor.includes("vidrio")
-  ) {
-    return "Vidrio y aluminio";
-  }
+    if (
+      valor.includes(
+        "alumin"
+      ) &&
+      valor.includes(
+        "vidrio"
+      )
+    ) {
+      return "Vidrio y aluminio";
+    }
 
-  if (valor.includes("alumin")) {
-    return "Aluminio";
-  }
+    if (
+      valor.includes(
+        "alumin"
+      )
+    ) {
+      return "Aluminio";
+    }
 
-  if (valor.includes("vidrio")) {
-    return "Vidrio";
-  }
+    if (
+      valor.includes(
+        "vidrio"
+      )
+    ) {
+      return "Vidrio";
+    }
 
-  if (valor.includes("remodel")) {
-    return "Remodelación";
-  }
+    if (
+      valor.includes(
+        "remodel"
+      )
+    ) {
+      return "Remodelación";
+    }
 
-  if (valor.includes("inmobil")) {
-    return "Inmobiliario";
-  }
+    if (
+      valor.includes(
+        "inmobil"
+      )
+    ) {
+      return "Inmobiliario";
+    }
 
-  return "Otro";
-};
+    return "Otro";
+  };
+
+// ======================================================
+// NORMALIZAR IMÁGENES DE PROYECTO
+// ======================================================
+
+const obtenerImagenesProyecto =
+  (proyecto) => {
+    if (!proyecto) {
+      return [];
+    }
+
+    const lista = [];
+
+    // ================================================
+    // IMAGENES[]
+    // ================================================
+
+    if (
+      Array.isArray(
+        proyecto.imagenes
+      )
+    ) {
+      proyecto.imagenes.forEach(
+        (item) => {
+          if (
+            typeof item ===
+              "string" &&
+            item.trim()
+          ) {
+            lista.push(
+              item.trim()
+            );
+
+            return;
+          }
+
+          if (
+            item &&
+            typeof item ===
+              "object"
+          ) {
+            const url =
+              item.url ||
+              item.secure_url ||
+              item.src ||
+              item.imagen;
+
+            if (url) {
+              lista.push(
+                url
+              );
+            }
+          }
+        }
+      );
+    }
+
+    // ================================================
+    // IMAGEN PRINCIPAL
+    // ================================================
+
+    if (
+      proyecto.imagen &&
+      typeof proyecto.imagen ===
+        "string"
+    ) {
+      lista.push(
+        proyecto.imagen
+      );
+    }
+
+    return [
+      ...new Set(
+        lista.filter(Boolean)
+      ),
+    ];
+  };
 
 // ======================================================
 // GEOCODIFICACIÓN INVERSA
 // ======================================================
 
-const obtenerDireccion = async (lat, lng) => {
-  const params = new URLSearchParams({
-    format: "jsonv2",
-    lat: String(lat),
-    lon: String(lng),
-    addressdetails: "1",
-    zoom: "18",
-    "accept-language": "es",
-  });
+const obtenerDireccion =
+  async (lat, lng) => {
+    const params =
+      new URLSearchParams({
+        format: "jsonv2",
+        lat: String(lat),
+        lon: String(lng),
+        addressdetails: "1",
+        zoom: "18",
+        "accept-language": "es",
+      });
 
-  const response = await fetch(
-    `https://nominatim.openstreetmap.org/reverse?${params.toString()}`
-  );
+    const response =
+      await fetch(
+        `https://nominatim.openstreetmap.org/reverse?${params.toString()}`
+      );
 
-  if (!response.ok) {
-    throw new Error(
-      "No se pudo obtener la dirección."
+    if (!response.ok) {
+      throw new Error(
+        "No se pudo obtener la dirección."
+      );
+    }
+
+    const data =
+      await response.json();
+
+    return (
+      data.display_name ||
+      ""
     );
-  }
-
-  const data = await response.json();
-
-  return data.display_name || "";
-};
+  };
 
 // ======================================================
 // RECENTRAR MAPA
@@ -150,18 +271,23 @@ function RecentrarMapa({
   const map = useMap();
 
   useEffect(() => {
-    if (!posicion) return;
+    if (!posicion) {
+      return;
+    }
 
     map.setView(
-      [posicion.lat, posicion.lng],
+      [
+        posicion.lat,
+        posicion.lng,
+      ],
       zoom,
       {
         animate: true,
       }
     );
+
   }, [
-    posicion.lat,
-    posicion.lng,
+    posicion,
     map,
     zoom,
   ]);
@@ -179,46 +305,58 @@ function SelectorUbicacion({
   setUbicacion,
   setError,
 }) {
-  const actualizarUbicacion = async (
-    lat,
-    lng
-  ) => {
-    setError("");
-
-    setPosicion({
+  const actualizarUbicacion =
+    async (
       lat,
-      lng,
-    });
+      lng
+    ) => {
+      setError("");
 
-    try {
-      const direccion =
-        await obtenerDireccion(
-          lat,
-          lng
+      setPosicion({
+        lat,
+        lng,
+      });
+
+      try {
+        const direccion =
+          await obtenerDireccion(
+            lat,
+            lng
+          );
+
+        if (direccion) {
+          setUbicacion(
+            direccion
+          );
+        } else {
+          setUbicacion(
+            `${lat.toFixed(
+              6
+            )}, ${lng.toFixed(
+              6
+            )}`
+          );
+        }
+
+      } catch (error) {
+        console.error(
+          "Error obteniendo dirección:",
+          error
         );
 
-      if (direccion) {
-        setUbicacion(direccion);
-      } else {
         setUbicacion(
-          `${lat.toFixed(6)}, ${lng.toFixed(6)}`
+          `${lat.toFixed(
+            6
+          )}, ${lng.toFixed(
+            6
+          )}`
+        );
+
+        setError(
+          "Seleccionamos el punto, pero no pudimos obtener la dirección automáticamente."
         );
       }
-    } catch (error) {
-      console.error(
-        "Error obteniendo dirección:",
-        error
-      );
-
-      setUbicacion(
-        `${lat.toFixed(6)}, ${lng.toFixed(6)}`
-      );
-
-      setError(
-        "Seleccionamos el punto, pero no pudimos obtener la dirección automáticamente."
-      );
-    }
-  };
+    };
 
   useMapEvents({
     click(e) {
@@ -229,7 +367,9 @@ function SelectorUbicacion({
     },
   });
 
-  if (!posicion) return null;
+  if (!posicion) {
+    return null;
+  }
 
   return (
     <Marker
@@ -240,7 +380,8 @@ function SelectorUbicacion({
       draggable={true}
       eventHandlers={{
         dragend: (e) => {
-          const marker = e.target;
+          const marker =
+            e.target;
 
           const nuevaPosicion =
             marker.getLatLng();
@@ -252,9 +393,11 @@ function SelectorUbicacion({
         },
       }}
     >
+
       <Popup>
         Ubicación seleccionada del proyecto
       </Popup>
+
     </Marker>
   );
 }
@@ -264,50 +407,30 @@ function SelectorUbicacion({
 // ======================================================
 
 function CrearCotizacion() {
-  const location = useLocation();
+  const location =
+    useLocation();
 
   // ====================================================
-  // PROYECTO QUE VIENE DEL CATÁLOGO
+  // PROYECTO SELECCIONADO
   // ====================================================
 
   const proyectoReferencia =
-    location.state?.proyecto || null;
+    location.state?.proyecto ||
+    null;
 
-  // Tomamos todas las imágenes disponibles.
-  // Funciona si el proyecto tiene:
-  // imagen
-  // imagenes[]
+  // ====================================================
+  // TODAS LAS IMÁGENES DEL PROYECTO
+  // ====================================================
+
   const imagenesProyecto =
     useMemo(() => {
-      if (!proyectoReferencia) {
-        return [];
-      }
+      return obtenerImagenesProyecto(
+        proyectoReferencia
+      );
 
-      const lista = [];
-
-      if (
-        Array.isArray(
-          proyectoReferencia.imagenes
-        )
-      ) {
-        lista.push(
-          ...proyectoReferencia.imagenes
-        );
-      }
-
-      if (proyectoReferencia.imagen) {
-        lista.push(
-          proyectoReferencia.imagen
-        );
-      }
-
-      // Evitar imágenes repetidas
-      return [
-        ...new Set(
-          lista.filter(Boolean)
-        ),
-      ];
-    }, [proyectoReferencia]);
+    }, [
+      proyectoReferencia,
+    ]);
 
   // ====================================================
   // PASOS
@@ -322,12 +445,12 @@ function CrearCotizacion() {
   // INFORMACIÓN
   // ====================================================
 
-  const [
-    nombre,
-    setNombre,
-  ] = useState(
-    proyectoReferencia?.nombre || ""
-  );
+  const [nombre, setNombre] =
+    useState(
+      proyectoReferencia
+        ?.nombre ||
+        ""
+    );
 
   const [
     descripcion,
@@ -341,16 +464,14 @@ function CrearCotizacion() {
       : ""
   );
 
-  const [
-    tipo,
-    setTipo,
-  ] = useState(
-    proyectoReferencia
-      ? convertirCategoriaATipo(
-          proyectoReferencia.categoria
-        )
-      : "Construcción"
-  );
+  const [tipo, setTipo] =
+    useState(
+      proyectoReferencia
+        ? convertirCategoriaATipo(
+            proyectoReferencia.categoria
+          )
+        : "Construcción"
+    );
 
   // ====================================================
   // DETALLES
@@ -414,7 +535,7 @@ function CrearCotizacion() {
   );
 
   // ====================================================
-  // IMÁGENES DEL CLIENTE
+  // IMÁGENES CLIENTE
   // ====================================================
 
   const [
@@ -442,7 +563,7 @@ function CrearCotizacion() {
   ] = useState("");
 
   // ====================================================
-  // PREVIEWS FOTOS DEL CLIENTE
+  // PREVIEWS
   // ====================================================
 
   const previews =
@@ -457,6 +578,7 @@ function CrearCotizacion() {
             ),
         })
       );
+
     }, [imagenes]);
 
   useEffect(() => {
@@ -469,6 +591,7 @@ function CrearCotizacion() {
         }
       );
     };
+
   }, [previews]);
 
   // ====================================================
@@ -494,8 +617,11 @@ function CrearCotizacion() {
         await fetch(
           "https://api.cloudinary.com/v1_1/dxj4iczvk/image/upload",
           {
-            method: "POST",
-            body: formData,
+            method:
+              "POST",
+
+            body:
+              formData,
           }
         );
 
@@ -508,7 +634,9 @@ function CrearCotizacion() {
       const data =
         await res.json();
 
-      if (!data.secure_url) {
+      if (
+        !data.secure_url
+      ) {
         throw new Error(
           "Cloudinary no devolvió la URL de la imagen."
         );
@@ -527,7 +655,8 @@ function CrearCotizacion() {
 
       const nuevosArchivos =
         Array.from(
-          e.target.files || []
+          e.target.files ||
+            []
         );
 
       if (
@@ -546,7 +675,8 @@ function CrearCotizacion() {
           "Puedes subir un máximo de 6 imágenes propias."
         );
 
-        e.target.value = "";
+        e.target.value =
+          "";
 
         return;
       }
@@ -564,7 +694,8 @@ function CrearCotizacion() {
             "Solo puedes subir archivos de imagen."
           );
 
-          e.target.value = "";
+          e.target.value =
+            "";
 
           return;
         }
@@ -579,7 +710,8 @@ function CrearCotizacion() {
             `La imagen "${file.name}" supera el límite de 5 MB.`
           );
 
-          e.target.value = "";
+          e.target.value =
+            "";
 
           return;
         }
@@ -596,7 +728,7 @@ function CrearCotizacion() {
     };
 
   // ====================================================
-  // ELIMINAR IMAGEN CLIENTE
+  // ELIMINAR FOTO CLIENTE
   // ====================================================
 
   const eliminarImagen =
@@ -700,6 +832,7 @@ function CrearCotizacion() {
           resultado.display_name ||
             ubicacion
         );
+
       } catch (error) {
         console.error(
           "Error buscando dirección:",
@@ -709,6 +842,7 @@ function CrearCotizacion() {
         setError(
           "No pudimos buscar esa dirección en este momento."
         );
+
       } finally {
         setBuscandoUbicacion(
           false
@@ -773,6 +907,7 @@ function CrearCotizacion() {
                 )}`
               );
             }
+
           } catch (error) {
             console.error(
               "Error obteniendo dirección:",
@@ -786,6 +921,7 @@ function CrearCotizacion() {
                 6
               )}`
             );
+
           } finally {
             setObteniendoGPS(
               false
@@ -848,7 +984,8 @@ function CrearCotizacion() {
         }
 
         if (
-          descripcion.trim()
+          descripcion
+            .trim()
             .length < 10
         ) {
           setError(
@@ -921,7 +1058,9 @@ function CrearCotizacion() {
 
   const siguientePaso =
     () => {
-      if (!validarPaso()) {
+      if (
+        !validarPaso()
+      ) {
         return;
       }
 
@@ -961,6 +1100,7 @@ function CrearCotizacion() {
     () => {
       setNombre("");
       setDescripcion("");
+
       setTipo(
         "Construcción"
       );
@@ -999,7 +1139,9 @@ function CrearCotizacion() {
       setError("");
       setMensaje("");
 
-      if (!validarPaso()) {
+      if (
+        !validarPaso()
+      ) {
         return;
       }
 
@@ -1017,14 +1159,15 @@ function CrearCotizacion() {
         setLoading(true);
 
         // ==============================================
-        // SUBIR FOTOS DEL CLIENTE
+        // FOTOS DEL CLIENTE
         // ==============================================
 
         let imagenesClienteUrls =
           [];
 
         if (
-          imagenes.length > 0
+          imagenes.length >
+          0
         ) {
           imagenesClienteUrls =
             await Promise.all(
@@ -1038,12 +1181,8 @@ function CrearCotizacion() {
         }
 
         // ==============================================
-        // TODAS LAS FOTOS
+        // TODAS LAS IMÁGENES
         // ==============================================
-        //
-        // Guardamos también una colección combinada.
-        // Esto permite que tu Admin actual y
-        // MisCotizaciones sigan viendo las imágenes.
 
         const todasLasImagenes =
           [
@@ -1073,27 +1212,38 @@ function CrearCotizacion() {
                 : "solicitud_directa",
 
             // ==========================================
-            // PROYECTO DE REFERENCIA
+            // REFERENCIA
             // ==========================================
 
             proyectoReferenciaId:
-              proyectoReferencia?.id ||
+              proyectoReferencia
+                ?.id ||
               null,
 
             proyectoReferenciaNombre:
-              proyectoReferencia?.nombre ||
+              proyectoReferencia
+                ?.nombre ||
               null,
 
             proyectoReferenciaCategoria:
-              proyectoReferencia?.categoria ||
+              proyectoReferencia
+                ?.categoria ||
               null,
 
             proyectoReferenciaDescripcion:
-              proyectoReferencia?.descripcion ||
+              proyectoReferencia
+                ?.descripcion ||
               null,
 
             // ==========================================
-            // DATOS QUE ESCRIBE EL CLIENTE
+            // TODAS LAS FOTOS DE REFERENCIA
+            // ==========================================
+
+            imagenesProyecto:
+              imagenesProyecto,
+
+            // ==========================================
+            // DATOS DEL CLIENTE
             // ==========================================
 
             nombre:
@@ -1148,22 +1298,20 @@ function CrearCotizacion() {
             metodoContacto,
 
             // ==========================================
-            // IMÁGENES
+            // FOTOS SUBIDAS POR CLIENTE
             // ==========================================
 
-            // Fotos originales del proyecto del catálogo
-            imagenesProyecto,
-
-            // Fotos que subió el cliente
             imagenesCliente:
               imagenesClienteUrls,
 
-            // Todas juntas:
-            // compatibilidad con Admin y MisCotizaciones
+            // ==========================================
+            // TODAS JUNTAS
+            // ==========================================
+
             imagenes:
               todasLasImagenes,
 
-            // Primera imagen para compatibilidad
+            // Primera foto para compatibilidad
             imagen:
               todasLasImagenes[0] ||
               null,
@@ -1174,14 +1322,16 @@ function CrearCotizacion() {
 
             usuario:
               auth.currentUser
-                .email || "",
+                .email ||
+              auth.currentUser
+                .phoneNumber ||
+              "",
 
             uid:
-              auth.currentUser
-                .uid,
+              auth.currentUser.uid,
 
             // ==========================================
-            // FLUJO
+            // ESTADO
             // ==========================================
 
             estado:
@@ -1197,7 +1347,7 @@ function CrearCotizacion() {
               true,
 
             // ==========================================
-            // PROPUESTA ADMIN NUEVA
+            // PROPUESTA ADMIN
             // ==========================================
 
             precioTotal:
@@ -1214,10 +1364,6 @@ function CrearCotizacion() {
 
             historialPropuestas:
               [],
-
-            // ==========================================
-            // COMPATIBILIDAD ADMIN ANTERIOR
-            // ==========================================
 
             presupuestoAdmin:
               null,
@@ -1289,6 +1435,7 @@ function CrearCotizacion() {
         );
 
         resetFormulario();
+
       } catch (error) {
         console.error(
           "Error al enviar cotización:",
@@ -1298,6 +1445,7 @@ function CrearCotizacion() {
         setError(
           "Ocurrió un error al enviar la cotización. Intenta nuevamente."
         );
+
       } finally {
         setLoading(false);
       }
@@ -1308,12 +1456,14 @@ function CrearCotizacion() {
   // ====================================================
 
   const porcentaje =
-    ((paso - 1) /
-      (totalPasos - 1)) *
+    (
+      (paso - 1) /
+      (totalPasos - 1)
+    ) *
     100;
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
+    <div className="w-full max-w-5xl mx-auto px-4 py-8">
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden">
 
@@ -1335,16 +1485,18 @@ function CrearCotizacion() {
 
           <p className="text-zinc-400 mt-3 max-w-2xl">
             {proyectoReferencia
-              ? "Ya tomamos como referencia el proyecto que seleccionaste. Ahora agrega los datos específicos del lugar donde deseas realizar el trabajo."
+              ? "Ya tomamos como referencia el proyecto que seleccionaste. Todas sus imágenes estarán incluidas en la solicitud."
               : "Cuéntanos qué necesitas. Entre más información proporciones, más precisa podrá ser nuestra propuesta."}
           </p>
 
+          {/* ========================================== */}
           {/* PROYECTO SELECCIONADO */}
+          {/* ========================================== */}
 
           {proyectoReferencia && (
-            <div className="mt-6 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
+            <div className="mt-6 bg-yellow-500/5 border border-yellow-500/20 rounded-3xl p-5">
 
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col sm:flex-row gap-5">
 
                 {imagenesProyecto.length >
                   0 && (
@@ -1355,11 +1507,11 @@ function CrearCotizacion() {
                     alt={
                       proyectoReferencia.nombre
                     }
-                    className="w-20 h-20 rounded-xl object-cover border border-zinc-700 shrink-0"
+                    className="w-full sm:w-28 h-28 rounded-2xl object-cover border border-zinc-700 shrink-0"
                   />
                 )}
 
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
 
                   <p className="text-xs uppercase tracking-wider text-yellow-500 font-semibold flex items-center gap-2">
 
@@ -1369,7 +1521,7 @@ function CrearCotizacion() {
 
                   </p>
 
-                  <p className="text-white font-bold mt-1">
+                  <p className="text-white text-xl font-bold mt-2">
                     {
                       proyectoReferencia.nombre
                     }
@@ -1383,22 +1535,54 @@ function CrearCotizacion() {
                     </p>
                   )}
 
-                  {imagenesProyecto.length >
-                    0 && (
-                    <p className="text-xs text-zinc-500 mt-2">
-                      {
-                        imagenesProyecto.length
-                      }{" "}
+                  <div className="mt-3 flex items-center gap-2 text-sm text-zinc-400">
+
+                    <FaImages className="text-yellow-500" />
+
+                    <span>
+                      {imagenesProyecto.length}{" "}
                       {imagenesProyecto.length ===
                       1
-                        ? "imagen de referencia incluida"
-                        : "imágenes de referencia incluidas"}
-                    </p>
-                  )}
+                        ? "imagen incluida"
+                        : "imágenes incluidas"}
+                    </span>
+
+                  </div>
 
                 </div>
 
               </div>
+
+              {/* TODAS LAS MINIATURAS */}
+
+              {imagenesProyecto.length >
+                0 && (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2 mt-5">
+
+                  {imagenesProyecto.map(
+                    (
+                      imagen,
+                      index
+                    ) => (
+                      <div
+                        key={`${imagen}-${index}`}
+                        className="aspect-square rounded-xl overflow-hidden border border-zinc-700 bg-black"
+                      >
+
+                        <img
+                          src={imagen}
+                          alt={`Referencia ${
+                            index + 1
+                          }`}
+                          className="w-full h-full object-cover"
+                        />
+
+                      </div>
+                    )
+                  )}
+
+                </div>
+              )}
 
             </div>
           )}
@@ -1472,7 +1656,7 @@ function CrearCotizacion() {
         </div>
 
         {/* ============================================== */}
-        {/* FORMULARIO */}
+        {/* FORM */}
         {/* ============================================== */}
 
         <form
@@ -1481,8 +1665,6 @@ function CrearCotizacion() {
           }
           className="p-6 sm:p-8 md:p-10"
         >
-
-          {/* MENSAJES */}
 
           {error && (
             <div className="mb-6 border border-red-500/30 bg-red-500/10 text-red-300 px-4 py-3 rounded-2xl">
@@ -1525,7 +1707,7 @@ function CrearCotizacion() {
 
               </div>
 
-              {/* PROYECTO REFERENCIA */}
+              {/* TODAS LAS IMÁGENES DEL PROYECTO */}
 
               {proyectoReferencia &&
                 imagenesProyecto.length >
@@ -1534,32 +1716,43 @@ function CrearCotizacion() {
 
                     <p className="text-sm text-zinc-400 mb-3 flex items-center gap-2">
 
-                      <FaImage className="text-yellow-500" />
+                      <FaImages className="text-yellow-500" />
 
-                      Imágenes del proyecto que seleccionaste
+                      Todas las imágenes del proyecto seleccionado
 
                     </p>
 
-                    <div className="flex gap-3 overflow-x-auto pb-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
 
                       {imagenesProyecto.map(
                         (
                           imagen,
                           indice
                         ) => (
-                          <img
-                            key={
-                              imagen
-                            }
-                            src={
-                              imagen
-                            }
-                            alt={`Referencia ${
-                              indice +
-                              1
-                            }`}
-                            className="w-32 h-28 object-cover rounded-2xl border border-zinc-700 shrink-0"
-                          />
+                          <div
+                            key={`${imagen}-${indice}`}
+                            className="relative aspect-square rounded-2xl overflow-hidden border border-yellow-500/20 bg-black"
+                          >
+
+                            <img
+                              src={
+                                imagen
+                              }
+                              alt={`Referencia ${
+                                indice +
+                                1
+                              }`}
+                              className="w-full h-full object-cover"
+                            />
+
+                            <div className="absolute top-2 left-2 bg-black/75 backdrop-blur-sm text-white text-[10px] px-2 py-1 rounded-lg">
+
+                              {indice +
+                                1}
+
+                            </div>
+
+                          </div>
                         )
                       )}
 
@@ -1568,63 +1761,45 @@ function CrearCotizacion() {
                   </div>
                 )}
 
-              {/* NOMBRE */}
-
               <Campo>
 
                 <Label
-                  icon={
-                    <FaPen />
-                  }
+                  icon={<FaPen />}
                 >
                   Nombre del proyecto
                 </Label>
 
                 <input
                   type="text"
-                  value={
-                    nombre
-                  }
+                  value={nombre}
                   onChange={(e) =>
                     setNombre(
                       e.target.value
                     )
                   }
                   placeholder="Ej: Ventanales para casa residencial"
-                  className={
-                    inputClass
-                  }
-                  maxLength={
-                    100
-                  }
+                  className={inputClass}
+                  maxLength={100}
                 />
 
               </Campo>
 
-              {/* TIPO */}
-
               <Campo>
 
                 <Label
-                  icon={
-                    <FaTag />
-                  }
+                  icon={<FaTag />}
                 >
                   Tipo de proyecto
                 </Label>
 
                 <select
-                  value={
-                    tipo
-                  }
+                  value={tipo}
                   onChange={(e) =>
                     setTipo(
                       e.target.value
                     )
                   }
-                  className={
-                    inputClass
-                  }
+                  className={inputClass}
                 >
 
                   <option>
@@ -1659,35 +1834,25 @@ function CrearCotizacion() {
 
               </Campo>
 
-              {/* DESCRIPCIÓN */}
-
               <Campo>
 
                 <Label
-                  icon={
-                    <FaPen />
-                  }
+                  icon={<FaPen />}
                 >
                   ¿Qué necesitas realizar?
                 </Label>
 
                 <textarea
                   rows="6"
-                  value={
-                    descripcion
-                  }
+                  value={descripcion}
                   onChange={(e) =>
                     setDescripcion(
                       e.target.value
                     )
                   }
-                  placeholder="Describe cómo deseas adaptar el proyecto, materiales, colores, acabados o cualquier detalle importante..."
-                  className={
-                    inputClass
-                  }
-                  maxLength={
-                    1000
-                  }
+                  placeholder="Describe cómo deseas adaptar el proyecto..."
+                  className={inputClass}
+                  maxLength={1000}
                 />
 
                 <div className="flex justify-between gap-4 mt-2">
@@ -1699,10 +1864,7 @@ function CrearCotizacion() {
                   </span>
 
                   <span className="text-xs text-zinc-600 whitespace-nowrap">
-                    {
-                      descripcion.length
-                    }
-                    /1000
+                    {descripcion.length}/1000
                   </span>
 
                 </div>
@@ -1731,8 +1893,6 @@ function CrearCotizacion() {
 
               </div>
 
-              {/* DIRECCIÓN + MAPA */}
-
               <div className="grid lg:grid-cols-2 gap-6">
 
                 <div className="space-y-4">
@@ -1751,9 +1911,7 @@ function CrearCotizacion() {
 
                       <input
                         type="text"
-                        value={
-                          ubicacion
-                        }
+                        value={ubicacion}
                         onChange={(e) =>
                           setUbicacion(
                             e.target.value
@@ -1770,9 +1928,7 @@ function CrearCotizacion() {
                           }
                         }}
                         placeholder="Ej: Concordia, San Francisco de Campeche"
-                        className={
-                          inputClass
-                        }
+                        className={inputClass}
                       />
 
                       <button
@@ -1826,6 +1982,7 @@ function CrearCotizacion() {
                     <div className="grid grid-cols-2 gap-3 mt-3">
 
                       <div>
+
                         <p className="text-xs text-zinc-600">
                           Latitud
                         </p>
@@ -1835,9 +1992,11 @@ function CrearCotizacion() {
                             6
                           )}
                         </p>
+
                       </div>
 
                       <div>
+
                         <p className="text-xs text-zinc-600">
                           Longitud
                         </p>
@@ -1847,6 +2006,7 @@ function CrearCotizacion() {
                             6
                           )}
                         </p>
+
                       </div>
 
                     </div>
@@ -1854,8 +2014,6 @@ function CrearCotizacion() {
                   </div>
 
                 </div>
-
-                {/* MAPA */}
 
                 <div className="rounded-3xl overflow-hidden border border-zinc-700 bg-zinc-800 min-h-[390px]">
 
@@ -1871,6 +2029,7 @@ function CrearCotizacion() {
                     style={{
                       width:
                         "100%",
+
                       height:
                         "390px",
                     }}
@@ -1882,18 +2041,12 @@ function CrearCotizacion() {
                     />
 
                     <RecentrarMapa
-                      posicion={
-                        posicion
-                      }
-                      zoom={
-                        16
-                      }
+                      posicion={posicion}
+                      zoom={16}
                     />
 
                     <SelectorUbicacion
-                      posicion={
-                        posicion
-                      }
+                      posicion={posicion}
                       setPosicion={
                         setPosicion
                       }
@@ -1911,8 +2064,6 @@ function CrearCotizacion() {
 
               </div>
 
-              {/* MEDIDAS / FECHA */}
-
               <div className="grid md:grid-cols-2 gap-5">
 
                 <Campo>
@@ -1927,18 +2078,14 @@ function CrearCotizacion() {
 
                   <input
                     type="text"
-                    value={
-                      medidas
-                    }
+                    value={medidas}
                     onChange={(e) =>
                       setMedidas(
                         e.target.value
                       )
                     }
                     placeholder="Ej: 2 m de ancho x 2.50 m de alto"
-                    className={
-                      inputClass
-                    }
+                    className={inputClass}
                   />
 
                   <p className="text-xs text-zinc-500 mt-2">
@@ -1959,9 +2106,7 @@ function CrearCotizacion() {
 
                   <input
                     type="date"
-                    value={
-                      fechaDeseada
-                    }
+                    value={fechaDeseada}
                     onChange={(e) =>
                       setFechaDeseada(
                         e.target.value
@@ -1972,16 +2117,12 @@ function CrearCotizacion() {
                         .toISOString()
                         .split("T")[0]
                     }
-                    className={
-                      inputClass
-                    }
+                    className={inputClass}
                   />
 
                 </Campo>
 
               </div>
-
-              {/* PRESUPUESTO */}
 
               <Campo>
 
@@ -2040,39 +2181,45 @@ function CrearCotizacion() {
                 </h2>
 
                 <p className="text-zinc-400 mt-1">
-                  Aquí distinguimos las imágenes del proyecto que te gustó y las fotografías de tu propio espacio.
+                  Aquí puedes revisar todas las imágenes del proyecto seleccionado y agregar fotografías de tu propio espacio.
                 </p>
 
               </div>
 
-              {/* ======================================== */}
-              {/* IMÁGENES PROYECTO */}
-              {/* ======================================== */}
+              {/* TODAS LAS FOTOS DEL PROYECTO */}
 
               {proyectoReferencia &&
                 imagenesProyecto.length >
                   0 && (
                   <section>
 
-                    <div className="flex items-center gap-3 mb-4">
+                    <div className="flex items-center justify-between gap-4 mb-4">
 
-                      <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+                      <div className="flex items-center gap-3">
 
-                        <FaLink className="text-yellow-500" />
+                        <div className="w-10 h-10 bg-yellow-500/10 rounded-xl flex items-center justify-center">
+
+                          <FaImages className="text-yellow-500" />
+
+                        </div>
+
+                        <div>
+
+                          <h3 className="font-bold text-white">
+                            Proyecto de referencia
+                          </h3>
+
+                          <p className="text-xs text-zinc-500">
+                            Todas estas imágenes formarán parte de la cotización.
+                          </p>
+
+                        </div>
 
                       </div>
 
-                      <div>
-
-                        <h3 className="font-bold text-white">
-                          Proyecto de referencia
-                        </h3>
-
-                        <p className="text-xs text-zinc-500">
-                          Estas imágenes vienen del catálogo de Wealth.
-                        </p>
-
-                      </div>
+                      <span className="shrink-0 bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 px-3 py-1.5 rounded-full text-xs font-semibold">
+                        {imagenesProyecto.length} fotos
+                      </span>
 
                     </div>
 
@@ -2084,24 +2231,27 @@ function CrearCotizacion() {
                           indice
                         ) => (
                           <div
-                            key={
-                              imagen
-                            }
-                            className="relative bg-zinc-800 border border-yellow-500/20 rounded-2xl overflow-hidden aspect-square"
+                            key={`${imagen}-${indice}`}
+                            className="relative bg-zinc-800 border border-yellow-500/20 rounded-2xl overflow-hidden aspect-square group"
                           >
 
                             <img
-                              src={
-                                imagen
-                              }
+                              src={imagen}
                               alt={`Proyecto referencia ${
-                                indice +
-                                1
+                                indice + 1
                               }`}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                             />
 
-                            <div className="absolute bottom-0 left-0 right-0 bg-black/75 p-3">
+                            <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-sm px-2.5 py-1.5 rounded-lg">
+
+                              <span className="text-xs text-white">
+                                {indice + 1} / {imagenesProyecto.length}
+                              </span>
+
+                            </div>
+
+                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-10 pb-3 px-3">
 
                               <p className="text-xs text-yellow-400 font-semibold">
                                 Referencia Wealth
@@ -2118,9 +2268,7 @@ function CrearCotizacion() {
                   </section>
                 )}
 
-              {/* ======================================== */}
-              {/* FOTOS DEL CLIENTE */}
-              {/* ======================================== */}
+              {/* FOTOS CLIENTE */}
 
               <section>
 
@@ -2176,8 +2324,6 @@ function CrearCotizacion() {
 
               </section>
 
-              {/* PREVIEW CLIENTE */}
-
               {previews.length >
                 0 && (
                 <div>
@@ -2188,9 +2334,7 @@ function CrearCotizacion() {
 
                       <FaCamera className="text-blue-400" />
 
-                      {
-                        imagenes.length
-                      }{" "}
+                      {imagenes.length}{" "}
 
                       {imagenes.length ===
                       1
@@ -2200,10 +2344,7 @@ function CrearCotizacion() {
                     </p>
 
                     <span className="text-xs text-zinc-500">
-                      {
-                        imagenes.length
-                      }
-                      /6
+                      {imagenes.length}/6
                     </span>
 
                   </div>
@@ -2225,8 +2366,7 @@ function CrearCotizacion() {
                               preview.url
                             }
                             alt={`Foto cliente ${
-                              index +
-                              1
+                              index + 1
                             }`}
                             className="w-full h-full object-cover"
                           />
@@ -2293,8 +2433,6 @@ function CrearCotizacion() {
 
               </div>
 
-              {/* CONTACTO */}
-
               <div className="grid md:grid-cols-2 gap-5">
 
                 <Campo>
@@ -2309,18 +2447,14 @@ function CrearCotizacion() {
 
                   <input
                     type="tel"
-                    value={
-                      telefono
-                    }
+                    value={telefono}
                     onChange={(e) =>
                       setTelefono(
                         e.target.value
                       )
                     }
                     placeholder="Ej: 981 123 4567"
-                    className={
-                      inputClass
-                    }
+                    className={inputClass}
                   />
 
                 </Campo>
@@ -2344,9 +2478,7 @@ function CrearCotizacion() {
                         e.target.value
                       )
                     }
-                    className={
-                      inputClass
-                    }
+                    className={inputClass}
                   >
 
                     <option>
@@ -2391,7 +2523,7 @@ function CrearCotizacion() {
 
                 </div>
 
-                {/* REFERENCIA */}
+                {/* PROYECTO REFERENCIA */}
 
                 {proyectoReferencia && (
                   <div className="mb-6 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
@@ -2407,14 +2539,44 @@ function CrearCotizacion() {
                     </p>
 
                     <p className="text-xs text-zinc-500 mt-1">
-                      {
-                        imagenesProyecto.length
-                      }{" "}
+                      {imagenesProyecto.length}{" "}
+
                       {imagenesProyecto.length ===
                       1
                         ? "imagen de referencia"
                         : "imágenes de referencia"}
                     </p>
+
+                    {/* MINI GALERÍA RESUMEN */}
+
+                    {imagenesProyecto.length >
+                      0 && (
+                      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mt-4">
+
+                        {imagenesProyecto.map(
+                          (
+                            imagen,
+                            index
+                          ) => (
+                            <div
+                              key={`${imagen}-${index}`}
+                              className="aspect-square rounded-xl overflow-hidden border border-zinc-700"
+                            >
+
+                              <img
+                                src={imagen}
+                                alt={`Referencia ${
+                                  index + 1
+                                }`}
+                                className="w-full h-full object-cover"
+                              />
+
+                            </div>
+                          )
+                        )}
+
+                      </div>
+                    )}
 
                   </div>
                 )}
@@ -2505,8 +2667,6 @@ function CrearCotizacion() {
                 </div>
 
               </div>
-
-              {/* AVISO */}
 
               <div className="border border-yellow-500/20 bg-yellow-500/5 rounded-2xl p-4">
 

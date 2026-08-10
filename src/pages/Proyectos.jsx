@@ -27,6 +27,7 @@ import {
   FaStar,
   FaClock,
   FaLayerGroup,
+  FaImages,
 } from "react-icons/fa";
 
 function Proyectos() {
@@ -57,6 +58,7 @@ function Proyectos() {
   // ======================================================
 
   const [favoritos, setFavoritos] = useState([]);
+
   const [guardandoFavorito, setGuardandoFavorito] =
     useState(null);
 
@@ -68,13 +70,88 @@ function Proyectos() {
     useState(false);
 
   // ======================================================
+  // NORMALIZAR IMÁGENES DEL PROYECTO
+  // ======================================================
+
+  const obtenerImagenesProyecto = (proyecto) => {
+    if (!proyecto) {
+      return [];
+    }
+
+    const lista = [];
+
+    // ================================================
+    // ARRAY imagenes[]
+    // ================================================
+
+    if (Array.isArray(proyecto.imagenes)) {
+      proyecto.imagenes.forEach((item) => {
+        if (typeof item === "string" && item.trim()) {
+          lista.push(item.trim());
+          return;
+        }
+
+        // Compatibilidad si alguna imagen se guardó
+        // como objeto.
+        if (item && typeof item === "object") {
+          const url =
+            item.url ||
+            item.secure_url ||
+            item.src ||
+            item.imagen;
+
+          if (url) {
+            lista.push(url);
+          }
+        }
+      });
+    }
+
+    // ================================================
+    // IMAGEN PRINCIPAL
+    // ================================================
+
+    if (
+      proyecto.imagen &&
+      typeof proyecto.imagen === "string"
+    ) {
+      lista.push(proyecto.imagen);
+    }
+
+    // ================================================
+    // ELIMINAR DUPLICADOS
+    // ================================================
+
+    return [
+      ...new Set(
+        lista.filter(Boolean)
+      ),
+    ];
+  };
+
+  // ======================================================
+  // IMAGEN DE PORTADA
+  // ======================================================
+
+  const obtenerPortada = (proyecto) => {
+    const imagenes =
+      obtenerImagenesProyecto(proyecto);
+
+    return imagenes[0] || "";
+  };
+
+  // ======================================================
   // ESCUCHAR LOGIN
   // ======================================================
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (user) => {
-      setUsuario(user || null);
-    });
+    const unsub =
+      onAuthStateChanged(
+        auth,
+        (user) => {
+          setUsuario(user || null);
+        }
+      );
 
     return () => unsub();
   }, []);
@@ -91,15 +168,20 @@ function Proyectos() {
 
     const unsub = onSnapshot(
       q,
+
       (snap) => {
-        const data = snap.docs.map((documento) => ({
-          id: documento.id,
-          ...documento.data(),
-        }));
+        const data =
+          snap.docs.map(
+            (documento) => ({
+              id: documento.id,
+              ...documento.data(),
+            })
+          );
 
         setProyectos(data);
         setCargando(false);
       },
+
       (error) => {
         console.error(
           "Error cargando proyectos:",
@@ -118,8 +200,6 @@ function Proyectos() {
   // ======================================================
 
   useEffect(() => {
-    // Sin usuario:
-    // conservamos compatibilidad con favoritos locales
     if (!usuario) {
       try {
         const guardados =
@@ -128,6 +208,7 @@ function Proyectos() {
           ) ?? [];
 
         setFavoritos(guardados);
+
       } catch {
         setFavoritos([]);
       }
@@ -137,21 +218,29 @@ function Proyectos() {
 
     const q = query(
       collection(db, "favoritos"),
-      where("uid", "==", usuario.uid)
+      where(
+        "uid",
+        "==",
+        usuario.uid
+      )
     );
 
     const unsub = onSnapshot(
       q,
+
       (snap) => {
-        const data = snap.docs.map((documento) => ({
-          firebaseId: documento.id,
-          ...documento.data(),
-        }));
+        const data =
+          snap.docs.map(
+            (documento) => ({
+              firebaseId:
+                documento.id,
+
+              ...documento.data(),
+            })
+          );
 
         setFavoritos(data);
 
-        // También sincronizamos localStorage
-        // para mantener compatibilidad con tu página Favoritos actual.
         localStorage.setItem(
           "favoritos",
           JSON.stringify(data)
@@ -161,6 +250,7 @@ function Proyectos() {
           new Event("storage")
         );
       },
+
       (error) => {
         console.error(
           "Error cargando favoritos:",
@@ -170,157 +260,205 @@ function Proyectos() {
     );
 
     return () => unsub();
+
   }, [usuario]);
 
   // ======================================================
   // CATEGORÍAS AUTOMÁTICAS
   // ======================================================
 
-  const categorias = useMemo(() => {
-    const categoriasEncontradas = proyectos
-      .map((p) => p.categoria)
-      .filter(Boolean);
+  const categorias =
+    useMemo(() => {
+      const categoriasEncontradas =
+        proyectos
+          .map((p) => p.categoria)
+          .filter(Boolean);
 
-    return [
-      "Todos",
-      ...Array.from(
-        new Set(categoriasEncontradas)
-      ).sort((a, b) =>
-        a.localeCompare(b, "es")
-      ),
-    ];
-  }, [proyectos]);
+      return [
+        "Todos",
+
+        ...Array.from(
+          new Set(
+            categoriasEncontradas
+          )
+        ).sort(
+          (a, b) =>
+            a.localeCompare(
+              b,
+              "es"
+            )
+        ),
+      ];
+
+    }, [proyectos]);
 
   // ======================================================
   // BUSCADOR + FILTRO
   // ======================================================
 
-  const filtrados = useMemo(() => {
-    const texto = busqueda
-      .trim()
-      .toLowerCase();
+  const filtrados =
+    useMemo(() => {
+      const texto =
+        busqueda
+          .trim()
+          .toLowerCase();
 
-    return proyectos.filter((p) => {
-      const contenido = [
-        p.nombre,
-        p.descripcion,
-        p.categoria,
-        p.tipo,
-        p.ubicacion,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+      return proyectos.filter(
+        (p) => {
+          const contenido = [
+            p.nombre,
+            p.descripcion,
+            p.categoria,
+            p.tipo,
+            p.ubicacion,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
 
-      const coincideBusqueda =
-        !texto ||
-        contenido.includes(texto);
+          const coincideBusqueda =
+            !texto ||
+            contenido.includes(
+              texto
+            );
 
-      const coincideCategoria =
-        categoria === "Todos" ||
-        p.categoria === categoria;
+          const coincideCategoria =
+            categoria === "Todos" ||
+            p.categoria === categoria;
 
-      return (
-        coincideBusqueda &&
-        coincideCategoria
+          return (
+            coincideBusqueda &&
+            coincideCategoria
+          );
+        }
       );
-    });
-  }, [
-    proyectos,
-    busqueda,
-    categoria,
-  ]);
+
+    }, [
+      proyectos,
+      busqueda,
+      categoria,
+    ]);
 
   // ======================================================
   // FAVORITO
   // ======================================================
 
-  const toggleFavorito = async (proyecto) => {
-    if (!usuario) {
-      setMostrarLoginModal(true);
-      return;
-    }
+  const toggleFavorito =
+    async (proyecto) => {
+      if (!usuario) {
+        setMostrarLoginModal(true);
+        return;
+      }
 
-    const yaExiste = favoritos.some(
-      (f) =>
-        f.proyectoId === proyecto.id ||
-        f.id === proyecto.id
-    );
+      const yaExiste =
+        favoritos.some(
+          (f) =>
+            f.proyectoId ===
+              proyecto.id ||
+            f.id ===
+              proyecto.id
+        );
 
-    const documentoId = `${usuario.uid}_${proyecto.id}`;
+      const documentoId =
+        `${usuario.uid}_${proyecto.id}`;
 
-    try {
-      setGuardandoFavorito(proyecto.id);
+      try {
+        setGuardandoFavorito(
+          proyecto.id
+        );
 
-      if (yaExiste) {
-        await deleteDoc(
+        if (yaExiste) {
+          await deleteDoc(
+            doc(
+              db,
+              "favoritos",
+              documentoId
+            )
+          );
+
+          return;
+        }
+
+        const imagenesProyecto =
+          obtenerImagenesProyecto(
+            proyecto
+          );
+
+        await setDoc(
           doc(
             db,
             "favoritos",
             documentoId
-          )
+          ),
+          {
+            uid:
+              usuario.uid,
+
+            usuario:
+              usuario.email ||
+              null,
+
+            proyectoId:
+              proyecto.id,
+
+            id:
+              proyecto.id,
+
+            titulo:
+              proyecto.nombre ||
+              "",
+
+            nombre:
+              proyecto.nombre ||
+              "",
+
+            imagen:
+              imagenesProyecto[0] ||
+              "",
+
+            imagenes:
+              imagenesProyecto,
+
+            categoria:
+              proyecto.categoria ||
+              "",
+
+            descripcion:
+              proyecto.descripcion ||
+              "",
+
+            fechaGuardado:
+              serverTimestamp(),
+          }
         );
 
-        return;
+      } catch (error) {
+        console.error(
+          "Error actualizando favorito:",
+          error
+        );
+
+        alert(
+          "No se pudo actualizar el favorito."
+        );
+
+      } finally {
+        setGuardandoFavorito(
+          null
+        );
       }
-
-      await setDoc(
-        doc(
-          db,
-          "favoritos",
-          documentoId
-        ),
-        {
-          uid: usuario.uid,
-          usuario:
-            usuario.email || null,
-
-          proyectoId:
-            proyecto.id,
-
-          id:
-            proyecto.id,
-
-          titulo:
-            proyecto.nombre || "",
-
-          nombre:
-            proyecto.nombre || "",
-
-          imagen:
-            proyecto.imagen || "",
-
-          categoria:
-            proyecto.categoria || "",
-
-          descripcion:
-            proyecto.descripcion || "",
-
-          fechaGuardado:
-            serverTimestamp(),
-        }
-      );
-    } catch (error) {
-      console.error(
-        "Error actualizando favorito:",
-        error
-      );
-
-      alert(
-        "No se pudo actualizar el favorito."
-      );
-    } finally {
-      setGuardandoFavorito(null);
-    }
-  };
+    };
 
   // ======================================================
   // VER PROYECTO
   // ======================================================
 
-  const verProyecto = (proyecto) => {
-    navigate(`/proyecto/${proyecto.id}`);
-  };
+  const verProyecto =
+    (proyecto) => {
+      navigate(
+        `/proyecto/${proyecto.id}`
+      );
+    };
 
   // ======================================================
   // SOLICITAR COTIZACIÓN
@@ -333,68 +471,118 @@ function Proyectos() {
     e.stopPropagation();
 
     if (!usuario) {
-      setMostrarLoginModal(true);
+      setMostrarLoginModal(
+        true
+      );
+
       return;
     }
 
-    navigate("/crear-cotizacion", {
-      state: {
-        proyecto: {
-          id: proyecto.id,
-          nombre: proyecto.nombre,
-          descripcion:
-            proyecto.descripcion,
-          categoria:
-            proyecto.categoria,
-          imagen:
-            proyecto.imagen,
+    // ================================================
+    // OBTENER TODAS LAS IMÁGENES DEL PROYECTO
+    // ================================================
+
+    const imagenesProyecto =
+      obtenerImagenesProyecto(
+        proyecto
+      );
+
+    console.log(
+      "📸 Imágenes enviadas a cotización:",
+      imagenesProyecto
+    );
+
+    // ================================================
+    // ENVIAR PROYECTO COMPLETO
+    // ================================================
+
+    navigate(
+      "/crear-cotizacion",
+      {
+        state: {
+          proyecto: {
+            ...proyecto,
+
+            id:
+              proyecto.id,
+
+            nombre:
+              proyecto.nombre ||
+              "",
+
+            descripcion:
+              proyecto.descripcion ||
+              "",
+
+            categoria:
+              proyecto.categoria ||
+              "",
+
+            ubicacion:
+              proyecto.ubicacion ||
+              "",
+
+            // PRIMERA IMAGEN
+            imagen:
+              imagenesProyecto[0] ||
+              proyecto.imagen ||
+              "",
+
+            // TODAS LAS IMÁGENES
+            imagenes:
+              imagenesProyecto,
+          },
         },
-      },
-    });
+      }
+    );
   };
 
   // ======================================================
   // DETERMINAR SI ES NUEVO
   // ======================================================
 
-  const esNuevo = (proyecto) => {
-    if (!proyecto.fecha?.toDate) {
-      return false;
-    }
+  const esNuevo =
+    (proyecto) => {
+      if (
+        !proyecto.fecha?.toDate
+      ) {
+        return false;
+      }
 
-    const fechaProyecto =
-      proyecto.fecha.toDate();
+      const fechaProyecto =
+        proyecto.fecha.toDate();
 
-    const hoy = new Date();
+      const hoy =
+        new Date();
 
-    const diferencia =
-      hoy.getTime() -
-      fechaProyecto.getTime();
+      const diferencia =
+        hoy.getTime() -
+        fechaProyecto.getTime();
 
-    const dias =
-      diferencia /
-      (1000 * 60 * 60 * 24);
+      const dias =
+        diferencia /
+        (
+          1000 *
+          60 *
+          60 *
+          24
+        );
 
-    return dias <= 30;
-  };
+      return dias <= 30;
+    };
 
   // ======================================================
   // LIMPIAR BÚSQUEDA
   // ======================================================
 
-  const limpiarFiltros = () => {
-    setBusqueda("");
-    setCategoria("Todos");
-  };
+  const limpiarFiltros =
+    () => {
+      setBusqueda("");
+      setCategoria("Todos");
+    };
 
   return (
     <div className="min-h-screen bg-black text-white">
-
-      {/* ================================================= */}
-      {/* HERO */}
-      {/* ================================================= */}
-
-      
 
       {/* ================================================= */}
       {/* CONTENIDO */}
@@ -418,7 +606,9 @@ function Proyectos() {
               type="text"
               value={busqueda}
               onChange={(e) =>
-                setBusqueda(e.target.value)
+                setBusqueda(
+                  e.target.value
+                )
               }
               placeholder="Buscar por proyecto, categoría, descripción..."
               className="
@@ -427,7 +617,6 @@ function Proyectos() {
                 border
                 border-white/10
                 rounded-2xl
-                pl-13
                 pr-12
                 py-4
                 text-white
@@ -439,14 +628,14 @@ function Proyectos() {
                 transition
               "
               style={{
-                paddingLeft: "3.2rem",
+                paddingLeft:
+                  "3.2rem",
               }}
             />
 
-            {/* BORRAR TEXTO */}
-
             {busqueda && (
               <button
+                type="button"
                 onClick={() =>
                   setBusqueda("")
                 }
@@ -464,7 +653,9 @@ function Proyectos() {
           <select
             value={categoria}
             onChange={(e) =>
-              setCategoria(e.target.value)
+              setCategoria(
+                e.target.value
+              )
             }
             className="
               min-w-[220px]
@@ -481,14 +672,16 @@ function Proyectos() {
             "
           >
 
-            {categorias.map((cat) => (
-              <option
-                key={cat}
-                value={cat}
-              >
-                {cat}
-              </option>
-            ))}
+            {categorias.map(
+              (cat) => (
+                <option
+                  key={cat}
+                  value={cat}
+                >
+                  {cat}
+                </option>
+              )
+            )}
 
           </select>
 
@@ -498,45 +691,53 @@ function Proyectos() {
         {/* RESULTADOS */}
         {/* ================================================= */}
 
-        {!cargando && proyectos.length > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+        {!cargando &&
+          proyectos.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
 
-            <p className="text-sm text-zinc-500">
+              <p className="text-sm text-zinc-500">
 
-              Mostrando{" "}
+                Mostrando{" "}
 
-              <span className="text-white font-medium">
-                {filtrados.length}
-              </span>
+                <span className="text-white font-medium">
+                  {filtrados.length}
+                </span>
 
-              {" "}
-              {filtrados.length === 1
-                ? "proyecto"
-                : "proyectos"}
+                {" "}
 
-              {categoria !== "Todos" && (
-                <>
-                  {" "}en{" "}
-                  <span className="text-yellow-500">
-                    {categoria}
-                  </span>
-                </>
+                {filtrados.length === 1
+                  ? "proyecto"
+                  : "proyectos"}
+
+                {categoria !==
+                  "Todos" && (
+                  <>
+                    {" "}en{" "}
+
+                    <span className="text-yellow-500">
+                      {categoria}
+                    </span>
+                  </>
+                )}
+
+              </p>
+
+              {(busqueda ||
+                categoria !==
+                  "Todos") && (
+                <button
+                  type="button"
+                  onClick={
+                    limpiarFiltros
+                  }
+                  className="text-sm text-zinc-400 hover:text-yellow-500 transition"
+                >
+                  Limpiar filtros
+                </button>
               )}
 
-            </p>
-
-            {(busqueda ||
-              categoria !== "Todos") && (
-              <button
-                onClick={limpiarFiltros}
-                className="text-sm text-zinc-400 hover:text-yellow-500 transition"
-              >
-                Limpiar filtros
-              </button>
-            )}
-
-          </div>
-        )}
+            </div>
+          )}
 
         {/* ================================================= */}
         {/* CARGANDO */}
@@ -555,11 +756,12 @@ function Proyectos() {
         )}
 
         {/* ================================================= */}
-        {/* SIN PROYECTOS EN FIREBASE */}
+        {/* SIN PROYECTOS */}
         {/* ================================================= */}
 
         {!cargando &&
-          proyectos.length === 0 && (
+          proyectos.length ===
+            0 && (
             <div className="border border-zinc-800 bg-zinc-950 rounded-3xl py-20 px-6 text-center">
 
               <FaLayerGroup className="text-zinc-700 text-5xl mx-auto" />
@@ -569,8 +771,7 @@ function Proyectos() {
               </h2>
 
               <p className="text-zinc-500 mt-2">
-                Estamos preparando nuestro portafolio
-                de proyectos.
+                Estamos preparando nuestro portafolio de proyectos.
               </p>
 
             </div>
@@ -581,8 +782,10 @@ function Proyectos() {
         {/* ================================================= */}
 
         {!cargando &&
-          proyectos.length > 0 &&
-          filtrados.length === 0 && (
+          proyectos.length >
+            0 &&
+          filtrados.length ===
+            0 && (
             <div className="border border-zinc-800 bg-zinc-950 rounded-3xl py-20 px-6 text-center">
 
               <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mx-auto">
@@ -596,12 +799,14 @@ function Proyectos() {
               </h2>
 
               <p className="text-zinc-500 mt-2 max-w-md mx-auto">
-                Prueba con otro término de búsqueda o
-                selecciona una categoría diferente.
+                Prueba con otro término de búsqueda o selecciona una categoría diferente.
               </p>
 
               <button
-                onClick={limpiarFiltros}
+                type="button"
+                onClick={
+                  limpiarFiltros
+                }
                 className="mt-6 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold px-6 py-3 rounded-xl transition"
               >
                 Ver todos los proyectos
@@ -615,234 +820,268 @@ function Proyectos() {
         {/* ================================================= */}
 
         {!cargando &&
-          filtrados.length > 0 && (
+          filtrados.length >
+            0 && (
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-7 lg:gap-8">
 
-              {filtrados.map((p) => {
-                const isFav =
-                  favoritos.some(
-                    (f) =>
-                      f.proyectoId === p.id ||
-                      f.id === p.id
-                  );
+              {filtrados.map(
+                (p) => {
+                  const isFav =
+                    favoritos.some(
+                      (f) =>
+                        f.proyectoId ===
+                          p.id ||
+                        f.id === p.id
+                    );
 
-                const nuevo = esNuevo(p);
+                  const nuevo =
+                    esNuevo(p);
 
-                return (
-                  <article
-                    key={p.id}
-                    onClick={() =>
-                      verProyecto(p)
-                    }
-                    className="
-                      relative
-                      group
-                      bg-zinc-950
-                      border
-                      border-white/10
-                      rounded-[28px]
-                      overflow-hidden
-                      cursor-pointer
-                      transition-all
-                      duration-300
-                      hover:border-yellow-500/30
-                      hover:-translate-y-1
-                      hover:shadow-2xl
-                      hover:shadow-black/40
-                    "
-                  >
+                  const imagenesProyecto =
+                    obtenerImagenesProyecto(
+                      p
+                    );
 
-                    {/* ================================= */}
-                    {/* IMAGEN */}
-                    {/* ================================= */}
+                  const portada =
+                    obtenerPortada(
+                      p
+                    );
 
-                    <div className="relative h-[280px] bg-zinc-900 overflow-hidden">
+                  return (
+                    <article
+                      key={p.id}
+                      onClick={() =>
+                        verProyecto(
+                          p
+                        )
+                      }
+                      className="
+                        relative
+                        group
+                        bg-zinc-950
+                        border
+                        border-white/10
+                        rounded-[28px]
+                        overflow-hidden
+                        cursor-pointer
+                        transition-all
+                        duration-300
+                        hover:border-yellow-500/30
+                        hover:-translate-y-1
+                        hover:shadow-2xl
+                        hover:shadow-black/40
+                      "
+                    >
 
-                      {p.imagen ? (
-                        <img
-                          src={p.imagen}
-                          alt={p.nombre}
-                          loading="lazy"
-                          className="
-                            w-full
-                            h-full
-                            object-cover
-                            transition-transform
-                            duration-500
-                            group-hover:scale-[1.04]
-                          "
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-zinc-600">
-                          Sin imagen
-                        </div>
-                      )}
+                      {/* ================================= */}
+                      {/* IMAGEN */}
+                      {/* ================================= */}
 
-                      {/* GRADIENT */}
+                      <div className="relative h-[280px] bg-zinc-900 overflow-hidden">
 
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 pointer-events-none" />
-
-                      {/* ETIQUETAS */}
-
-                      <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-
-                        {nuevo && (
-                          <span className="bg-yellow-500 text-black px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
-                            NUEVO
-                          </span>
-                        )}
-
-                        {p.destacado && (
-                          <span className="bg-black/75 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5">
-                            <FaStar className="text-yellow-500" />
-                            Destacado
-                          </span>
-                        )}
-
-                      </div>
-
-                      {/* FAVORITO */}
-
-                      <button
-                        aria-label={
-                          isFav
-                            ? "Quitar de favoritos"
-                            : "Guardar en favoritos"
-                        }
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorito(p);
-                        }}
-                        disabled={
-                          guardandoFavorito ===
-                          p.id
-                        }
-                        className="
-                          absolute
-                          top-4
-                          right-4
-                          w-11
-                          h-11
-                          rounded-full
-                          bg-black/70
-                          backdrop-blur-md
-                          border
-                          border-white/15
-                          flex
-                          items-center
-                          justify-center
-                          hover:scale-110
-                          transition
-                          disabled:opacity-50
-                        "
-                      >
-
-                        {isFav ? (
-                          <FaHeart className="text-red-500 text-lg" />
+                        {portada ? (
+                          <img
+                            src={portada}
+                            alt={
+                              p.nombre ||
+                              "Proyecto Wealth"
+                            }
+                            loading="lazy"
+                            className="
+                              w-full
+                              h-full
+                              object-cover
+                              transition-transform
+                              duration-500
+                              group-hover:scale-[1.04]
+                            "
+                          />
                         ) : (
-                          <FaRegHeart className="text-white text-lg" />
-                        )}
-
-                      </button>
-
-                    </div>
-
-                    {/* ================================= */}
-                    {/* INFORMACIÓN */}
-                    {/* ================================= */}
-
-                    <div className="p-6">
-
-                      {/* CATEGORÍA */}
-
-                      <div className="flex items-center justify-between gap-3">
-
-                        <p className="text-xs text-yellow-500/90 uppercase tracking-[0.18em] font-medium">
-                          {p.categoria ||
-                            "Proyecto Wealth"}
-                        </p>
-
-                        {p.fecha?.toDate && (
-                          <div className="text-[11px] text-zinc-600 flex items-center gap-1.5">
-                            <FaClock />
-
-                            {p.fecha
-                              .toDate()
-                              .toLocaleDateString(
-                                "es-MX",
-                                {
-                                  month:
-                                    "short",
-                                  year:
-                                    "numeric",
-                                }
-                              )}
+                          <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                            Sin imagen
                           </div>
                         )}
 
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10 pointer-events-none" />
+
+                        {/* ETIQUETAS */}
+
+                        <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+
+                          {nuevo && (
+                            <span className="bg-yellow-500 text-black px-3 py-1.5 rounded-full text-xs font-bold shadow-lg">
+                              NUEVO
+                            </span>
+                          )}
+
+                          {p.destacado && (
+                            <span className="bg-black/75 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5">
+
+                              <FaStar className="text-yellow-500" />
+
+                              Destacado
+
+                            </span>
+                          )}
+
+                        </div>
+
+                        {/* NÚMERO DE FOTOS */}
+
+                        {imagenesProyecto.length >
+                          1 && (
+                          <div className="absolute bottom-4 left-4 bg-black/75 backdrop-blur-md border border-white/15 text-white px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-2">
+
+                            <FaImages className="text-yellow-500" />
+
+                            {imagenesProyecto.length} fotos
+
+                          </div>
+                        )}
+
+                        {/* FAVORITO */}
+
+                        <button
+                          type="button"
+                          aria-label={
+                            isFav
+                              ? "Quitar de favoritos"
+                              : "Guardar en favoritos"
+                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+
+                            toggleFavorito(
+                              p
+                            );
+                          }}
+                          disabled={
+                            guardandoFavorito ===
+                            p.id
+                          }
+                          className="
+                            absolute
+                            top-4
+                            right-4
+                            w-11
+                            h-11
+                            rounded-full
+                            bg-black/70
+                            backdrop-blur-md
+                            border
+                            border-white/15
+                            flex
+                            items-center
+                            justify-center
+                            hover:scale-110
+                            transition
+                            disabled:opacity-50
+                          "
+                        >
+
+                          {isFav ? (
+                            <FaHeart className="text-red-500 text-lg" />
+                          ) : (
+                            <FaRegHeart className="text-white text-lg" />
+                          )}
+
+                        </button>
+
                       </div>
 
-                      {/* TÍTULO */}
+                      {/* ================================= */}
+                      {/* INFORMACIÓN */}
+                      {/* ================================= */}
 
-                      <h2 className="text-xl md:text-2xl font-semibold mt-3 leading-tight group-hover:text-yellow-50 transition">
-                        {p.nombre ||
-                          "Proyecto Wealth"}
-                      </h2>
+                      <div className="p-6">
 
-                      {/* DESCRIPCIÓN */}
+                        <div className="flex items-center justify-between gap-3">
 
-                      <p className="text-zinc-400 mt-3 text-sm leading-relaxed line-clamp-3 min-h-[63px]">
-                        {p.descripcion ||
-                          "Conoce los detalles de este proyecto realizado por Wealth."}
-                      </p>
+                          <p className="text-xs text-yellow-500/90 uppercase tracking-[0.18em] font-medium">
+                            {p.categoria ||
+                              "Proyecto Wealth"}
+                          </p>
 
-                      {/* VER DETALLES */}
+                          {p.fecha?.toDate && (
+                            <div className="text-[11px] text-zinc-600 flex items-center gap-1.5">
 
-                      <div className="mt-6 flex items-center gap-2 text-sm font-medium text-zinc-300 group-hover:text-white transition">
+                              <FaClock />
 
-                        Ver proyecto
+                              {p.fecha
+                                .toDate()
+                                .toLocaleDateString(
+                                  "es-MX",
+                                  {
+                                    month:
+                                      "short",
 
-                        <FaArrowRight className="text-xs transition-transform duration-300 group-hover:translate-x-1" />
+                                    year:
+                                      "numeric",
+                                  }
+                                )}
+
+                            </div>
+                          )}
+
+                        </div>
+
+                        <h2 className="text-xl md:text-2xl font-semibold mt-3 leading-tight group-hover:text-yellow-50 transition">
+                          {p.nombre ||
+                            "Proyecto Wealth"}
+                        </h2>
+
+                        <p className="text-zinc-400 mt-3 text-sm leading-relaxed line-clamp-3 min-h-[63px]">
+                          {p.descripcion ||
+                            "Conoce los detalles de este proyecto realizado por Wealth."}
+                        </p>
+
+                        <div className="mt-6 flex items-center gap-2 text-sm font-medium text-zinc-300 group-hover:text-white transition">
+
+                          Ver proyecto
+
+                          <FaArrowRight className="text-xs transition-transform duration-300 group-hover:translate-x-1" />
+
+                        </div>
+
+                        {/* BOTÓN COTIZAR */}
+
+                        <button
+                          type="button"
+                          onClick={(e) =>
+                            solicitarCotizacion(
+                              e,
+                              p
+                            )
+                          }
+                          className="
+                            w-full
+                            mt-5
+                            bg-white
+                            hover:bg-yellow-500
+                            text-black
+                            font-semibold
+                            py-3.5
+                            rounded-2xl
+                            flex
+                            items-center
+                            justify-center
+                            gap-2
+                            transition
+                          "
+                        >
+
+                          <FaFileInvoiceDollar />
+
+                          Solicitar cotización
+
+                        </button>
 
                       </div>
 
-                      {/* BOTÓN COTIZAR */}
-
-                      <button
-                        onClick={(e) =>
-                          solicitarCotizacion(
-                            e,
-                            p
-                          )
-                        }
-                        className="
-                          w-full
-                          mt-5
-                          bg-white
-                          hover:bg-yellow-500
-                          text-black
-                          font-semibold
-                          py-3.5
-                          rounded-2xl
-                          flex
-                          items-center
-                          justify-center
-                          gap-2
-                          transition
-                        "
-                      >
-
-                        <FaFileInvoiceDollar />
-
-                        Solicitar cotización
-
-                      </button>
-
-                    </div>
-
-                  </article>
-                );
-              })}
+                    </article>
+                  );
+                }
+              )}
 
             </div>
           )}
@@ -854,7 +1093,8 @@ function Proyectos() {
       {/* ================================================= */}
 
       {!cargando &&
-        proyectos.length > 0 && (
+        proyectos.length >
+          0 && (
           <section className="max-w-7xl mx-auto px-5 md:px-6 pb-16">
 
             <div className="relative overflow-hidden bg-zinc-950 border border-white/10 rounded-[32px] px-6 py-12 md:px-12 md:py-14">
@@ -870,24 +1110,23 @@ function Proyectos() {
                   </p>
 
                   <h2 className="text-2xl md:text-4xl font-semibold mt-3">
-                    Hagamos realidad tu próximo
-                    proyecto.
+                    Hagamos realidad tu próximo proyecto.
                   </h2>
 
                   <p className="text-zinc-400 mt-3 max-w-2xl">
-                    Cuéntanos qué necesitas y nuestro
-                    equipo podrá preparar una propuesta
-                    personalizada.
+                    Cuéntanos qué necesitas y nuestro equipo podrá preparar una propuesta personalizada.
                   </p>
 
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => {
                     if (!usuario) {
                       setMostrarLoginModal(
                         true
                       );
+
                       return;
                     }
 
@@ -911,9 +1150,11 @@ function Proyectos() {
                     transition
                   "
                 >
+
                   <FaFileInvoiceDollar />
 
                   Solicitar cotización
+
                 </button>
 
               </div>
@@ -941,7 +1182,9 @@ function Proyectos() {
             p-4
           "
           onClick={() =>
-            setMostrarLoginModal(false)
+            setMostrarLoginModal(
+              false
+            )
           }
         >
 
@@ -962,9 +1205,8 @@ function Proyectos() {
             }
           >
 
-            {/* CERRAR */}
-
             <button
+              type="button"
               onClick={() =>
                 setMostrarLoginModal(
                   false
@@ -974,8 +1216,6 @@ function Proyectos() {
             >
               <FaTimes />
             </button>
-
-            {/* CORAZÓN */}
 
             <div className="flex justify-center mb-5">
 
@@ -991,24 +1231,25 @@ function Proyectos() {
             </div>
 
             <h2 className="text-3xl font-semibold text-center mb-3">
-              Guarda tus favoritos
+              Accede a Wealth
             </h2>
 
             <p className="text-zinc-400 text-center mb-8 leading-relaxed">
-              Inicia sesión para guardar proyectos,
-              acceder a ellos desde tus dispositivos y
-              solicitar cotizaciones personalizadas.
+              Inicia sesión para guardar proyectos y solicitar cotizaciones personalizadas.
             </p>
 
             <div className="space-y-3">
 
               <button
+                type="button"
                 onClick={() => {
                   setMostrarLoginModal(
                     false
                   );
 
-                  navigate("/login");
+                  navigate(
+                    "/login"
+                  );
                 }}
                 className="
                   w-full
@@ -1025,13 +1266,14 @@ function Proyectos() {
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   setMostrarLoginModal(
                     false
                   );
 
                   navigate(
-                    "/registro"
+                    "/register"
                   );
                 }}
                 className="
@@ -1048,6 +1290,7 @@ function Proyectos() {
               </button>
 
               <button
+                type="button"
                 onClick={() =>
                   setMostrarLoginModal(
                     false

@@ -1,132 +1,2983 @@
-import { useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  where,
+} from "firebase/firestore";
+
+import {
+  onAuthStateChanged,
+} from "firebase/auth";
+
 import ChatHeader from "./ChatHeader";
 import ChatMessages from "./ChatMessages";
 import ChatInput from "./ChatInput";
 import SuggestedQuestions from "./SuggestedQuestions";
-import ProjectGallery from "./ProjectGallery";
 import TypingIndicator from "./TypingIndicator";
 import EmptyState from "./EmptyState";
+import ChatHistory from "./ChatHistory";
 
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
-import { db } from "../firebase.config";
+import {
+  auth,
+  db,
+} from "../firebase.config";
 
-/* 🔥 FIRESTORE RECOMENDACIONES */
-const getRecomendaciones = async (text) => {
-  const t = text.toLowerCase();
+/* =========================================
+   CONFIGURACIÓN
+========================================= */
 
-  let subcategoria = null;
+const API_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5001";
 
-  if (t.includes("puerta")) subcategoria = "puertas";
-  if (t.includes("ventana")) subcategoria = "ventanas";
-  if (t.includes("cancel")) subcategoria = "canceles";
-  if (t.includes("vidrio")) subcategoria = "puertas";
+const IA_TIMEOUT =
+  20000;
 
-  if (!subcategoria) return [];
+/* =========================================
+   UTILIDADES
+========================================= */
 
-  const q = query(
-    collection(db, "galeria"),
-    where("subcategoria", "==", subcategoria),
-    limit(6)
-  );
-
-  const snap = await getDocs(q);
-
-  return snap.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+const normalizarTexto = (
+  texto = ""
+) => {
+  return texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .trim();
 };
 
-export default function ChatIA() {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [projects, setProjects] = useState([]);
+const textoSeguro = (
+  valor
+) => {
+  if (
+    valor === null ||
+    valor === undefined
+  ) {
+    return "";
+  }
 
-  const sendMessage = async (text = input) => {
-    if (!text.trim()) return;
+  return String(valor);
+};
 
-    const userMessage = { role: "user", content: text };
-    const newMessages = [...messages, userMessage];
+/* =========================================
+   INFORMACIÓN EMPRESA
+========================================= */
 
-    setMessages(newMessages);
-    setInput("");
-    setLoading(true);
-    setProjects([]);
-
+const getEmpresaInfo =
+  async () => {
     try {
-      /* 🤖 BACKEND */
-      const res = await fetch("http://localhost:5000/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
-      });
-
-      if (!res.ok) throw new Error("Error backend IA");
-
-      const data = await res.json();
-
-      const aiText = data?.reply || "Sin respuesta";
-
-      setMessages([...newMessages, {
-        role: "ai",
-        content: aiText
-      }]);
-
-      /* 🔥 GALERÍA REAL */
-      const recomendaciones = await getRecomendaciones(text);
-
-      if (recomendaciones.length > 0) {
-        setProjects(
-          recomendaciones.map(item => ({
-            id: item.id,
-            title: item.titulo,
-            img: item.imagenes?.[0] || ""
-          }))
+      const snapshot =
+        await getDoc(
+          doc(
+            db,
+            "empresa",
+            "informacion"
+          )
         );
+
+      if (
+        !snapshot.exists()
+      ) {
+        return null;
       }
 
-    } catch (err) {
-      console.error("ERROR CHAT:", err);
+      return {
+        id:
+          snapshot.id,
 
-      setMessages([...newMessages, {
-        role: "ai",
-        content: "Error al conectar con IA"
-      }]);
+        ...snapshot.data(),
+      };
+
+    } catch (error) {
+      console.error(
+        "❌ EMPRESA:",
+        error
+      );
+
+      return null;
     }
-
-    setLoading(false);
   };
 
+/* =========================================
+   FAQ
+========================================= */
+
+const getFAQ =
+  async () => {
+    try {
+      const snapshot =
+        await getDocs(
+          collection(
+            db,
+            "faq"
+          )
+        );
+
+      return snapshot.docs.map(
+        (documento) => ({
+          id:
+            documento.id,
+
+          ...documento.data(),
+        })
+      );
+
+    } catch (error) {
+      console.warn(
+        "⚠️ FAQ:",
+        error
+      );
+
+      return [];
+    }
+  };
+
+/* =========================================
+   CARGAR PROYECTOS
+   SOLO UNA VEZ
+========================================= */
+
+const getTodosProyectos =
+  async () => {
+    try {
+      const snapshot =
+        await getDocs(
+          collection(
+            db,
+            "proyectos"
+          )
+        );
+
+      return snapshot.docs.map(
+        (documento) => ({
+          id:
+            documento.id,
+
+          ...documento.data(),
+        })
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ PROYECTOS:",
+        error
+      );
+
+      return [];
+    }
+  };
+
+/* =========================================
+   CARGAR GALERÍA
+   SOLO UNA VEZ
+========================================= */
+
+const getTodaGaleria =
+  async () => {
+    try {
+      const snapshot =
+        await getDocs(
+          collection(
+            db,
+            "galeria"
+          )
+        );
+
+      return snapshot.docs.map(
+        (documento) => ({
+          id:
+            documento.id,
+
+          ...documento.data(),
+        })
+      );
+
+    } catch (error) {
+      console.error(
+        "❌ GALERÍA:",
+        error
+      );
+
+      return [];
+    }
+  };
+
+/* =========================================
+   RESPUESTAS RÁPIDAS EMPRESA
+========================================= */
+
+const getRespuestaEmpresa = (
+  texto,
+  empresa
+) => {
+  if (!empresa) {
+    return null;
+  }
+
+  const t =
+    normalizarTexto(texto);
+
+  /* UBICACIÓN */
+
+  if (
+    t.includes(
+      "ubicacion"
+    ) ||
+    t.includes(
+      "direccion"
+    ) ||
+    t.includes(
+      "donde estan"
+    ) ||
+    t.includes(
+      "donde se encuentran"
+    ) ||
+    t.includes(
+      "donde quedan"
+    ) ||
+    t.includes(
+      "como llego"
+    ) ||
+    t.includes(
+      "ubicados"
+    )
+  ) {
+    const direccion =
+      empresa.direccion || "";
+
+    const ciudad =
+      empresa.ciudad || "";
+
+    return {
+      content:
+        direccion && ciudad
+          ? `Estamos ubicados en ${direccion}, ${ciudad}.`
+          : direccion
+          ? `Estamos ubicados en ${direccion}.`
+          : "No tengo una dirección confirmada disponible en este momento.",
+
+      actions: [
+        {
+          type:
+            "contacto",
+
+          label:
+            "💬 Contacto",
+        },
+
+        {
+          type:
+            "cotizar",
+
+          label:
+            "📋 Crear cotización",
+        },
+      ],
+    };
+  }
+
+  /* CONTACTO */
+
+  if (
+    t.includes(
+      "contacto"
+    ) ||
+    t.includes(
+      "telefono"
+    ) ||
+    t.includes(
+      "numero"
+    ) ||
+    t.includes(
+      "whatsapp"
+    ) ||
+    t.includes(
+      "whatsap"
+    ) ||
+    t.includes(
+      "watsapp"
+    ) ||
+    t.includes(
+      "llamar"
+    )
+  ) {
+    return {
+      content:
+        empresa.contacto
+          ? `Puedes comunicarte con Grupo Empresarial Wealth al ${empresa.contacto}.`
+          : "No tengo un número de contacto confirmado disponible en este momento.",
+
+      actions: [
+        {
+          type:
+            "cotizar",
+
+          label:
+            "📋 Solicitar cotización",
+        },
+      ],
+    };
+  }
+
+  /* CORREO */
+
+  if (
+    t.includes(
+      "correo"
+    ) ||
+    t.includes(
+      "email"
+    ) ||
+    t.includes(
+      "mail"
+    )
+  ) {
+    return {
+      content:
+        empresa.correo
+          ? `Nuestro correo de contacto es ${empresa.correo}.`
+          : "No tengo un correo confirmado disponible en este momento.",
+    };
+  }
+
+  /* HORARIO */
+
+  if (
+    t.includes(
+      "horario"
+    ) ||
+    t.includes(
+      "horarios"
+    ) ||
+    t.includes(
+      "cuando abren"
+    ) ||
+    t.includes(
+      "cuando cierran"
+    ) ||
+    t.includes(
+      "a que hora"
+    )
+  ) {
+    return {
+      content:
+        empresa.horarios
+          ? `Nuestro horario de atención es ${empresa.horarios}.`
+          : "No tengo un horario confirmado disponible en este momento.",
+    };
+  }
+
+  return null;
+};
+
+/* =========================================
+   SERVICIOS GENERALES
+========================================= */
+
+const esPreguntaServicios = (
+  texto
+) => {
+  const t =
+    normalizarTexto(texto);
+
   return (
-    <div className="flex flex-col h-screen bg-[#0a0a0a] text-white">
+    t.includes(
+      "que servicios"
+    ) ||
+    t.includes(
+      "cuales servicios"
+    ) ||
+    t.includes(
+      "servicios ofrecen"
+    ) ||
+    t.includes(
+      "servicios manejan"
+    ) ||
+    t.includes(
+      "que areas manejan"
+    ) ||
+    t.includes(
+      "cuales areas"
+    ) ||
+    t.includes(
+      "a que se dedican"
+    ) ||
+    t.includes(
+      "que hacen ustedes"
+    ) ||
+    t.includes(
+      "que hace wealth"
+    )
+  );
+};
 
-      <div className="border-b border-[#c89b3c]/30 bg-black/40 backdrop-blur-md">
-        <ChatHeader />
+/* =========================================
+   CONCEPTOS DE SERVICIO
+
+   Aquí podemos agregar más en el futuro.
+========================================= */
+
+const CONCEPTOS = {
+  construccion: [
+    "construccion",
+    "construcciones",
+    "construir",
+    "obra",
+    "obras",
+    "obra civil",
+    "edificacion",
+    "infraestructura",
+  ],
+
+  remodelacion: [
+    "remodelacion",
+    "remodelar",
+    "remodelaciones",
+  ],
+
+  inmobiliaria: [
+    "inmobiliaria",
+    "inmobiliario",
+    "bienes raices",
+    "inmueble",
+    "inmuebles",
+  ],
+
+  terreno: [
+    "terreno",
+    "terrenos",
+    "lote",
+    "lotes",
+  ],
+
+  casa: [
+    "casa",
+    "casas",
+    "vivienda",
+    "viviendas",
+    "residencia",
+    "residencial",
+  ],
+
+  departamento: [
+    "departamento",
+    "departamentos",
+  ],
+
+  venta: [
+    "venta",
+    "vender",
+    "comprar",
+    "compra",
+  ],
+
+  renta: [
+    "renta",
+    "rentar",
+    "alquiler",
+  ],
+
+  aluminio: [
+    "aluminio",
+    "aluminios",
+  ],
+
+  vidrio: [
+    "vidrio",
+    "vidrios",
+    "cristal",
+    "cristales",
+  ],
+
+  templado: [
+    "templado",
+  ],
+
+  herreria: [
+    "herreria",
+    "metalico",
+    "metalica",
+    "metal",
+  ],
+
+  puerta: [
+    "puerta",
+    "puertas",
+  ],
+
+  ventana: [
+    "ventana",
+    "ventanas",
+    "ventanal",
+    "ventanales",
+  ],
+
+  cancel: [
+    "cancel",
+    "canceles",
+  ],
+
+  bano: [
+    "bano",
+    "banos",
+    "regadera",
+    "regaderas",
+  ],
+
+  porton: [
+    "porton",
+    "portones",
+  ],
+
+  fachada: [
+    "fachada",
+    "fachadas",
+  ],
+
+  espejo: [
+    "espejo",
+    "espejos",
+  ],
+
+  escalera: [
+    "escalera",
+    "escaleras",
+    "caracol",
+  ],
+
+  techo: [
+    "techo",
+    "techos",
+    "techumbre",
+    "techumbres",
+  ],
+
+  estructura: [
+    "estructura",
+    "estructuras",
+  ],
+
+  cocina: [
+    "cocina",
+    "cocinas",
+  ],
+};
+
+/* =========================================
+   DETECTAR CONCEPTOS
+========================================= */
+
+const detectarConceptos = (
+  texto
+) => {
+  const t =
+    normalizarTexto(texto);
+
+  const detectados = [];
+
+  Object.entries(
+    CONCEPTOS
+  ).forEach(
+    ([concepto, palabras]) => {
+      const encontrado =
+        palabras.some(
+          (palabra) =>
+            t.includes(
+              palabra
+            )
+        );
+
+      if (encontrado) {
+        detectados.push(
+          concepto
+        );
+      }
+    }
+  );
+
+  return detectados;
+};
+
+/* =========================================
+   DETECTAR ÁREA
+========================================= */
+
+const detectarAreaProyecto = (
+  texto
+) => {
+  const conceptos =
+    detectarConceptos(texto);
+
+  if (
+    conceptos.some(
+      (c) =>
+        [
+          "construccion",
+          "remodelacion",
+          "fachada",
+          "escalera",
+          "techo",
+          "estructura",
+          "cocina",
+        ].includes(c)
+    )
+  ) {
+    return "construccion";
+  }
+
+  if (
+    conceptos.some(
+      (c) =>
+        [
+          "inmobiliaria",
+          "terreno",
+          "casa",
+          "departamento",
+          "venta",
+          "renta",
+        ].includes(c)
+    )
+  ) {
+    return "inmobiliaria";
+  }
+
+  if (
+    conceptos.some(
+      (c) =>
+        [
+          "aluminio",
+          "vidrio",
+          "templado",
+          "herreria",
+          "puerta",
+          "ventana",
+          "cancel",
+          "bano",
+          "porton",
+          "espejo",
+        ].includes(c)
+    )
+  ) {
+    return "aluminios";
+  }
+
+  return null;
+};
+
+/* =========================================
+   CONSULTA RELACIONADA A SERVICIO
+========================================= */
+
+const esConsultaServicio = (
+  texto
+) => {
+  return (
+    detectarConceptos(
+      texto
+    ).length > 0
+  );
+};
+
+/* =========================================
+   INTENCIÓN DE VER / BUSCAR
+========================================= */
+
+const esIntencionMostrar = (
+  texto
+) => {
+  const t =
+    normalizarTexto(texto);
+
+  return (
+    t.includes(
+      "muestrame"
+    ) ||
+    t.includes(
+      "muestra"
+    ) ||
+    t.includes(
+      "ensenarme"
+    ) ||
+    t.includes(
+      "ensena"
+    ) ||
+    t.includes(
+      "quiero ver"
+    ) ||
+    t.includes(
+      "puedo ver"
+    ) ||
+    t.includes(
+      "tienes"
+    ) ||
+    t.includes(
+      "tienen"
+    ) ||
+    t.includes(
+      "modelos"
+    ) ||
+    t.includes(
+      "fotos"
+    ) ||
+    t.includes(
+      "imagenes"
+    ) ||
+    t.includes(
+      "opciones"
+    ) ||
+    t.includes(
+      "proyectos"
+    ) ||
+    t.includes(
+      "trabajos"
+    ) ||
+    t.includes(
+      "realizado"
+    ) ||
+    t.includes(
+      "realizados"
+    )
+  );
+};
+
+/* =========================================
+   INTENCIÓN COTIZACIÓN
+========================================= */
+
+const esIntencionCotizacion = (
+  texto
+) => {
+  const t =
+    normalizarTexto(texto);
+
+  return (
+    t.includes(
+      "cotizar"
+    ) ||
+    t.includes(
+      "cotizacion"
+    ) ||
+    t.includes(
+      "presupuesto"
+    ) ||
+    t.includes(
+      "quiero contratar"
+    ) ||
+    t.includes(
+      "me interesa"
+    ) ||
+    t.includes(
+      "quisiera"
+    ) ||
+    t.includes(
+      "quiero hacer"
+    ) ||
+    t.includes(
+      "necesito"
+    ) ||
+    t.includes(
+      "cuanto cuesta"
+    ) ||
+    t.includes(
+      "cuanto costaria"
+    ) ||
+    t.includes(
+      "cuanto saldria"
+    ) ||
+    t.includes(
+      "precio"
+    )
+  );
+};
+
+/* =========================================
+   CONSULTA INCOMPLETA
+========================================= */
+
+const esMensajeMuyIncompleto = (
+  texto
+) => {
+  const palabras =
+    normalizarTexto(
+      texto
+    )
+      .split(/\s+/)
+      .filter(Boolean);
+
+  return (
+    palabras.length <= 2 &&
+    detectarConceptos(
+      texto
+    ).length === 0
+  );
+};
+
+/* =========================================
+   MEMORIA PROYECTO
+========================================= */
+
+const actualizarMemoriaProyecto = (
+  memoriaAnterior,
+  texto
+) => {
+  const t =
+    normalizarTexto(texto);
+
+  const memoria = {
+    ...(memoriaAnterior || {}),
+  };
+
+  const conceptos =
+    detectarConceptos(
+      texto
+    );
+
+  const area =
+    detectarAreaProyecto(
+      texto
+    );
+
+  if (area) {
+    memoria.area =
+      area;
+  }
+
+  /* TIPO */
+
+  const nombres = {
+    puerta:
+      "Puerta",
+
+    ventana:
+      "Ventana",
+
+    cancel:
+      "Cancel",
+
+    bano:
+      "Baño",
+
+    porton:
+      "Portón",
+
+    fachada:
+      "Fachada",
+
+    espejo:
+      "Espejo",
+
+    escalera:
+      "Escalera",
+
+    techo:
+      "Techo / Techumbre",
+
+    estructura:
+      "Estructura",
+
+    remodelacion:
+      "Remodelación",
+
+    construccion:
+      "Construcción",
+
+    terreno:
+      "Terreno",
+
+    casa:
+      "Casa",
+
+    departamento:
+      "Departamento",
+  };
+
+  const prioridadTipo = [
+    "puerta",
+    "ventana",
+    "cancel",
+    "porton",
+    "fachada",
+    "espejo",
+    "escalera",
+    "techo",
+    "estructura",
+    "remodelacion",
+    "construccion",
+    "terreno",
+    "casa",
+    "departamento",
+    "bano",
+  ];
+
+  const tipo =
+    prioridadTipo.find(
+      (concepto) =>
+        conceptos.includes(
+          concepto
+        )
+    );
+
+  if (tipo) {
+    memoria.tipoTrabajo =
+      nombres[tipo];
+  }
+
+  /* MATERIALES */
+
+  if (
+    conceptos.includes(
+      "herreria"
+    )
+  ) {
+    memoria.material =
+      "Herrería";
+  }
+
+  if (
+    conceptos.includes(
+      "aluminio"
+    )
+  ) {
+    memoria.material =
+      "Aluminio";
+  }
+
+  if (
+    conceptos.includes(
+      "templado"
+    )
+  ) {
+    memoria.material =
+      "Vidrio templado";
+  } else if (
+    conceptos.includes(
+      "vidrio"
+    )
+  ) {
+    memoria.material =
+      "Vidrio";
+  }
+
+  /* MEDIDAS */
+
+  const medida =
+    t.match(
+      /(\d+(?:[.,]\d+)?)\s*(?:m|metros?)?\s*(?:x|por)\s*(\d+(?:[.,]\d+)?)\s*(?:m|metros?)?/
+    );
+
+  if (medida) {
+    memoria.ancho =
+      medida[1].replace(
+        ",",
+        "."
+      );
+
+    memoria.alto =
+      medida[2].replace(
+        ",",
+        "."
+      );
+  }
+
+  /* ESTILO */
+
+  const estilos = [
+    "moderno",
+    "moderna",
+    "minimalista",
+    "clasico",
+    "clasica",
+    "industrial",
+    "elegante",
+    "rustico",
+    "rustica",
+  ];
+
+  const estilo =
+    estilos.find(
+      (item) =>
+        t.includes(item)
+    );
+
+  if (estilo) {
+    memoria.estilo =
+      estilo;
+  }
+
+  /* COLOR */
+
+  const colores = [
+    "negro",
+    "negra",
+    "blanco",
+    "blanca",
+    "gris",
+    "cromado",
+    "cromada",
+    "dorado",
+    "dorada",
+  ];
+
+  const color =
+    colores.find(
+      (item) =>
+        t.includes(item)
+    );
+
+  if (color) {
+    memoria.color =
+      color;
+  }
+
+  /* PRIORIDAD */
+
+  if (
+    t.includes(
+      "segur"
+    )
+  ) {
+    memoria.prioridad =
+      "Seguridad";
+  }
+
+  if (
+    t.includes(
+      "privacidad"
+    )
+  ) {
+    memoria.prioridad =
+      "Privacidad";
+  }
+
+  return memoria;
+};
+
+/* =========================================
+   TEXTO INDEXADO DE PROYECTO
+========================================= */
+
+const textoProyecto = (
+  proyecto
+) => {
+  return normalizarTexto(
+    [
+      proyecto.nombre,
+      proyecto.titulo,
+      proyecto.descripcion,
+      proyecto.categoria,
+      proyecto.subcategoria,
+      proyecto.tipo,
+      proyecto.ubicacion,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+};
+
+/* =========================================
+   TEXTO INDEXADO GALERÍA
+========================================= */
+
+const textoGaleria = (
+  grupo
+) => {
+  return normalizarTexto(
+    [
+      grupo.categoria,
+      grupo.subcategoria,
+      grupo.nombre,
+      grupo.descripcion,
+      grupo.tipo,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+};
+
+/* =========================================
+   COMPROBAR CONCEPTOS
+
+   IMPORTANTE:
+   Todos los conceptos principales
+   deben coincidir.
+
+   puerta + herrería
+   NO coincide con "cancel de baño".
+========================================= */
+
+const coincideConceptos = (
+  textoItem,
+  conceptos
+) => {
+  if (
+    !conceptos.length
+  ) {
+    return false;
+  }
+
+  return conceptos.every(
+    (concepto) => {
+      const palabras =
+        CONCEPTOS[
+          concepto
+        ] || [];
+
+      return palabras.some(
+        (palabra) =>
+          textoItem.includes(
+            normalizarTexto(
+              palabra
+            )
+          )
+      );
+    }
+  );
+};
+
+/* =========================================
+   FORMATEAR PROYECTO
+========================================= */
+
+const formatearProyecto = (
+  proyecto
+) => {
+  return {
+    id:
+      proyecto.id,
+
+    type:
+      "proyecto",
+
+    title:
+      proyecto.nombre ||
+      proyecto.titulo ||
+      "Proyecto Wealth",
+
+    img:
+      proyecto.imagen ||
+      proyecto.imagenes?.[0] ||
+      "",
+
+    descripcion:
+      proyecto.descripcion ||
+      "",
+
+    categoria:
+      proyecto.categoria ||
+      "",
+
+    subcategoria:
+      proyecto.subcategoria ||
+      "",
+
+    ubicacion:
+      proyecto.ubicacion ||
+      "",
+
+    route:
+      `/proyecto/${proyecto.id}`,
+  };
+};
+
+/* =========================================
+   BUSCAR PROYECTOS RELACIONADOS
+========================================= */
+
+const buscarProyectosRelacionados = (
+  texto,
+  proyectos
+) => {
+  const conceptos =
+    detectarConceptos(
+      texto
+    );
+
+  if (
+    !conceptos.length
+  ) {
+    return [];
+  }
+
+  return proyectos
+    .filter(
+      (proyecto) =>
+        coincideConceptos(
+          textoProyecto(
+            proyecto
+          ),
+          conceptos
+        )
+    )
+    .slice(
+      0,
+      6
+    )
+    .map(
+      formatearProyecto
+    );
+};
+
+/* =========================================
+   BUSCAR GALERÍA RELACIONADA
+========================================= */
+
+const buscarGaleriaRelacionada = (
+  texto,
+  galeria
+) => {
+  const conceptos =
+    detectarConceptos(
+      texto
+    );
+
+  if (
+    !conceptos.length
+  ) {
+    return [];
+  }
+
+  const grupos =
+    galeria.filter(
+      (grupo) =>
+        coincideConceptos(
+          textoGaleria(
+            grupo
+          ),
+          conceptos
+        )
+    );
+
+  const items = [];
+
+  grupos.forEach(
+    (grupo) => {
+      const imagenes =
+        Array.isArray(
+          grupo.imagenes
+        )
+          ? grupo.imagenes
+          : [];
+
+      imagenes.forEach(
+        (
+          imagen,
+          index
+        ) => {
+          if (!imagen) {
+            return;
+          }
+
+          items.push({
+            id:
+              `${grupo.id}_${index}`,
+
+            grupoId:
+              grupo.id,
+
+            type:
+              "galeria",
+
+            title:
+              grupo.subcategoria ||
+              grupo.nombre ||
+              "Referencia Wealth",
+
+            img:
+              imagen,
+
+            descripcion:
+              grupo.descripcion ||
+              "Referencia disponible en nuestra galería.",
+
+            categoria:
+              grupo.categoria ||
+              "",
+
+            subcategoria:
+              grupo.subcategoria ||
+              "",
+
+            route:
+              "/galeria",
+          });
+        }
+      );
+    }
+  );
+
+  return items.slice(
+    0,
+    6
+  );
+};
+
+/* =========================================
+   BÚSQUEDA UNIVERSAL
+
+   PROYECTOS PRIMERO
+   GALERÍA DESPUÉS
+========================================= */
+
+const buscarReferencias = (
+  texto,
+  proyectos,
+  galeria
+) => {
+  const proyectosEncontrados =
+    buscarProyectosRelacionados(
+      texto,
+      proyectos
+    );
+
+  const galeriaEncontrada =
+    buscarGaleriaRelacionada(
+      texto,
+      galeria
+    );
+
+  const combinados = [
+    ...proyectosEncontrados,
+    ...galeriaEncontrada,
+  ];
+
+  /*
+   * máximo 6 tarjetas
+   */
+
+  return {
+    proyectos:
+      proyectosEncontrados,
+
+    galeria:
+      galeriaEncontrada,
+
+    items:
+      combinados.slice(
+        0,
+        6
+      ),
+
+    cantidad:
+      combinados.length,
+  };
+};
+
+/* =========================================
+   DESCRIBIR BÚSQUEDA
+========================================= */
+
+const describirConsulta = (
+  texto
+) => {
+  const memoria =
+    actualizarMemoriaProyecto(
+      {},
+      texto
+    );
+
+  const partes = [];
+
+  if (
+    memoria.tipoTrabajo
+  ) {
+    partes.push(
+      memoria.tipoTrabajo
+    );
+  }
+
+  if (
+    memoria.material
+  ) {
+    partes.push(
+      `de ${memoria.material}`
+    );
+  }
+
+  if (
+    memoria.estilo
+  ) {
+    partes.push(
+      `estilo ${memoria.estilo}`
+    );
+  }
+
+  if (
+    partes.length
+  ) {
+    return partes.join(
+      " "
+    );
+  }
+
+  return "lo que buscas";
+};
+
+/* =========================================
+   COMPONENTE
+========================================= */
+
+export default function ChatIA() {
+  const [
+    messages,
+    setMessages,
+  ] = useState([]);
+
+  const [
+    input,
+    setInput,
+  ] = useState("");
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
+
+  const [
+    empresa,
+    setEmpresa,
+  ] = useState(null);
+
+  const [
+    faq,
+    setFaq,
+  ] = useState([]);
+
+  /*
+   * CATÁLOGO EN MEMORIA
+   */
+
+  const [
+    proyectosDB,
+    setProyectosDB,
+  ] = useState([]);
+
+  const [
+    galeriaDB,
+    setGaleriaDB,
+  ] = useState([]);
+
+  const [
+    catalogoReady,
+    setCatalogoReady,
+  ] = useState(false);
+
+  /*
+   * MEMORIA CONVERSACIÓN
+   */
+
+  const [
+    areaActual,
+    setAreaActual,
+  ] = useState(null);
+
+  const [
+    memoriaProyecto,
+    setMemoriaProyecto,
+  ] = useState({});
+
+  /*
+   * AUTH / HISTORIAL
+   */
+
+  const [
+    user,
+    setUser,
+  ] = useState(null);
+
+  const [
+    authReady,
+    setAuthReady,
+  ] = useState(false);
+
+  const [
+    conversations,
+    setConversations,
+  ] = useState([]);
+
+  const [
+    currentId,
+    setCurrentId,
+  ] = useState(null);
+
+  /*
+   * REFS
+   */
+
+  const messagesEndRef =
+    useRef(null);
+
+  const abortControllerRef =
+    useRef(null);
+
+  const timeoutRef =
+    useRef(null);
+
+  const operationIdRef =
+    useRef(0);
+
+  /* =========================================
+     TIMEOUT
+  ========================================= */
+
+  const limpiarTimeout =
+    () => {
+      if (
+        timeoutRef.current
+      ) {
+        clearTimeout(
+          timeoutRef.current
+        );
+
+        timeoutRef.current =
+          null;
+      }
+    };
+
+  /* =========================================
+     ABORT
+  ========================================= */
+
+  const abortarPeticionActual =
+    () => {
+      limpiarTimeout();
+
+      if (
+        abortControllerRef.current
+      ) {
+        abortControllerRef.current.abort();
+
+        abortControllerRef.current =
+          null;
+      }
+    };
+
+  /* =========================================
+     CANCELAR
+  ========================================= */
+
+  const cancelarRespuesta =
+    () => {
+      if (!loading) {
+        return;
+      }
+
+      operationIdRef.current +=
+        1;
+
+      abortarPeticionActual();
+
+      setLoading(
+        false
+      );
+
+      setMessages(
+        (prev) => [
+          ...prev,
+
+          {
+            role:
+              "ai",
+
+            content:
+              "Respuesta cancelada. Puedes escribir otra pregunta o intentarlo nuevamente.",
+          },
+        ]
+      );
+    };
+
+  /* =========================================
+     LIMPIEZA
+  ========================================= */
+
+  useEffect(() => {
+    return () => {
+      operationIdRef.current +=
+        1;
+
+      abortarPeticionActual();
+    };
+  }, []);
+
+  /* =========================================
+     AUTH
+  ========================================= */
+
+  useEffect(() => {
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+
+        (
+          currentUser
+        ) => {
+          setUser(
+            currentUser
+          );
+
+          setAuthReady(
+            true
+          );
+
+          if (
+            !currentUser
+          ) {
+            setConversations(
+              []
+            );
+
+            setCurrentId(
+              null
+            );
+          }
+        }
+      );
+
+    return () =>
+      unsubscribe();
+
+  }, []);
+
+  /* =========================================
+     CARGAR DATOS
+
+     Se hace UNA VEZ.
+  ========================================= */
+
+  useEffect(() => {
+    const cargar =
+      async () => {
+        try {
+          const [
+            infoEmpresa,
+            infoFaq,
+            proyectos,
+            galeria,
+          ] =
+            await Promise.all([
+              getEmpresaInfo(),
+              getFAQ(),
+              getTodosProyectos(),
+              getTodaGaleria(),
+            ]);
+
+          setEmpresa(
+            infoEmpresa
+          );
+
+          setFaq(
+            infoFaq
+          );
+
+          setProyectosDB(
+            proyectos
+          );
+
+          setGaleriaDB(
+            galeria
+          );
+
+        } finally {
+          setCatalogoReady(
+            true
+          );
+        }
+      };
+
+    cargar();
+
+  }, []);
+
+  /* =========================================
+     CARGAR HISTORIAL
+  ========================================= */
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    const cargar =
+      async () => {
+        try {
+          const consulta =
+            query(
+              collection(
+                db,
+                "chatHistorial"
+              ),
+
+              where(
+                "uid",
+                "==",
+                user.uid
+              )
+            );
+
+          const snapshot =
+            await getDocs(
+              consulta
+            );
+
+          const lista =
+            snapshot.docs.map(
+              (documento) => ({
+                id:
+                  documento.id,
+
+                ...documento.data(),
+              })
+            );
+
+          lista.sort(
+            (a, b) =>
+              new Date(
+                b.updatedAt ||
+                  0
+              ) -
+              new Date(
+                a.updatedAt ||
+                  0
+              )
+          );
+
+          setConversations(
+            lista
+          );
+
+        } catch (error) {
+          console.error(
+            "❌ HISTORIAL:",
+            error
+          );
+        }
+      };
+
+    cargar();
+
+  }, [user]);
+
+  /* =========================================
+     SCROLL
+  ========================================= */
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior:
+        "smooth",
+    });
+  }, [
+    messages,
+    loading,
+  ]);
+
+  /* =========================================
+     GUARDAR CONVERSACIÓN
+  ========================================= */
+
+  const guardarConversacion =
+    async (
+      nuevosMensajes,
+      datosExtra = {}
+    ) => {
+      if (
+        !user ||
+        !nuevosMensajes.length
+      ) {
+        return;
+      }
+
+      try {
+        let id =
+          currentId;
+
+        if (!id) {
+          const referencia =
+            doc(
+              collection(
+                db,
+                "chatHistorial"
+              )
+            );
+
+          id =
+            referencia.id;
+
+          setCurrentId(
+            id
+          );
+        }
+
+        const primerMensaje =
+          nuevosMensajes.find(
+            (mensaje) =>
+              mensaje.role ===
+              "user"
+          );
+
+        const titulo =
+          primerMensaje?.content
+            ?.slice(
+              0,
+              45
+            ) ||
+          "Conversación";
+
+        const conversacion = {
+          uid:
+            user.uid,
+
+          titulo,
+
+          /*
+           * Incluye attachments.
+           * Por eso las imágenes quedan guardadas.
+           */
+
+          messages:
+            nuevosMensajes,
+
+          areaActual:
+            datosExtra.areaActual ??
+            areaActual ??
+            null,
+
+          memoriaProyecto:
+            datosExtra.memoriaProyecto ??
+            memoriaProyecto ??
+            {},
+
+          updatedAt:
+            new Date().toISOString(),
+        };
+
+        await setDoc(
+          doc(
+            db,
+            "chatHistorial",
+            id
+          ),
+
+          conversacion,
+
+          {
+            merge: true,
+          }
+        );
+
+        setConversations(
+          (prev) => [
+            {
+              id,
+              ...conversacion,
+            },
+
+            ...prev.filter(
+              (item) =>
+                item.id !==
+                id
+            ),
+          ]
+        );
+
+      } catch (error) {
+        console.error(
+          "❌ GUARDANDO CHAT:",
+          error
+        );
+      }
+    };
+
+  /* =========================================
+     NUEVA CONVERSACIÓN
+  ========================================= */
+
+  const nuevaConversacion =
+    () => {
+      operationIdRef.current +=
+        1;
+
+      abortarPeticionActual();
+
+      setLoading(
+        false
+      );
+
+      setMessages([]);
+
+      setAreaActual(
+        null
+      );
+
+      setMemoriaProyecto(
+        {}
+      );
+
+      setCurrentId(
+        null
+      );
+
+      setInput("");
+    };
+
+  /* =========================================
+     ABRIR CONVERSACIÓN
+  ========================================= */
+
+  const abrirConversacion =
+    (
+      conversation
+    ) => {
+      operationIdRef.current +=
+        1;
+
+      abortarPeticionActual();
+
+      setLoading(
+        false
+      );
+
+      setCurrentId(
+        conversation.id
+      );
+
+      setMessages(
+        conversation.messages ||
+          []
+      );
+
+      setAreaActual(
+        conversation.areaActual ||
+          null
+      );
+
+      setMemoriaProyecto(
+        conversation.memoriaProyecto ||
+          {}
+      );
+    };
+
+  /* =========================================
+     ELIMINAR
+  ========================================= */
+
+  const eliminarConversacion =
+    async (id) => {
+      if (!user) {
+        return;
+      }
+
+      try {
+        await deleteDoc(
+          doc(
+            db,
+            "chatHistorial",
+            id
+          )
+        );
+
+        setConversations(
+          (prev) =>
+            prev.filter(
+              (item) =>
+                item.id !==
+                id
+            )
+        );
+
+        if (
+          currentId === id
+        ) {
+          nuevaConversacion();
+        }
+
+      } catch (error) {
+        console.error(
+          "❌ BORRAR CHAT:",
+          error
+        );
+      }
+    };
+
+  /* =========================================
+     RESPONDER CON REFERENCIAS
+
+     NO usa Groq.
+     Es instantáneo.
+  ========================================= */
+
+  const responderReferencias =
+    async (
+      newMessages,
+      texto,
+      nuevaMemoria
+    ) => {
+      const resultado =
+        buscarReferencias(
+          texto,
+          proyectosDB,
+          galeriaDB
+        );
+
+      const descripcion =
+        describirConsulta(
+          texto
+        );
+
+      let content;
+
+      /*
+       * ENCONTRÓ ALGO
+       */
+
+      if (
+        resultado.items.length >
+        0
+      ) {
+        if (
+          resultado.proyectos.length >
+            0 &&
+          resultado.galeria.length >
+            0
+        ) {
+          content =
+            `Encontré proyectos y referencias reales relacionadas con ${descripcion}. Te muestro las opciones disponibles. Si alguna te gusta, puedes abrirla o cotizarla directamente.`;
+        } else if (
+          resultado.proyectos.length >
+          0
+        ) {
+          content =
+            `Encontré proyectos reales relacionados con ${descripcion}. Te los muestro para que puedas tomar alguno como referencia.`;
+        } else {
+          content =
+            `Encontré referencias en nuestra galería relacionadas con ${descripcion}. Te las muestro para que puedas elegir la que más se acerque a lo que buscas.`;
+        }
+      }
+
+      /*
+       * NO ENCONTRÓ NADA
+       */
+
+      else {
+        content =
+          `No encontré un proyecto ni una referencia publicada que coincida con ${descripcion}. ¿Ya tienes alguna idea, fotografía o diseño en mente? Puedes crear una cotización personalizada y enviarnos ahí los detalles o imágenes de lo que deseas.`;
+      }
+
+      const actions = [
+        {
+          type:
+            "cotizar",
+
+          label:
+            resultado.items.length >
+            0
+              ? "📋 Crear cotización personalizada"
+              : "📋 Crear cotización",
+        },
+      ];
+
+      const mensajeIA = {
+        role:
+          "ai",
+
+        content,
+
+        attachments:
+          resultado.items,
+
+        actions,
+      };
+
+      const finales = [
+        ...newMessages,
+        mensajeIA,
+      ];
+
+      setMessages(
+        finales
+      );
+
+      const nuevaArea =
+        detectarAreaProyecto(
+          texto
+        ) ||
+        areaActual;
+
+      setAreaActual(
+        nuevaArea
+      );
+
+      await guardarConversacion(
+        finales,
+        {
+          areaActual:
+            nuevaArea,
+
+          memoriaProyecto:
+            nuevaMemoria,
+        }
+      );
+    };
+
+  /* =========================================
+     ENVIAR
+  ========================================= */
+
+  const sendMessage =
+    async (
+      text = input
+    ) => {
+      if (
+        !text ||
+        !text.trim() ||
+        loading
+      ) {
+        return;
+      }
+
+      const cleanText =
+        text.trim();
+
+      const previousMessages =
+        messages;
+
+      const userMessage = {
+        role:
+          "user",
+
+        content:
+          cleanText,
+      };
+
+      const newMessages = [
+        ...previousMessages,
+        userMessage,
+      ];
+
+      setMessages(
+        newMessages
+      );
+
+      setInput("");
+
+      /* =========================================
+         MEMORIA
+      ========================================= */
+
+      const nuevaMemoria =
+        actualizarMemoriaProyecto(
+          memoriaProyecto,
+          cleanText
+        );
+
+      setMemoriaProyecto(
+        nuevaMemoria
+      );
+
+      /* =========================================
+         EMPRESA
+      ========================================= */
+
+      const respuestaEmpresa =
+        getRespuestaEmpresa(
+          cleanText,
+          empresa
+        );
+
+      if (
+        respuestaEmpresa
+      ) {
+        const finales = [
+          ...newMessages,
+
+          {
+            role:
+              "ai",
+
+            ...respuestaEmpresa,
+          },
+        ];
+
+        setMessages(
+          finales
+        );
+
+        await guardarConversacion(
+          finales,
+          {
+            memoriaProyecto:
+              nuevaMemoria,
+          }
+        );
+
+        return;
+      }
+
+      /* =========================================
+         SERVICIOS GENERALES
+      ========================================= */
+
+      if (
+        esPreguntaServicios(
+          cleanText
+        )
+      ) {
+        const mensajeIA = {
+          role:
+            "ai",
+
+          content:
+            "Grupo Empresarial Wealth trabaja principalmente en Construcciones, Inmobiliaria y Aluminios y Vidrios. Puedes preguntarme por cualquier trabajo, producto o servicio y buscaré primero proyectos y referencias reales publicadas.",
+
+          actions: [
+            {
+              type:
+                "buscar-construccion",
+
+              label:
+                "🏗️ Construcción",
+            },
+
+            {
+              type:
+                "buscar-inmobiliaria",
+
+              label:
+                "🏢 Inmobiliaria",
+            },
+
+            {
+              type:
+                "buscar-aluminios",
+
+              label:
+                "✨ Aluminios y Vidrios",
+            },
+
+            {
+              type:
+                "cotizar",
+
+              label:
+                "📋 Crear cotización",
+            },
+          ],
+        };
+
+        const finales = [
+          ...newMessages,
+          mensajeIA,
+        ];
+
+        setMessages(
+          finales
+        );
+
+        await guardarConversacion(
+          finales,
+          {
+            memoriaProyecto:
+              nuevaMemoria,
+          }
+        );
+
+        return;
+      }
+
+      /* =========================================
+         MENSAJE INCOMPLETO
+      ========================================= */
+
+      if (
+        esMensajeMuyIncompleto(
+          cleanText
+        )
+      ) {
+        const finales = [
+          ...newMessages,
+
+          {
+            role:
+              "ai",
+
+            content:
+              "No alcancé a entender qué te gustaría consultar. Puedes decirme, por ejemplo, qué trabajo, producto o servicio necesitas y te ayudo a buscar opciones.",
+          },
+        ];
+
+        setMessages(
+          finales
+        );
+
+        await guardarConversacion(
+          finales,
+          {
+            memoriaProyecto:
+              nuevaMemoria,
+          }
+        );
+
+        return;
+      }
+
+      /* =========================================
+         BÚSQUEDA UNIVERSAL
+
+         Si menciona cualquier servicio y
+         quiere cotizar / ver / buscar algo,
+         primero revisamos Firebase.
+
+         Ejemplos:
+
+         puerta
+         baño
+         cancel
+         ventana
+         construcción
+         fachada
+         terreno
+         remodelación
+         etc.
+      ========================================= */
+
+      const consultaServicio =
+        esConsultaServicio(
+          cleanText
+        );
+
+      const quiereMostrar =
+        esIntencionMostrar(
+          cleanText
+        );
+
+      const quiereCotizar =
+        esIntencionCotizacion(
+          cleanText
+        );
+
+      if (
+        catalogoReady &&
+        consultaServicio &&
+        (
+          quiereMostrar ||
+          quiereCotizar
+        )
+      ) {
+        await responderReferencias(
+          newMessages,
+          cleanText,
+          nuevaMemoria
+        );
+
+        return;
+      }
+
+      /* =========================================
+         PARA PREGUNTAS GENERALES SOBRE
+         UN SERVICIO:
+
+         También buscamos referencias,
+         pero dejamos a Groq explicar.
+      ========================================= */
+
+      let referencias = {
+        proyectos: [],
+        galeria: [],
+        items: [],
+        cantidad: 0,
+      };
+
+      if (
+        catalogoReady &&
+        consultaServicio
+      ) {
+        referencias =
+          buscarReferencias(
+            cleanText,
+            proyectosDB,
+            galeriaDB
+          );
+      }
+
+      /* =========================================
+         FAQ
+      ========================================= */
+
+      const mensajeNormalizado =
+        normalizarTexto(
+          cleanText
+        );
+
+      const faqRelacionadas =
+        faq
+          .filter(
+            (item) => {
+              const claves =
+                Array.isArray(
+                  item.palabrasClave
+                )
+                  ? item.palabrasClave
+                  : [];
+
+              return claves.some(
+                (clave) =>
+                  mensajeNormalizado.includes(
+                    normalizarTexto(
+                      clave
+                    )
+                  )
+              );
+            }
+          )
+          .slice(
+            0,
+            3
+          );
+
+      /* =========================================
+         OPERACIÓN
+      ========================================= */
+
+      const operationId =
+        ++operationIdRef.current;
+
+      setLoading(
+        true
+      );
+
+      abortarPeticionActual();
+
+      const controller =
+        new AbortController();
+
+      abortControllerRef.current =
+        controller;
+
+      timeoutRef.current =
+        setTimeout(
+          () => {
+            controller.abort();
+          },
+
+          IA_TIMEOUT
+        );
+
+      try {
+        /* =========================================
+           BACKEND
+        ========================================= */
+
+        const response =
+          await fetch(
+            `${API_URL}/chat`,
+            {
+              method:
+                "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              signal:
+                controller.signal,
+
+              body:
+                JSON.stringify({
+                  message:
+                    cleanText,
+
+                  history:
+                    previousMessages,
+
+                  empresa,
+
+                  memoriaProyecto:
+                    nuevaMemoria,
+
+                  faq:
+                    faqRelacionadas,
+
+                  contextoReferencias: {
+                    cantidad:
+                      referencias.items.length,
+
+                    proyectos:
+                      referencias.proyectos.map(
+                        (
+                          item
+                        ) => ({
+                          title:
+                            item.title,
+
+                          descripcion:
+                            item.descripcion,
+
+                          categoria:
+                            item.categoria,
+                        })
+                      ),
+
+                    galeria:
+                      referencias.galeria.map(
+                        (
+                          item
+                        ) => ({
+                          title:
+                            item.title,
+
+                          categoria:
+                            item.categoria,
+
+                          subcategoria:
+                            item.subcategoria,
+                        })
+                      ),
+                  },
+                }),
+            }
+          );
+
+        limpiarTimeout();
+
+        if (
+          operationId !==
+          operationIdRef.current
+        ) {
+          return;
+        }
+
+        const raw =
+          await response.text();
+
+        let data;
+
+        try {
+          data =
+            JSON.parse(
+              raw
+            );
+        } catch {
+          throw new Error(
+            "Respuesta inválida del backend."
+          );
+        }
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            data?.reply ||
+              "Error WEALTH IA"
+          );
+        }
+
+        const actions = [];
+
+        /*
+         * Si habla de servicio,
+         * siempre puede cotizar.
+         */
+
+        if (
+          consultaServicio
+        ) {
+          actions.push({
+            type:
+              "cotizar",
+
+            label:
+              "📋 Crear cotización",
+          });
+        }
+
+        const aiMessage = {
+          role:
+            "ai",
+
+          content:
+            data.reply,
+
+          /*
+           * Si encontramos referencias
+           * relevantes, se muestran.
+           *
+           * NUNCA agregamos referencias
+           * de otra categoría.
+           */
+
+          attachments:
+            referencias.items,
+
+          actions,
+        };
+
+        const finales = [
+          ...newMessages,
+          aiMessage,
+        ];
+
+        setMessages(
+          finales
+        );
+
+        const nuevaArea =
+          detectarAreaProyecto(
+            cleanText
+          ) ||
+          areaActual;
+
+        setAreaActual(
+          nuevaArea
+        );
+
+        await guardarConversacion(
+          finales,
+          {
+            areaActual:
+              nuevaArea,
+
+            memoriaProyecto:
+              nuevaMemoria,
+          }
+        );
+
+      } catch (error) {
+        limpiarTimeout();
+
+        if (
+          operationId !==
+          operationIdRef.current
+        ) {
+          return;
+        }
+
+        console.error(
+          "❌ CHAT:",
+          error
+        );
+
+        let mensaje =
+          "No pude conectarme con WEALTH IA en este momento. Puedes intentarlo nuevamente.";
+
+        if (
+          error?.name ===
+          "AbortError"
+        ) {
+          mensaje =
+            "La respuesta tardó demasiado y fue cancelada automáticamente. Puedes intentarlo nuevamente.";
+        }
+
+        const finales = [
+          ...newMessages,
+
+          {
+            role:
+              "ai",
+
+            content:
+              mensaje,
+
+            actions: [
+              {
+                type:
+                  "reintentar",
+
+                label:
+                  "🔄 Intentar nuevamente",
+
+                message:
+                  cleanText,
+              },
+            ],
+          },
+        ];
+
+        setMessages(
+          finales
+        );
+
+      } finally {
+        limpiarTimeout();
+
+        abortControllerRef.current =
+          null;
+
+        if (
+          operationId ===
+          operationIdRef.current
+        ) {
+          setLoading(
+            false
+          );
+        }
+      }
+    };
+
+  /* =========================================
+     ACCIONES
+  ========================================= */
+
+  const handleAction =
+    async (action) => {
+      if (
+        !action ||
+        loading
+      ) {
+        return;
+      }
+
+      if (
+        action.type ===
+        "buscar-construccion"
+      ) {
+        await sendMessage(
+          "Muéstrame proyectos y trabajos de construcción"
+        );
+
+        return;
+      }
+
+      if (
+        action.type ===
+        "buscar-inmobiliaria"
+      ) {
+        await sendMessage(
+          "Muéstrame proyectos inmobiliarios"
+        );
+
+        return;
+      }
+
+      if (
+        action.type ===
+        "buscar-aluminios"
+      ) {
+        await sendMessage(
+          "Muéstrame trabajos de aluminio y vidrio"
+        );
+
+        return;
+      }
+
+      if (
+        action.type ===
+        "contacto"
+      ) {
+        await sendMessage(
+          "Contacto"
+        );
+
+        return;
+      }
+
+      if (
+        action.type ===
+        "reintentar" &&
+        action.message
+      ) {
+        await sendMessage(
+          action.message
+        );
+      }
+    };
+
+  /* =========================================
+     RENDER
+  ========================================= */
+
+  return (
+    <div className="w-full min-h-[calc(100vh-95px)] bg-[#050505]">
+
+      <div className="max-w-[1500px] mx-auto px-3 sm:px-6 py-5">
+
+        <div
+          className="
+            flex
+
+            h-[calc(100vh-135px)]
+            min-h-[650px]
+
+            overflow-hidden
+
+            bg-gradient-to-b
+            from-[#0b0b0b]
+            via-[#070707]
+            to-[#050505]
+
+            border
+            border-[#c89b3c]/20
+
+            rounded-[28px]
+
+            shadow-[0_30px_80px_rgba(0,0,0,0.45)]
+          "
+        >
+
+          {/* HISTORIAL */}
+
+          {authReady &&
+            user && (
+              <ChatHistory
+                conversations={
+                  conversations
+                }
+
+                currentId={
+                  currentId
+                }
+
+                onSelect={
+                  abrirConversacion
+                }
+
+                onNew={
+                  nuevaConversacion
+                }
+
+                onDelete={
+                  eliminarConversacion
+                }
+              />
+            )}
+
+          {/* CHAT */}
+
+          <div className="flex-1 min-w-0 flex flex-col">
+
+            <ChatHeader />
+
+            {/* MENSAJES */}
+
+            <div className="relative flex-1 overflow-y-auto scroll-smooth">
+
+              <div className="relative z-10 h-full">
+
+                {messages.length ===
+                0 ? (
+
+                  <EmptyState
+                    onSelect={
+                      sendMessage
+                    }
+                  />
+
+                ) : (
+
+                  <div className="max-w-5xl mx-auto py-6">
+
+                    <ChatMessages
+                      messages={
+                        messages
+                      }
+
+                      onAction={
+                        handleAction
+                      }
+
+                      memoriaProyecto={
+                        memoriaProyecto
+                      }
+                    />
+
+                    {loading && (
+                      <TypingIndicator />
+                    )}
+
+                    <div
+                      ref={
+                        messagesEndRef
+                      }
+                    />
+
+                  </div>
+
+                )}
+
+              </div>
+
+            </div>
+
+            {/* INPUT */}
+
+            <div
+              className="
+                border-t
+                border-[#c89b3c]/15
+
+                bg-black/80
+                backdrop-blur-xl
+              "
+            >
+
+              {!user && (
+                <p className="text-[11px] text-zinc-600 text-center pt-3">
+                  Inicia sesión para guardar tu historial de conversaciones.
+                </p>
+              )}
+
+              <div className="max-w-5xl mx-auto px-3 pt-3">
+
+                <SuggestedQuestions
+                  onSelect={
+                    sendMessage
+                  }
+
+                  loading={
+                    loading ||
+                    !catalogoReady
+                  }
+                />
+
+              </div>
+
+              <div className="max-w-5xl mx-auto">
+
+                <ChatInput
+                  value={
+                    input
+                  }
+
+                  setValue={
+                    setInput
+                  }
+
+                  onSend={() =>
+                    sendMessage()
+                  }
+
+                  loading={
+                    loading
+                  }
+
+                  onCancel={
+                    cancelarRespuesta
+                  }
+                />
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
-          <EmptyState onSelect={sendMessage} />
-        ) : (
-          <ChatMessages messages={messages} />
-        )}
-      </div>
-
-      {loading && <TypingIndicator />}
-
-      {projects.length > 0 && (
-        <ProjectGallery projects={projects} />
-      )}
-
-      <SuggestedQuestions onSelect={sendMessage} />
-
-      <ChatInput
-        value={input}
-        setValue={setInput}
-        onSend={() => sendMessage()}
-        loading={loading}
-      />
     </div>
   );
 }

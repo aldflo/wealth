@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import {
   collection,
@@ -18,7 +22,10 @@ import {
   httpsCallable,
 } from "firebase/functions";
 
-import { db, auth } from "../firebase.config";
+import {
+  db,
+  auth,
+} from "../firebase.config";
 
 import {
   FaUser,
@@ -38,108 +45,204 @@ import {
   FaFilter,
   FaEye,
   FaEyeSlash,
+  FaPhone,
+  FaGoogle,
 } from "react-icons/fa";
 
 function Clientes() {
-  // ======================================================
-  // DATOS
-  // ======================================================
+  /* ======================================================
+     DATOS
+  ====================================================== */
 
-  const [clientes, setClientes] = useState([]);
-  const [cargando, setCargando] = useState(true);
+  const [
+    clientes,
+    setClientes,
+  ] = useState([]);
 
-  // ======================================================
-  // FILTROS
-  // ======================================================
+  const [
+    cargando,
+    setCargando,
+  ] = useState(true);
 
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroRol, setFiltroRol] = useState("todos");
+  /* ======================================================
+     FILTROS
+  ====================================================== */
 
-  // ======================================================
-  // MODAL EDITAR
-  // ======================================================
+  const [
+    busqueda,
+    setBusqueda,
+  ] = useState("");
 
-  const [modalEditar, setModalEditar] = useState(false);
-  const [clienteEditando, setClienteEditando] = useState(null);
+  const [
+    filtroRol,
+    setFiltroRol,
+  ] = useState("todos");
 
-  const [nombreEditado, setNombreEditado] = useState("");
-  const [rolEditado, setRolEditado] = useState("cliente");
+  const [
+    filtroProveedor,
+    setFiltroProveedor,
+  ] = useState("todos");
 
-  const [nuevaPassword, setNuevaPassword] = useState("");
-  const [mostrarPassword, setMostrarPassword] = useState(false);
+  /* ======================================================
+     MODAL EDITAR
+  ====================================================== */
 
-  // ======================================================
-  // MODAL ACCESO
-  // ======================================================
+  const [
+    modalEditar,
+    setModalEditar,
+  ] = useState(false);
 
-  const [modalAcceso, setModalAcceso] = useState(false);
-  const [clienteAcceso, setClienteAcceso] = useState(null);
+  const [
+    clienteEditando,
+    setClienteEditando,
+  ] = useState(null);
 
-  // ======================================================
-  // ESTADOS
-  // ======================================================
+  const [
+    nombreEditado,
+    setNombreEditado,
+  ] = useState("");
 
-  const [procesando, setProcesando] = useState(false);
-  const [mensaje, setMensaje] = useState("");
-  const [error, setError] = useState("");
+  const [
+    rolEditado,
+    setRolEditado,
+  ] = useState("cliente");
 
-  // ======================================================
-  // FIREBASE FUNCTIONS
-  // ======================================================
+  const [
+    nuevaPassword,
+    setNuevaPassword,
+  ] = useState("");
 
-  const functions = getFunctions();
+  const [
+    mostrarPassword,
+    setMostrarPassword,
+  ] = useState(false);
 
-  // ======================================================
-  // USUARIOS EN TIEMPO REAL
-  // ======================================================
+  /* ======================================================
+     MODAL ACCESO
+  ====================================================== */
+
+  const [
+    modalAcceso,
+    setModalAcceso,
+  ] = useState(false);
+
+  const [
+    clienteAcceso,
+    setClienteAcceso,
+  ] = useState(null);
+
+  /* ======================================================
+     ESTADOS
+  ====================================================== */
+
+  const [
+    procesando,
+    setProcesando,
+  ] = useState(false);
+
+  const [
+    mensaje,
+    setMensaje,
+  ] = useState("");
+
+  const [
+    error,
+    setError,
+  ] = useState("");
+
+  /* ======================================================
+     FUNCTIONS
+  ====================================================== */
+
+  const functions =
+    getFunctions();
+
+  /* ======================================================
+     USUARIOS
+  ====================================================== */
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "users"),
+    const unsub =
+      onSnapshot(
+        collection(
+          db,
+          "users"
+        ),
 
-      (snapshot) => {
-        const lista = snapshot.docs.map((documento) => ({
-          id: documento.id,
-          ...documento.data(),
-        }));
+        (
+          snapshot
+        ) => {
+          const lista =
+            snapshot.docs.map(
+              (
+                documento
+              ) => ({
+                id:
+                  documento.id,
 
-        lista.sort((a, b) => {
-          const nombreA = (
-            a.nombre ||
-            a.correo ||
-            ""
-          ).toLowerCase();
+                ...documento.data(),
+              })
+            );
 
-          const nombreB = (
-            b.nombre ||
-            b.correo ||
-            ""
-          ).toLowerCase();
+          lista.sort(
+            (a, b) => {
+              const aTexto =
+                (
+                  a.nombre ||
+                  a.correo ||
+                  a.telefono ||
+                  ""
+                ).toLowerCase();
 
-          return nombreA.localeCompare(nombreB, "es");
-        });
+              const bTexto =
+                (
+                  b.nombre ||
+                  b.correo ||
+                  b.telefono ||
+                  ""
+                ).toLowerCase();
 
-        setClientes(lista);
-        setCargando(false);
-      },
+              return aTexto.localeCompare(
+                bTexto,
+                "es"
+              );
+            }
+          );
 
-      (error) => {
-        console.error(error);
+          setClientes(
+            lista
+          );
 
-        setError(
-          "No se pudieron cargar los usuarios."
-        );
+          setCargando(
+            false
+          );
+        },
 
-        setCargando(false);
-      }
-    );
+        (
+          error
+        ) => {
+          console.error(
+            error
+          );
 
-    return () => unsub();
+          setError(
+            "No se pudieron cargar los usuarios."
+          );
+
+          setCargando(
+            false
+          );
+        }
+      );
+
+    return () =>
+      unsub();
+
   }, []);
 
-  // ======================================================
-  // USUARIO ACTUAL
-  // ======================================================
+  /* ======================================================
+     ACTUAL
+  ====================================================== */
 
   const uidActual =
     auth.currentUser?.uid ||
@@ -149,315 +252,416 @@ function Clientes() {
     auth.currentUser?.email ||
     "";
 
-  const esCuentaActual = (cliente) => {
-    return (
-      (uidActual &&
-        cliente.id === uidActual) ||
-      (correoActual &&
-        cliente.correo?.toLowerCase() ===
-          correoActual.toLowerCase())
-    );
-  };
+  const telefonoActual =
+    auth.currentUser
+      ?.phoneNumber ||
+    "";
 
-  // ======================================================
-  // ESTADÍSTICAS
-  // ======================================================
-
-  const estadisticas = useMemo(() => {
-    const admins = clientes.filter(
-      (cliente) =>
-        cliente.role === "admin"
-    ).length;
-
-    const clientesNormales =
-      clientes.filter(
-        (cliente) =>
-          cliente.role !== "admin"
-      ).length;
-
-    return {
-      total: clientes.length,
-      admins,
-      clientes: clientesNormales,
-    };
-  }, [clientes]);
-
-  // ======================================================
-  // FILTRAR
-  // ======================================================
-
-  const clientesFiltrados = useMemo(() => {
-    const texto =
-      busqueda
-        .trim()
-        .toLowerCase();
-
-    return clientes.filter((cliente) => {
-      const coincideBusqueda =
-        !texto ||
-        cliente.nombre
-          ?.toLowerCase()
-          .includes(texto) ||
-        cliente.correo
-          ?.toLowerCase()
-          .includes(texto);
-
-      const coincideRol =
-        filtroRol === "todos" ||
-        cliente.role === filtroRol;
-
+  const esCuentaActual =
+    (cliente) => {
       return (
-        coincideBusqueda &&
-        coincideRol
+        (
+          uidActual &&
+          cliente.id ===
+            uidActual
+        ) ||
+        (
+          correoActual &&
+          cliente.correo
+            ?.toLowerCase() ===
+            correoActual.toLowerCase()
+        ) ||
+        (
+          telefonoActual &&
+          cliente.telefono ===
+            telefonoActual
+        )
       );
-    });
-  }, [
-    clientes,
-    busqueda,
-    filtroRol,
-  ]);
+    };
 
-  // ======================================================
-  // ABRIR EDICIÓN
-  // ======================================================
+  /* ======================================================
+     PROVEEDOR
+  ====================================================== */
 
-  const iniciarEdicion = (cliente) => {
-    setClienteEditando(cliente);
+  const obtenerProveedor =
+    (cliente) => {
+      if (
+        cliente.proveedor ===
+        "telefono" ||
+        (
+          cliente.telefono &&
+          !cliente.correo
+        )
+      ) {
+        return "telefono";
+      }
 
-    setNombreEditado(
-      cliente.nombre || ""
-    );
+      if (
+        cliente.proveedor ===
+        "google" ||
+        cliente.proveedor ===
+        "google.com"
+      ) {
+        return "google";
+      }
 
-    setRolEditado(
-      cliente.role || "cliente"
-    );
+      return "password";
+    };
 
-    setNuevaPassword("");
-    setMostrarPassword(false);
+  /* ======================================================
+     ESTADÍSTICAS
+  ====================================================== */
 
-    setError("");
-    setMensaje("");
+  const estadisticas =
+    useMemo(() => {
+      const admins =
+        clientes.filter(
+          (cliente) =>
+            cliente.role ===
+            "admin"
+        ).length;
 
-    setModalEditar(true);
-  };
+      const normales =
+        clientes.filter(
+          (cliente) =>
+            cliente.role !==
+            "admin"
+        ).length;
 
-  // ======================================================
-  // CAMBIAR PASSWORD DESDE ADMIN
-  // ======================================================
+      const telefonos =
+        clientes.filter(
+          (cliente) =>
+            obtenerProveedor(
+              cliente
+            ) ===
+            "telefono"
+        ).length;
 
-  const cambiarPasswordAdmin = async (
-    cliente,
-    password
-  ) => {
-    if (!password) {
-      return;
-    }
+      return {
+        total:
+          clientes.length,
 
-    const cambiarPassword =
-      httpsCallable(
-        functions,
-        "cambiarPasswordUsuario"
+        admins,
+
+        clientes:
+          normales,
+
+        telefonos,
+      };
+
+    }, [
+      clientes,
+    ]);
+
+  /* ======================================================
+     FILTRO
+  ====================================================== */
+
+  const clientesFiltrados =
+    useMemo(() => {
+      const texto =
+        busqueda
+          .trim()
+          .toLowerCase();
+
+      return clientes.filter(
+        (cliente) => {
+          const coincideBusqueda =
+            !texto ||
+            cliente.nombre
+              ?.toLowerCase()
+              .includes(
+                texto
+              ) ||
+            cliente.correo
+              ?.toLowerCase()
+              .includes(
+                texto
+              ) ||
+            cliente.telefono
+              ?.toLowerCase()
+              .includes(
+                texto
+              );
+
+          const coincideRol =
+            filtroRol ===
+              "todos" ||
+            cliente.role ===
+              filtroRol;
+
+          const proveedor =
+            obtenerProveedor(
+              cliente
+            );
+
+          const coincideProveedor =
+            filtroProveedor ===
+              "todos" ||
+            proveedor ===
+              filtroProveedor;
+
+          return (
+            coincideBusqueda &&
+            coincideRol &&
+            coincideProveedor
+          );
+        }
       );
 
-    await cambiarPassword({
-      uid: cliente.id,
-      nuevaPassword: password,
-    });
-  };
+    }, [
+      clientes,
+      busqueda,
+      filtroRol,
+      filtroProveedor,
+    ]);
 
-  // ======================================================
-  // GUARDAR CAMBIOS
-  // ======================================================
+  /* ======================================================
+     EDITAR
+  ====================================================== */
 
-  const guardarCambios = async () => {
-    if (!clienteEditando) {
-      return;
-    }
-
-    setError("");
-
-    if (!nombreEditado.trim()) {
-      setError(
-        "Escribe el nombre del usuario."
+  const iniciarEdicion =
+    (cliente) => {
+      setClienteEditando(
+        cliente
       );
 
-      return;
-    }
-
-    if (
-      nuevaPassword &&
-      nuevaPassword.length < 6
-    ) {
-      setError(
-        "La nueva contraseña debe tener al menos 6 caracteres."
+      setNombreEditado(
+        cliente.nombre ||
+          ""
       );
 
-      return;
-    }
-
-    const cambioPassword =
-      Boolean(
-        nuevaPassword.trim()
+      setRolEditado(
+        cliente.role ||
+          "cliente"
       );
 
-    if (cambioPassword) {
+      setNuevaPassword(
+        ""
+      );
+
+      setMostrarPassword(
+        false
+      );
+
+      setModalEditar(
+        true
+      );
+
+      setError("");
+      setMensaje("");
+    };
+
+  /* ======================================================
+     PASSWORD ADMIN
+  ====================================================== */
+
+  const cambiarPasswordAdmin =
+    async (
+      cliente,
+      password
+    ) => {
+      if (!password) {
+        return;
+      }
+
+      const cambiarPassword =
+        httpsCallable(
+          functions,
+          "cambiarPasswordUsuario"
+        );
+
+      await cambiarPassword({
+        uid:
+          cliente.id,
+
+        nuevaPassword:
+          password,
+      });
+    };
+
+  /* ======================================================
+     GUARDAR
+  ====================================================== */
+
+  const guardarCambios =
+    async () => {
+      if (
+        !clienteEditando
+      ) {
+        return;
+      }
+
+      if (
+        !nombreEditado.trim()
+      ) {
+        setError(
+          "Escribe el nombre del usuario."
+        );
+
+        return;
+      }
+
+      const proveedor =
+        obtenerProveedor(
+          clienteEditando
+        );
+
+      if (
+        proveedor ===
+          "telefono" &&
+        nuevaPassword
+      ) {
+        setError(
+          "Las cuentas creadas únicamente con teléfono no utilizan contraseña."
+        );
+
+        return;
+      }
+
+      try {
+        setProcesando(
+          true
+        );
+
+        await updateDoc(
+          doc(
+            db,
+            "users",
+            clienteEditando.id
+          ),
+          {
+            nombre:
+              nombreEditado.trim(),
+
+            role:
+              rolEditado,
+
+            fechaActualizacion:
+              serverTimestamp(),
+          }
+        );
+
+        if (
+          nuevaPassword
+        ) {
+          await cambiarPasswordAdmin(
+            clienteEditando,
+            nuevaPassword
+          );
+        }
+
+        setModalEditar(
+          false
+        );
+
+        setClienteEditando(
+          null
+        );
+
+        setNuevaPassword(
+          ""
+        );
+
+        setMensaje(
+          "✅ Usuario actualizado correctamente."
+        );
+
+      } catch (error) {
+        console.error(
+          error
+        );
+
+        setError(
+          error?.message ||
+          "No se pudieron guardar los cambios."
+        );
+
+      } finally {
+        setProcesando(
+          false
+        );
+      }
+    };
+
+  /* ======================================================
+     ELIMINAR
+  ====================================================== */
+
+  const eliminarCliente =
+    async (
+      cliente
+    ) => {
+      if (
+        esCuentaActual(
+          cliente
+        )
+      ) {
+        setError(
+          "No puedes eliminar tu propia cuenta desde este panel."
+        );
+
+        return;
+      }
+
       const confirmar =
         window.confirm(
-          `¿Cambiar la contraseña de ${clienteEditando.correo}?\n\nLa contraseña anterior dejará de funcionar.`
+          `¿Eliminar a "${
+            cliente.nombre ||
+            cliente.correo ||
+            cliente.telefono
+          }"?`
         );
 
       if (!confirmar) {
         return;
       }
-    }
 
-    try {
-      setProcesando(true);
+      try {
+        await deleteDoc(
+          doc(
+            db,
+            "users",
+            cliente.id
+          )
+        );
 
-      // ================================================
-      // FIRESTORE
-      // ================================================
+        setMensaje(
+          "Usuario eliminado de la base de datos."
+        );
 
-      await updateDoc(
-        doc(
-          db,
-          "users",
-          clienteEditando.id
-        ),
-        {
-          nombre:
-            nombreEditado.trim(),
+      } catch (error) {
+        console.error(
+          error
+        );
 
-          role:
-            rolEditado,
-
-          fechaActualizacion:
-            serverTimestamp(),
-        }
-      );
-
-      // ================================================
-      // AUTH PASSWORD
-      // ================================================
-
-      if (cambioPassword) {
-        await cambiarPasswordAdmin(
-          clienteEditando,
-          nuevaPassword.trim()
+        setError(
+          "No se pudo eliminar el usuario."
         );
       }
+    };
 
-      setModalEditar(false);
-      setClienteEditando(null);
-      setNuevaPassword("");
+  /* ======================================================
+     ACCESO
+  ====================================================== */
 
-      setMensaje(
-        cambioPassword
-          ? "✅ Usuario y contraseña actualizados correctamente."
-          : "✅ Usuario actualizado correctamente."
-      );
-    } catch (error) {
-      console.error(error);
-
-      const codigo =
-        error?.code ||
-        "";
-
-      if (
-        codigo.includes(
-          "permission-denied"
-        )
-      ) {
-        setError(
-          "No tienes permisos para realizar esta operación."
-        );
-      } else if (
-        codigo.includes(
-          "unauthenticated"
-        )
-      ) {
-        setError(
-          "Debes iniciar sesión nuevamente."
-        );
-      } else {
-        setError(
-          error?.message ||
-            "No se pudieron guardar los cambios."
-        );
-      }
-    } finally {
-      setProcesando(false);
-    }
-  };
-
-  // ======================================================
-  // ELIMINAR
-  // ======================================================
-
-  const eliminarCliente = async (
-    cliente
-  ) => {
-    if (
-      esCuentaActual(cliente)
-    ) {
-      setError(
-        "No puedes eliminar tu propia cuenta desde este panel."
+  const abrirAcceso =
+    (cliente) => {
+      setClienteAcceso(
+        cliente
       );
 
-      return;
-    }
-
-    const confirmar =
-      window.confirm(
-        `¿Eliminar a "${
-          cliente.nombre ||
-          cliente.correo
-        }"?`
+      setModalAcceso(
+        true
       );
 
-    if (!confirmar) {
-      return;
-    }
+      setError("");
+      setMensaje("");
+    };
 
-    try {
-      await deleteDoc(
-        doc(
-          db,
-          "users",
-          cliente.id
-        )
-      );
-
-      setMensaje(
-        "Usuario eliminado de la base de datos."
-      );
-    } catch (error) {
-      console.error(error);
-
-      setError(
-        "No se pudo eliminar el usuario."
-      );
-    }
-  };
-
-  // ======================================================
-  // ACCESO
-  // ======================================================
-
-  const abrirAcceso = (
-    cliente
-  ) => {
-    setClienteAcceso(cliente);
-
-    setError("");
-    setMensaje("");
-
-    setModalAcceso(true);
-  };
-
-  // ======================================================
-  // RESET POR CORREO
-  // ======================================================
+  /* ======================================================
+     RESET EMAIL
+  ====================================================== */
 
   const resetPassword =
     async () => {
@@ -467,47 +671,50 @@ function Clientes() {
         return;
       }
 
-      const confirmar =
-        window.confirm(
-          `¿Enviar un correo de recuperación a ${clienteAcceso.correo}?`
-        );
-
-      if (!confirmar) {
-        return;
-      }
-
       try {
-        setProcesando(true);
+        setProcesando(
+          true
+        );
 
         await sendPasswordResetEmail(
           auth,
           clienteAcceso.correo
         );
 
-        setModalAcceso(false);
-        setClienteAcceso(null);
+        setModalAcceso(
+          false
+        );
 
         setMensaje(
-          `✅ Correo de recuperación enviado a ${clienteAcceso.correo}.`
+          `✅ Correo enviado a ${clienteAcceso.correo}.`
         );
+
       } catch (error) {
-        console.error(error);
+        console.error(
+          error
+        );
 
         setError(
-          "No se pudo enviar el correo de recuperación."
+          "No se pudo enviar el correo."
         );
+
       } finally {
-        setProcesando(false);
+        setProcesando(
+          false
+        );
       }
     };
 
-  // ======================================================
-  // LOADING
-  // ======================================================
+  /* ======================================================
+     LOADING
+  ====================================================== */
 
-  if (cargando) {
+  if (
+    cargando
+  ) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
+
         <div className="text-center">
 
           <div className="w-11 h-11 border-4 border-zinc-800 border-t-yellow-500 rounded-full animate-spin mx-auto" />
@@ -517,9 +724,14 @@ function Clientes() {
           </p>
 
         </div>
+
       </div>
     );
   }
+
+  /* ======================================================
+     RENDER
+  ====================================================== */
 
   return (
     <div className="min-h-screen bg-black text-white px-4 sm:px-6 lg:px-8 py-8">
@@ -535,14 +747,17 @@ function Clientes() {
           </p>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mt-2">
+
             Gestión de{" "}
+
             <span className="text-yellow-500">
               Usuarios
             </span>
+
           </h1>
 
           <p className="text-zinc-400 mt-3">
-            Administra usuarios, roles y acceso a sus cuentas.
+            Administra clientes, roles y métodos de acceso.
           </p>
 
         </div>
@@ -551,72 +766,105 @@ function Clientes() {
 
         {mensaje && (
           <div className="mb-6 bg-green-500/5 border border-green-500/30 rounded-2xl p-4 text-green-300 flex gap-3">
-            <FaCheckCircle className="mt-1" />
+
+            <FaCheckCircle />
+
             {mensaje}
+
           </div>
         )}
 
         {error && (
           <div className="mb-6 bg-red-500/5 border border-red-500/30 rounded-2xl p-4 text-red-300 flex gap-3">
-            <FaExclamationTriangle className="mt-1" />
+
+            <FaExclamationTriangle />
+
             {error}
+
           </div>
         )}
 
         {/* ESTADÍSTICAS */}
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-7">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
 
           <TarjetaEstadistica
             titulo="Usuarios"
-            valor={estadisticas.total}
-            icon={<FaUsers />}
+            valor={
+              estadisticas.total
+            }
+            icon={
+              <FaUsers />
+            }
             color="yellow"
           />
 
           <TarjetaEstadistica
             titulo="Clientes"
-            valor={estadisticas.clientes}
-            icon={<FaUserCheck />}
+            valor={
+              estadisticas.clientes
+            }
+            icon={
+              <FaUserCheck />
+            }
             color="green"
           />
 
           <TarjetaEstadistica
             titulo="Administradores"
-            valor={estadisticas.admins}
-            icon={<FaShieldAlt />}
+            valor={
+              estadisticas.admins
+            }
+            icon={
+              <FaShieldAlt />
+            }
             color="red"
+          />
+
+          <TarjetaEstadistica
+            titulo="Con teléfono"
+            valor={
+              estadisticas.telefonos
+            }
+            icon={
+              <FaPhone />
+            }
+            color="blue"
           />
 
         </div>
 
         {/* BUSCADOR */}
 
-        <div className="flex flex-col md:flex-row gap-4 mb-7">
+        <div className="grid md:grid-cols-[1fr_220px_220px] gap-4 mb-7">
 
-          <div className="relative flex-1">
+          <div className="relative">
 
             <FaSearch className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500" />
 
             <input
-              value={busqueda}
+              value={
+                busqueda
+              }
               onChange={(e) =>
                 setBusqueda(
                   e.target.value
                 )
               }
-              placeholder="Buscar nombre o correo..."
+              placeholder="Buscar nombre, correo o teléfono..."
               className={`${inputClass} pl-12`}
             />
 
           </div>
 
-          <div className="relative md:w-[250px]">
+          <div className="relative">
 
             <FaFilter className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-500" />
 
             <select
-              value={filtroRol}
+              value={
+                filtroRol
+              }
               onChange={(e) =>
                 setFiltroRol(
                   e.target.value
@@ -639,17 +887,60 @@ function Clientes() {
 
           </div>
 
+          <select
+            value={
+              filtroProveedor
+            }
+            onChange={(e) =>
+              setFiltroProveedor(
+                e.target.value
+              )
+            }
+            className={
+              inputClass
+            }
+          >
+            <option value="todos">
+              Todos los accesos
+            </option>
+
+            <option value="password">
+              Correo
+            </option>
+
+            <option value="google">
+              Google
+            </option>
+
+            <option value="telefono">
+              Teléfono
+            </option>
+          </select>
+
         </div>
 
         {/* DESKTOP */}
 
         <div className="hidden lg:block bg-zinc-950 border border-zinc-700 rounded-3xl overflow-hidden">
 
-          <div className="grid grid-cols-[1.1fr_1.5fr_.8fr_1fr] gap-4 px-6 py-4 bg-zinc-900 border-b border-zinc-700 text-xs uppercase tracking-wider text-zinc-500">
+          <div className="grid grid-cols-[1.2fr_1.3fr_1fr_.8fr_1fr] gap-4 px-6 py-4 bg-zinc-900 border-b border-zinc-700 text-xs uppercase tracking-wider text-zinc-500">
 
-            <div>Usuario</div>
-            <div>Correo</div>
-            <div>Rol</div>
+            <div>
+              Usuario
+            </div>
+
+            <div>
+              Contacto
+            </div>
+
+            <div>
+              Acceso
+            </div>
+
+            <div>
+              Rol
+            </div>
+
             <div className="text-right">
               Acciones
             </div>
@@ -657,17 +948,21 @@ function Clientes() {
           </div>
 
           {clientesFiltrados.map(
-            (cliente) => (
-              <div
-                key={cliente.id}
-                className="grid grid-cols-[1.1fr_1.5fr_.8fr_1fr] gap-4 items-center px-6 py-5 border-b border-zinc-800 last:border-0 hover:bg-zinc-900/60 transition"
-              >
+            (cliente) => {
+              const proveedor =
+                obtenerProveedor(
+                  cliente
+                );
 
-                <div className="flex items-center gap-3">
+              return (
+                <div
+                  key={
+                    cliente.id
+                  }
+                  className="grid grid-cols-[1.2fr_1.3fr_1fr_.8fr_1fr] gap-4 items-center px-6 py-5 border-b border-zinc-800 last:border-0 hover:bg-zinc-900/60"
+                >
 
-                  <div className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center">
-                    <FaUser />
-                  </div>
+                  {/* NOMBRE */}
 
                   <div>
 
@@ -686,65 +981,106 @@ function Clientes() {
 
                   </div>
 
-                </div>
+                  {/* CONTACTO */}
 
-                <div className="text-zinc-400 break-all">
-                  {cliente.correo ||
-                    "Sin correo"}
-                </div>
+                  <div className="text-sm">
 
-                <RolBadge
-                  rol={
-                    cliente.role
-                  }
-                />
+                    {cliente.correo && (
+                      <p className="text-zinc-400 flex items-center gap-2">
 
-                <div className="flex justify-end gap-2">
+                        <FaEnvelope />
 
-                  <BotonIcono
-                    color="blue"
-                    titulo="Editar"
-                    onClick={() =>
-                      iniciarEdicion(
-                        cliente
-                      )
+                        {
+                          cliente.correo
+                        }
+
+                      </p>
+                    )}
+
+                    {cliente.telefono && (
+                      <p className="text-zinc-400 flex items-center gap-2 mt-1">
+
+                        <FaPhone />
+
+                        {
+                          cliente.telefono
+                        }
+
+                      </p>
+                    )}
+
+                    {!cliente.correo &&
+                      !cliente.telefono && (
+                      <span className="text-zinc-600">
+                        Sin contacto
+                      </span>
+                    )}
+
+                  </div>
+
+                  {/* PROVEEDOR */}
+
+                  <ProveedorBadge
+                    proveedor={
+                      proveedor
                     }
-                  >
-                    <FaEdit />
-                  </BotonIcono>
+                  />
 
-                  <BotonIcono
-                    color="yellow"
-                    titulo="Acceso"
-                    onClick={() =>
-                      abrirAcceso(
-                        cliente
-                      )
+                  <RolBadge
+                    rol={
+                      cliente.role
                     }
-                  >
-                    <FaKey />
-                  </BotonIcono>
+                  />
 
-                  {!esCuentaActual(
-                    cliente
-                  ) && (
+                  {/* ACCIONES */}
+
+                  <div className="flex justify-end gap-2">
+
                     <BotonIcono
-                      color="red"
-                      titulo="Eliminar"
+                      color="blue"
+                      titulo="Editar"
                       onClick={() =>
-                        eliminarCliente(
+                        iniciarEdicion(
                           cliente
                         )
                       }
                     >
-                      <FaTrash />
+                      <FaEdit />
                     </BotonIcono>
-                  )}
+
+                    <BotonIcono
+                      color="yellow"
+                      titulo="Acceso"
+                      onClick={() =>
+                        abrirAcceso(
+                          cliente
+                        )
+                      }
+                    >
+                      <FaKey />
+                    </BotonIcono>
+
+                    {!esCuentaActual(
+                      cliente
+                    ) && (
+                      <BotonIcono
+                        color="red"
+                        titulo="Eliminar"
+                        onClick={() =>
+                          eliminarCliente(
+                            cliente
+                          )
+                        }
+                      >
+                        <FaTrash />
+                      </BotonIcono>
+                    )}
+
+                  </div>
 
                 </div>
-
-              </div>
-            )
+              );
+            }
           )}
 
         </div>
@@ -754,102 +1090,123 @@ function Clientes() {
         <div className="grid md:grid-cols-2 lg:hidden gap-5">
 
           {clientesFiltrados.map(
-            (cliente) => (
-              <article
-                key={cliente.id}
-                className="bg-zinc-950 border border-zinc-700 rounded-3xl p-5"
-              >
+            (cliente) => {
+              const proveedor =
+                obtenerProveedor(
+                  cliente
+                );
 
-                <div className="flex gap-3">
+              return (
+                <article
+                  key={
+                    cliente.id
+                  }
+                  className="bg-zinc-950 border border-zinc-700 rounded-3xl p-5"
+                >
 
-                  <div className="w-11 h-11 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center shrink-0">
-                    <FaUser />
-                  </div>
+                  <h2 className="font-bold text-lg">
+                    {cliente.nombre ||
+                      "Sin nombre"}
+                  </h2>
 
-                  <div>
+                  {cliente.correo && (
+                    <p className="text-sm text-zinc-500 mt-2 flex items-center gap-2">
 
-                    <h2 className="font-bold text-lg">
-                      {cliente.nombre ||
-                        "Sin nombre"}
-                    </h2>
+                      <FaEnvelope />
 
-                    <p className="text-sm text-zinc-500 break-all">
-                      {cliente.correo}
+                      {
+                        cliente.correo
+                      }
+
                     </p>
+                  )}
+
+                  {cliente.telefono && (
+                    <p className="text-sm text-zinc-500 mt-2 flex items-center gap-2">
+
+                      <FaPhone />
+
+                      {
+                        cliente.telefono
+                      }
+
+                    </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mt-4">
+
+                    <ProveedorBadge
+                      proveedor={
+                        proveedor
+                      }
+                    />
+
+                    <RolBadge
+                      rol={
+                        cliente.role
+                      }
+                    />
 
                   </div>
 
-                </div>
+                  <div className="grid grid-cols-2 gap-3 mt-5">
 
-                <div className="mt-4">
-                  <RolBadge
-                    rol={
-                      cliente.role
-                    }
-                  />
-                </div>
+                    <button
+                      onClick={() =>
+                        iniciarEdicion(
+                          cliente
+                        )
+                      }
+                      className={`${botonBase} border-blue-500/40 text-blue-400`}
+                    >
+                      <FaEdit />
 
-                <div className="grid grid-cols-2 gap-3 mt-5">
+                      Editar
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      iniciarEdicion(
-                        cliente
-                      )
-                    }
-                    className={`${botonBase} border-blue-500/40 text-blue-400`}
-                  >
-                    <FaEdit />
-                    Editar
-                  </button>
+                    <button
+                      onClick={() =>
+                        abrirAcceso(
+                          cliente
+                        )
+                      }
+                      className={`${botonBase} border-yellow-500/40 text-yellow-400`}
+                    >
+                      <FaKey />
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      abrirAcceso(
-                        cliente
-                      )
-                    }
-                    className={`${botonBase} border-yellow-500/40 text-yellow-400`}
-                  >
-                    <FaKey />
-                    Acceso
-                  </button>
+                      Acceso
+                    </button>
 
-                </div>
+                  </div>
 
-              </article>
-            )
+                </article>
+              );
+            }
           )}
 
         </div>
 
       </div>
 
-      {/* ================================================= */}
       {/* MODAL EDITAR */}
-      {/* ================================================= */}
 
       {modalEditar &&
         clienteEditando && (
           <Modal
-            cerrar={() => {
-              if (!procesando) {
-                setModalEditar(
-                  false
-                );
-              }
-            }}
+            cerrar={() =>
+              setModalEditar(
+                false
+              )
+            }
           >
 
             <div className="p-6 md:p-8">
 
-              <div className="flex justify-between gap-4">
+              <div className="flex justify-between">
 
                 <div>
 
-                  <p className="text-xs uppercase tracking-[0.22em] text-blue-400">
+                  <p className="text-xs uppercase tracking-widest text-blue-400">
                     Usuario
                   </p>
 
@@ -857,22 +1214,17 @@ function Clientes() {
                     Editar usuario
                   </h2>
 
-                  <p className="text-sm text-zinc-500 mt-1">
-                    {
-                      clienteEditando.correo
-                    }
-                  </p>
-
                 </div>
 
                 <button
-                  type="button"
                   onClick={() =>
                     setModalEditar(
                       false
                     )
                   }
-                  className={botonCerrar}
+                  className={
+                    botonCerrar
+                  }
                 >
                   <FaTimes />
                 </button>
@@ -881,13 +1233,12 @@ function Clientes() {
 
               <div className="space-y-5 mt-7">
 
-                {/* NOMBRE */}
-
                 <Campo
                   titulo="Nombre"
-                  icon={<FaUser />}
+                  icon={
+                    <FaUser />
+                  }
                 >
-
                   <input
                     value={
                       nombreEditado
@@ -901,27 +1252,7 @@ function Clientes() {
                       inputClass
                     }
                   />
-
                 </Campo>
-
-                {/* CORREO */}
-
-                <Campo
-                  titulo="Correo"
-                  icon={
-                    <FaEnvelope />
-                  }
-                >
-
-                  <div className="bg-black border border-zinc-700 rounded-2xl p-4 text-zinc-400">
-                    {
-                      clienteEditando.correo
-                    }
-                  </div>
-
-                </Campo>
-
-                {/* ROL */}
 
                 <Campo
                   titulo="Rol"
@@ -956,74 +1287,74 @@ function Clientes() {
 
                 </Campo>
 
-                {/* ================================================= */}
-                {/* CONTRASEÑA */}
-                {/* ================================================= */}
+                {obtenerProveedor(
+                  clienteEditando
+                ) !==
+                  "telefono" && (
+                  <Campo
+                    titulo="Nueva contraseña"
+                    icon={
+                      <FaLock />
+                    }
+                  >
 
-                <Campo
-                  titulo="Nueva contraseña"
-                  icon={<FaLock />}
-                >
+                    <div className="relative">
 
-                  <div className="relative">
+                      <input
+                        type={
+                          mostrarPassword
+                            ? "text"
+                            : "password"
+                        }
+                        value={
+                          nuevaPassword
+                        }
+                        onChange={(e) =>
+                          setNuevaPassword(
+                            e.target.value
+                          )
+                        }
+                        placeholder="Dejar vacío para conservar la actual"
+                        className={`${inputClass} pr-12`}
+                      />
 
-                    <input
-                      type={
-                        mostrarPassword
-                          ? "text"
-                          : "password"
-                      }
-                      value={
-                        nuevaPassword
-                      }
-                      onChange={(e) =>
-                        setNuevaPassword(
-                          e.target.value
-                        )
-                      }
-                      placeholder="Dejar vacío para conservar la actual"
-                      autoComplete="new-password"
-                      className={`${inputClass} pr-14`}
-                    />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setMostrarPassword(
+                            !mostrarPassword
+                          )
+                        }
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500"
+                      >
+                        {mostrarPassword ? (
+                          <FaEyeSlash />
+                        ) : (
+                          <FaEye />
+                        )}
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMostrarPassword(
-                          (actual) =>
-                            !actual
-                        )
-                      }
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-yellow-500 transition"
-                    >
-                      {mostrarPassword ? (
-                        <FaEyeSlash />
-                      ) : (
-                        <FaEye />
-                      )}
-                    </button>
+                    </div>
 
-                  </div>
+                  </Campo>
+                )}
 
-                  <p className="text-xs text-zinc-500 mt-2">
-                    Escribe una contraseña solamente si deseas reemplazar la actual. Mínimo 6 caracteres.
-                  </p>
+                {obtenerProveedor(
+                  clienteEditando
+                ) ===
+                  "telefono" && (
+                  <div className="bg-green-500/5 border border-green-500/20 rounded-2xl p-4">
 
-                </Campo>
+                    <p className="text-green-400 font-semibold flex items-center gap-2">
 
-                {/* AVISO */}
+                      <FaPhone />
 
-                {nuevaPassword && (
-                  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
+                      Cuenta telefónica
 
-                    <p className="text-sm text-yellow-400 flex items-center gap-2">
-                      <FaKey />
-
-                      Se cambiará la contraseña
                     </p>
 
                     <p className="text-xs text-zinc-500 mt-2">
-                      La contraseña anterior dejará de funcionar después de guardar.
+                      Esta cuenta accede mediante código SMS y no necesita contraseña.
                     </p>
 
                   </div>
@@ -1031,51 +1362,31 @@ function Clientes() {
 
               </div>
 
-              {/* BOTONES */}
+              <button
+                type="button"
+                onClick={
+                  guardarCambios
+                }
+                disabled={
+                  procesando
+                }
+                className={`${botonBase} w-full mt-7 border-blue-500/40 text-blue-400`}
+              >
 
-              <div className="flex flex-col sm:flex-row justify-end gap-3 mt-8 pt-6 border-t border-zinc-800">
+                <FaSave />
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    setModalEditar(
-                      false
-                    )
-                  }
-                  className={`${botonBase} border-zinc-600 text-zinc-300`}
-                >
-                  <FaTimes />
-                  Cancelar
-                </button>
+                {procesando
+                  ? "Guardando..."
+                  : "Guardar cambios"}
 
-                <button
-                  type="button"
-                  disabled={
-                    procesando
-                  }
-                  onClick={
-                    guardarCambios
-                  }
-                  className={`${botonBase} border-blue-500/50 text-blue-400 hover:bg-blue-500/10 disabled:opacity-50`}
-                >
-                  <FaSave />
-
-                  {procesando
-                    ? "Guardando..."
-                    : "Guardar cambios"}
-
-                </button>
-
-              </div>
+              </button>
 
             </div>
 
           </Modal>
         )}
 
-      {/* ================================================= */}
       {/* MODAL ACCESO */}
-      {/* ================================================= */}
 
       {modalAcceso &&
         clienteAcceso && (
@@ -1101,12 +1412,6 @@ function Clientes() {
                     Administrar acceso
                   </h2>
 
-                  <p className="text-zinc-500 text-sm mt-1">
-                    {
-                      clienteAcceso.correo
-                    }
-                  </p>
-
                 </div>
 
                 <button
@@ -1124,64 +1429,69 @@ function Clientes() {
 
               </div>
 
-              <div className="mt-7 bg-black border border-zinc-700 rounded-2xl p-5">
+              {obtenerProveedor(
+                clienteAcceso
+              ) ===
+                "telefono" ? (
+                <div className="mt-7 bg-green-500/5 border border-green-500/20 rounded-2xl p-5">
 
-                <div className="flex gap-3">
+                  <FaPhone className="text-green-400 text-2xl" />
 
-                  <FaLock className="text-yellow-500 mt-1" />
+                  <p className="font-bold mt-3">
+                    Acceso por teléfono
+                  </p>
 
-                  <div>
+                  <p className="text-zinc-400 mt-2">
+                    {
+                      clienteAcceso.telefono
+                    }
+                  </p>
+
+                  <p className="text-xs text-zinc-500 mt-3">
+                    Este usuario inicia sesión mediante un código SMS enviado por Firebase.
+                  </p>
+
+                </div>
+              ) : (
+                <>
+                  <div className="mt-7 bg-black border border-zinc-700 rounded-2xl p-5">
 
                     <p className="font-semibold">
-                      Contraseña actual
-                    </p>
-
-                    <p className="tracking-widest text-zinc-500 mt-2">
-                      ••••••••••••
-                    </p>
-
-                    <p className="text-xs text-zinc-600 mt-2">
-                      Firebase no permite recuperar la contraseña anterior en texto legible.
+                      Acceso mediante{" "}
+                      {obtenerProveedor(
+                        clienteAcceso
+                      ) ===
+                      "google"
+                        ? "Google"
+                        : "correo y contraseña"}
                     </p>
 
                   </div>
 
-                </div>
+                  {clienteAcceso.correo &&
+                    obtenerProveedor(
+                      clienteAcceso
+                    ) ===
+                      "password" && (
+                      <button
+                        type="button"
+                        onClick={
+                          resetPassword
+                        }
+                        disabled={
+                          procesando
+                        }
+                        className={`${botonBase} w-full mt-6 border-yellow-500/50 text-yellow-400`}
+                      >
 
-              </div>
+                        <FaEnvelope />
 
-              <button
-                type="button"
-                onClick={
-                  resetPassword
-                }
-                disabled={
-                  procesando
-                }
-                className={`${botonBase} w-full mt-6 border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10`}
-              >
-                <FaEnvelope />
+                        Enviar recuperación por correo
 
-                Enviar recuperación por correo
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setModalAcceso(
-                    false
-                  );
-
-                  iniciarEdicion(
-                    clienteAcceso
-                  );
-                }}
-                className={`${botonBase} w-full mt-3 border-blue-500/40 text-blue-400 hover:bg-blue-500/10`}
-              >
-                <FaKey />
-
-                Asignar nueva contraseña
-              </button>
+                      </button>
+                    )}
+                </>
+              )}
 
             </div>
 
@@ -1192,9 +1502,201 @@ function Clientes() {
   );
 }
 
-// ======================================================
-// ESTILOS
-// ======================================================
+/* ======================================================
+   COMPONENTES
+====================================================== */
+
+function ProveedorBadge({
+  proveedor,
+}) {
+  if (
+    proveedor ===
+    "telefono"
+  ) {
+    return (
+      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-green-500/30 bg-green-500/10 text-green-400 text-xs font-bold">
+        <FaPhone />
+        Teléfono
+      </span>
+    );
+  }
+
+  if (
+    proveedor ===
+    "google"
+  ) {
+    return (
+      <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold">
+        <FaGoogle />
+        Google
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 text-xs font-bold">
+      <FaEnvelope />
+      Correo
+    </span>
+  );
+}
+
+function TarjetaEstadistica({
+  titulo,
+  valor,
+  icon,
+  color,
+}) {
+  const colores = {
+    yellow:
+      "text-yellow-500 bg-yellow-500/10 border-yellow-500/20",
+
+    green:
+      "text-green-400 bg-green-500/10 border-green-500/20",
+
+    red:
+      "text-red-400 bg-red-500/10 border-red-500/20",
+
+    blue:
+      "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  };
+
+  return (
+    <div className="bg-zinc-950 border border-zinc-700 rounded-2xl p-5">
+
+      <div className="flex justify-between">
+
+        <div>
+
+          <p className="text-sm text-zinc-500">
+            {titulo}
+          </p>
+
+          <p className="text-3xl font-bold mt-1">
+            {valor}
+          </p>
+
+        </div>
+
+        <div
+          className={`w-12 h-12 rounded-xl border flex items-center justify-center ${colores[color]}`}
+        >
+          {icon}
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
+
+function RolBadge({
+  rol,
+}) {
+  const admin =
+    rol ===
+    "admin";
+
+  return (
+    <span
+      className={`inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-bold ${
+        admin
+          ? "bg-red-500/10 text-red-400 border-red-500/30"
+          : "bg-green-500/10 text-green-400 border-green-500/30"
+      }`}
+    >
+      {admin
+        ? "Administrador"
+        : "Cliente"}
+    </span>
+  );
+}
+
+function BotonIcono({
+  children,
+  titulo,
+  color,
+  onClick,
+}) {
+  const colores = {
+    blue:
+      "border-blue-500/40 text-blue-400",
+
+    yellow:
+      "border-yellow-500/40 text-yellow-400",
+
+    red:
+      "border-red-500/40 text-red-400",
+  };
+
+  return (
+    <button
+      type="button"
+      title={
+        titulo
+      }
+      onClick={
+        onClick
+      }
+      className={`w-11 h-11 bg-black border rounded-xl flex items-center justify-center ${colores[color]}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Campo({
+  titulo,
+  icon,
+  children,
+}) {
+  return (
+    <div>
+
+      <label className="text-sm text-zinc-400 flex gap-2 mb-2">
+
+        <span className="text-yellow-500">
+          {icon}
+        </span>
+
+        {titulo}
+
+      </label>
+
+      {children}
+
+    </div>
+  );
+}
+
+function Modal({
+  children,
+  cerrar,
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={
+        cerrar
+      }
+    >
+
+      <div
+        className="w-full max-w-xl bg-zinc-950 border border-zinc-700 rounded-3xl"
+        onClick={(e) =>
+          e.stopPropagation()
+        }
+      >
+        {children}
+      </div>
+
+    </div>
+  );
+}
+
+/* ======================================================
+   ESTILOS
+====================================================== */
 
 const inputClass = `
   w-full
@@ -1237,144 +1739,5 @@ const botonCerrar = `
   justify-center
   text-zinc-400
 `;
-
-function TarjetaEstadistica({
-  titulo,
-  valor,
-  icon,
-  color,
-}) {
-  const colores = {
-    yellow:
-      "text-yellow-500 bg-yellow-500/10 border-yellow-500/20",
-
-    green:
-      "text-green-400 bg-green-500/10 border-green-500/20",
-
-    red:
-      "text-red-400 bg-red-500/10 border-red-500/20",
-  };
-
-  return (
-    <div className="bg-zinc-950 border border-zinc-700 rounded-2xl p-5">
-
-      <div className="flex justify-between">
-
-        <div>
-          <p className="text-sm text-zinc-500">
-            {titulo}
-          </p>
-
-          <p className="text-3xl font-bold mt-1">
-            {valor}
-          </p>
-        </div>
-
-        <div
-          className={`w-12 h-12 rounded-xl border flex items-center justify-center ${colores[color]}`}
-        >
-          {icon}
-        </div>
-
-      </div>
-
-    </div>
-  );
-}
-
-function RolBadge({ rol }) {
-  const admin =
-    rol === "admin";
-
-  return (
-    <span
-      className={`inline-flex items-center px-3 py-1.5 rounded-full border text-xs font-bold ${
-        admin
-          ? "bg-red-500/10 text-red-400 border-red-500/30"
-          : "bg-green-500/10 text-green-400 border-green-500/30"
-      }`}
-    >
-      {admin
-        ? "Administrador"
-        : "Cliente"}
-    </span>
-  );
-}
-
-function BotonIcono({
-  children,
-  titulo,
-  color,
-  onClick,
-}) {
-  const colores = {
-    blue:
-      "border-blue-500/40 text-blue-400",
-
-    yellow:
-      "border-yellow-500/40 text-yellow-400",
-
-    red:
-      "border-red-500/40 text-red-400",
-  };
-
-  return (
-    <button
-      type="button"
-      title={titulo}
-      onClick={onClick}
-      className={`w-11 h-11 bg-black border rounded-xl flex items-center justify-center ${colores[color]}`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Campo({
-  titulo,
-  icon,
-  children,
-}) {
-  return (
-    <div>
-
-      <label className="text-sm text-zinc-400 flex gap-2 mb-2">
-
-        <span className="text-yellow-500">
-          {icon}
-        </span>
-
-        {titulo}
-
-      </label>
-
-      {children}
-
-    </div>
-  );
-}
-
-function Modal({
-  children,
-  cerrar,
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={cerrar}
-    >
-
-      <div
-        className="w-full max-w-xl bg-zinc-950 border border-zinc-700 rounded-3xl"
-        onClick={(e) =>
-          e.stopPropagation()
-        }
-      >
-        {children}
-      </div>
-
-    </div>
-  );
-}
 
 export default Clientes;

@@ -106,6 +106,28 @@ function CotizacionesAdmin() {
     useState("");
 
   // ======================================================
+  // FINALIZACIÓN + FOTOS DEL TRABAJO
+  // ======================================================
+
+  const [modalFinalizar, setModalFinalizar] =
+    useState(false);
+
+  const [cotizacionFinalizar, setCotizacionFinalizar] =
+    useState(null);
+
+  const [fotosFinales, setFotosFinales] =
+    useState([]);
+
+  const [previewsFinales, setPreviewsFinales] =
+    useState([]);
+
+  const [errorFinalizar, setErrorFinalizar] =
+    useState("");
+
+  const [subiendoFinales, setSubiendoFinales] =
+    useState(false);
+
+  // ======================================================
   // FIRESTORE
   // ======================================================
 
@@ -942,8 +964,143 @@ function CotizacionesAdmin() {
     };
 
   // ======================================================
-  // TRABAJO TERMINADO
+  // FINALIZAR TRABAJO + FOTOS
   // ======================================================
+
+  const abrirFinalizacion = (cotizacion) => {
+    setCotizacionFinalizar(cotizacion);
+    setFotosFinales([]);
+    setPreviewsFinales([]);
+    setErrorFinalizar("");
+    setModalFinalizar(true);
+  };
+
+  const seleccionarFotosFinales = (e) => {
+    const archivos = Array.from(e.target.files || []);
+    e.target.value = "";
+
+    const soloImagenes = archivos.filter((archivo) =>
+      archivo.type?.startsWith("image/")
+    );
+
+    if (soloImagenes.length !== archivos.length) {
+      setErrorFinalizar(
+        "Solo puedes agregar archivos de imagen."
+      );
+    } else {
+      setErrorFinalizar("");
+    }
+
+    const disponibles = Math.max(
+      0,
+      6 - fotosFinales.length
+    );
+
+    const nuevos = soloImagenes.slice(
+      0,
+      disponibles
+    );
+
+    if (soloImagenes.length > disponibles) {
+      setErrorFinalizar(
+        "Puedes agregar un máximo de 6 fotografías por proyecto."
+      );
+    }
+
+    setFotosFinales((actuales) => [
+      ...actuales,
+      ...nuevos,
+    ]);
+
+    setPreviewsFinales((actuales) => [
+      ...actuales,
+      ...nuevos.map((archivo) =>
+        URL.createObjectURL(archivo)
+      ),
+    ]);
+  };
+
+  const eliminarFotoFinal = (indice) => {
+    setPreviewsFinales((actuales) => {
+      const url = actuales[indice];
+
+      if (url) {
+        URL.revokeObjectURL(url);
+      }
+
+      return actuales.filter(
+        (_, i) => i !== indice
+      );
+    });
+
+    setFotosFinales((actuales) =>
+      actuales.filter(
+        (_, i) => i !== indice
+      )
+    );
+  };
+
+  const cerrarFinalizacion = () => {
+    previewsFinales.forEach((url) =>
+      URL.revokeObjectURL(url)
+    );
+
+    setPreviewsFinales([]);
+    setFotosFinales([]);
+    setCotizacionFinalizar(null);
+    setErrorFinalizar("");
+    setModalFinalizar(false);
+  };
+
+  const subirFotoCloudinary = async (archivo) => {
+    if (
+      archivo.size >
+      5 * 1024 * 1024
+    ) {
+      throw new Error(
+        `La imagen "${archivo.name}" supera el límite de 5 MB.`
+      );
+    }
+
+    const formData =
+      new FormData();
+
+    formData.append(
+      "file",
+      archivo
+    );
+
+    formData.append(
+      "upload_preset",
+      "wealth"
+    );
+
+    const respuesta =
+      await fetch(
+        "https://api.cloudinary.com/v1_1/dxj4iczvk/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+    if (!respuesta.ok) {
+      const detalle =
+        await respuesta
+          .json()
+          .catch(() => null);
+
+      throw new Error(
+        detalle?.error?.message ||
+          "No se pudo subir una de las fotografías."
+      );
+    }
+
+    const data =
+      await respuesta.json();
+
+    return data.secure_url;
+  };
 
   const terminarTrabajo =
     async (cotizacion) => {
@@ -954,13 +1111,24 @@ function CotizacionesAdmin() {
 
       const ok =
         window.confirm(
-          `¿Confirmar que el trabajo "${cotizacion.nombre}" está completamente terminado?\n\nAl continuar dejará de aparecer en Cotizaciones activas y pasará automáticamente a Mis Proyectos del cliente.`
+          `¿Confirmar que el trabajo "${cotizacion.nombre}" está completamente terminado?\n\nLas fotografías seleccionadas se guardarán como evidencia del trabajo final y el proyecto pasará a Mis Proyectos del cliente.`
         );
 
       if (!ok) return;
 
       try {
         setLoading(true);
+        setSubiendoFinales(true);
+        setErrorFinalizar("");
+
+        const fotosTrabajoFinal =
+          fotosFinales.length > 0
+            ? await Promise.all(
+                fotosFinales.map(
+                  subirFotoCloudinary
+                )
+              )
+            : [];
 
         const batch =
           writeBatch(db);
@@ -1034,6 +1202,7 @@ function CotizacionesAdmin() {
               cotizacion.fechaDeseada ||
               null,
 
+            // Fotos y referencias originales
             imagenes:
               cotizacion.imagenes ||
               [],
@@ -1046,7 +1215,17 @@ function CotizacionesAdmin() {
               cotizacion.imagenesCliente ||
               [],
 
+            // NUEVO: fotos reales del trabajo terminado
+            imagenesTrabajoFinal:
+              fotosTrabajoFinal,
+
+            imagenResultado:
+              fotosTrabajoFinal[0] ||
+              null,
+
+            // La portada prioriza el resultado final
             imagen:
+              fotosTrabajoFinal[0] ||
               cotizacion.imagen ||
               cotizacion.imagenes?.[0] ||
               null,
@@ -1155,7 +1334,12 @@ function CotizacionesAdmin() {
               true,
 
             mensajeClienteSistema:
-              "Tu proyecto ha sido finalizado por Wealth. Ya puedes consultarlo en la sección Mis Proyectos.",
+              fotosTrabajoFinal.length > 0
+                ? "Tu proyecto ha sido finalizado por Wealth. Ya puedes consultarlo en Mis Proyectos y ver las fotografías del trabajo terminado."
+                : "Tu proyecto ha sido finalizado por Wealth. Ya puedes consultarlo en la sección Mis Proyectos.",
+
+            imagenesTrabajoFinal:
+              fotosTrabajoFinal,
 
             fechaFinalizacion:
               serverTimestamp(),
@@ -1167,6 +1351,8 @@ function CotizacionesAdmin() {
 
         await batch.commit();
 
+        cerrarFinalizacion();
+
         setModalCotizacion(
           false
         );
@@ -1176,7 +1362,9 @@ function CotizacionesAdmin() {
         );
 
         alert(
-          "✅ Trabajo terminado.\n\nEl proyecto ya fue enviado a Mis Proyectos del cliente."
+          fotosTrabajoFinal.length > 0
+            ? `✅ Trabajo terminado.\n\nSe guardaron ${fotosTrabajoFinal.length} fotografía(s) del trabajo y el proyecto ya aparece en Mis Proyectos del cliente.`
+            : "✅ Trabajo terminado.\n\nEl proyecto ya fue enviado a Mis Proyectos del cliente."
         );
       } catch (error) {
         console.error(
@@ -1184,11 +1372,13 @@ function CotizacionesAdmin() {
           error
         );
 
-        alert(
-          "No se pudo finalizar el proyecto."
+        setErrorFinalizar(
+          error?.message ||
+            "No se pudo finalizar el proyecto."
         );
       } finally {
         setLoading(false);
+        setSubiendoFinales(false);
       }
     };
 
@@ -2388,7 +2578,7 @@ function CotizacionesAdmin() {
 
                                     <button
                                       onClick={() =>
-                                        terminarTrabajo(
+                                        abrirFinalizacion(
                                           c
                                         )
                                       }
@@ -3131,7 +3321,7 @@ function CotizacionesAdmin() {
                     <button
                       type="button"
                       onClick={() =>
-                        terminarTrabajo(
+                        abrirFinalizacion(
                           cotizacionActiva
                         )
                       }
@@ -3195,6 +3385,180 @@ function CotizacionesAdmin() {
 
             </div>
 
+          </div>
+        )}
+
+
+      {/* ================================================= */}
+      {/* MODAL FINALIZAR TRABAJO */}
+      {/* ================================================= */}
+
+      {modalFinalizar &&
+        cotizacionFinalizar && (
+          <div
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-[55] p-4"
+            onClick={() => {
+              if (!subiendoFinales) {
+                cerrarFinalizacion();
+              }
+            }}
+          >
+            <div
+              className="bg-zinc-900 border border-zinc-600 rounded-3xl w-full max-w-3xl max-h-[92vh] overflow-y-auto shadow-2xl"
+              onClick={(e) =>
+                e.stopPropagation()
+              }
+            >
+              <div className="sticky top-0 z-10 bg-zinc-900/95 backdrop-blur-md border-b border-zinc-700 p-6 md:p-7">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.22em] text-emerald-400 font-semibold">
+                      Finalizar proyecto
+                    </p>
+
+                    <h2 className="text-2xl font-bold text-white mt-1">
+                      {cotizacionFinalizar.nombre}
+                    </h2>
+
+                    <p className="text-sm text-zinc-400 mt-2">
+                      Agrega fotografías del trabajo ya terminado. Estas serán las imágenes principales que verá el cliente en Mis Proyectos.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={subiendoFinales}
+                    onClick={cerrarFinalizacion}
+                    className="w-11 h-11 bg-black border border-zinc-700 hover:border-zinc-500 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white transition disabled:opacity-40"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-6 md:p-7 space-y-6">
+                {errorFinalizar && (
+                  <div className="bg-red-500/5 border border-red-500/30 text-red-300 px-4 py-3 rounded-2xl">
+                    {errorFinalizar}
+                  </div>
+                )}
+
+                <section className="bg-black border border-zinc-700 rounded-2xl p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <h3 className="font-bold text-white">
+                        Fotografías del trabajo terminado
+                      </h3>
+
+                      <p className="text-sm text-zinc-500 mt-1">
+                        Puedes seleccionar hasta 6 imágenes. Si no agregas fotos, el proyecto también puede finalizarse.
+                      </p>
+                    </div>
+
+                    <label className={`${botonBase} border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500 cursor-pointer shrink-0`}>
+                      <FaImages />
+                      Agregar fotos
+
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        disabled={subiendoFinales}
+                        onChange={seleccionarFotosFinales}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  {previewsFinales.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mt-5">
+                      {previewsFinales.map(
+                        (preview, indice) => (
+                          <div
+                            key={preview}
+                            className="relative group"
+                          >
+                            <img
+                              src={preview}
+                              alt={`Trabajo terminado ${indice + 1}`}
+                              className="w-full aspect-square object-cover rounded-2xl border border-zinc-700"
+                            />
+
+                            <button
+                              type="button"
+                              disabled={subiendoFinales}
+                              onClick={() =>
+                                eliminarFotoFinal(
+                                  indice
+                                )
+                              }
+                              className="absolute top-2 right-2 w-9 h-9 rounded-xl bg-black/85 border border-red-500/40 text-red-400 flex items-center justify-center hover:bg-red-500/20 transition disabled:opacity-40"
+                              title="Quitar fotografía"
+                            >
+                              <FaTrash />
+                            </button>
+
+                            {indice === 0 && (
+                              <span className="absolute left-2 bottom-2 bg-yellow-500 text-black text-[10px] font-bold px-2 py-1 rounded-full">
+                                PORTADA
+                              </span>
+                            )}
+                          </div>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mt-5 min-h-40 border border-dashed border-zinc-700 rounded-2xl flex flex-col items-center justify-center text-center p-6">
+                      <FaImages className="text-zinc-600 text-3xl" />
+                      <p className="text-zinc-400 mt-3">
+                        Todavía no has agregado fotografías finales.
+                      </p>
+                    </div>
+                  )}
+                </section>
+
+                <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5">
+                  <p className="font-bold text-emerald-400">
+                    Al finalizar
+                  </p>
+
+                  <p className="text-sm text-zinc-400 mt-2">
+                    La cotización se archivará, se creará o actualizará el documento en proyectosClientes y las fotografías quedarán guardadas como imagenesTrabajoFinal.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap justify-end gap-3 border-t border-zinc-700 pt-6">
+                  <button
+                    type="button"
+                    disabled={subiendoFinales}
+                    onClick={cerrarFinalizacion}
+                    className={`${botonBase} border-zinc-600 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 disabled:opacity-40`}
+                  >
+                    <FaTimes />
+                    Cancelar
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={subiendoFinales}
+                    onClick={() =>
+                      terminarTrabajo(
+                        cotizacionFinalizar
+                      )
+                    }
+                    className={`${botonBase} border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500 disabled:opacity-50`}
+                  >
+                    <FaFlagCheckered />
+
+                    {subiendoFinales
+                      ? "Subiendo y finalizando..."
+                      : fotosFinales.length > 0
+                      ? `Finalizar con ${fotosFinales.length} foto(s)`
+                      : "Finalizar sin fotos"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
