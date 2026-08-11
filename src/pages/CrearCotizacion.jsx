@@ -414,9 +414,13 @@ function CrearCotizacion() {
   // PROYECTO SELECCIONADO
   // ====================================================
 
-  const proyectoReferencia =
+  const [
+    proyectoReferencia,
+    setProyectoReferencia,
+  ] = useState(
     location.state?.proyecto ||
-    null;
+    null
+  );
 
   // ====================================================
   // TODAS LAS IMÁGENES DEL PROYECTO
@@ -1120,6 +1124,14 @@ function CrearCotizacion() {
       );
 
       setImagenes([]);
+
+      // Al terminar una cotización quitamos también
+      // el proyecto de referencia y sus imágenes.
+      // De lo contrario location.state conserva esas
+      // fotografías aunque el formulario ya se haya enviado.
+      setProyectoReferencia(
+        null
+      );
 
       setPosicion(
         POSICION_CAMPECHE

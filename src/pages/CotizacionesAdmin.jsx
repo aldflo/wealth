@@ -79,6 +79,7 @@ function CotizacionesAdmin() {
   const [presupuestoAdmin, setPresupuestoAdmin] = useState("");
   const [porcentajeAnticipo, setPorcentajeAnticipo] = useState("50");
   const [tiempoEstimado, setTiempoEstimado] = useState("");
+  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState("");
   const [garantia, setGarantia] = useState("");
   const [observacionesAdmin, setObservacionesAdmin] = useState("");
   const [error, setError] = useState("");
@@ -435,6 +436,136 @@ function CotizacionesAdmin() {
     }
   };
 
+
+  const obtenerFechaValida = (fecha) => {
+    if (!fecha) return null;
+
+    try {
+      if (typeof fecha.toDate === "function") {
+        return fecha.toDate();
+      }
+
+      const texto = String(fecha).trim();
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) {
+        const [anio, mes, dia] = texto.split("-").map(Number);
+        const date = new Date(anio, mes - 1, dia, 12, 0, 0);
+
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      const date = new Date(fecha);
+      return Number.isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  };
+
+  const formatearFechaSoloDia = (fecha) => {
+    const date = obtenerFechaValida(fecha);
+
+    if (!date) return "—";
+
+    return date.toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const obtenerFechaDeseadaCliente = (cotizacion) => {
+    return (
+      cotizacion?.fechaDeseada ??
+      cotizacion?.fechaNecesaria ??
+      cotizacion?.fechaRequerida ??
+      cotizacion?.fechaEntregaDeseada ??
+      null
+    );
+  };
+
+  const obtenerFechaEntregaWealth = (cotizacion) => {
+    return (
+      cotizacion?.propuestaActual?.fechaEntregaEstimada ??
+      cotizacion?.fechaEntregaEstimada ??
+      cotizacion?.fechaFinInstalacion ??
+      null
+    );
+  };
+
+  const calcularEstadoEntrega = (fechaEntrega) => {
+    const entrega = obtenerFechaValida(fechaEntrega);
+
+    if (!entrega) return null;
+
+    const hoy = new Date();
+
+    const inicioHoy = new Date(
+      hoy.getFullYear(),
+      hoy.getMonth(),
+      hoy.getDate()
+    );
+
+    const inicioEntrega = new Date(
+      entrega.getFullYear(),
+      entrega.getMonth(),
+      entrega.getDate()
+    );
+
+    const diferenciaMs =
+      inicioEntrega.getTime() -
+      inicioHoy.getTime();
+
+    const dias = Math.ceil(
+      diferenciaMs /
+        (1000 * 60 * 60 * 24)
+    );
+
+    if (dias > 5) {
+      return {
+        dias,
+        texto: `Faltan ${dias} días`,
+        clase:
+          "bg-green-500/10 border-green-500/30 text-green-400",
+      };
+    }
+
+    if (dias > 1) {
+      return {
+        dias,
+        texto: `Faltan ${dias} días`,
+        clase:
+          "bg-yellow-500/10 border-yellow-500/30 text-yellow-400",
+      };
+    }
+
+    if (dias === 1) {
+      return {
+        dias,
+        texto: "Falta 1 día",
+        clase:
+          "bg-yellow-500/10 border-yellow-500/30 text-yellow-400",
+      };
+    }
+
+    if (dias === 0) {
+      return {
+        dias,
+        texto: "Entrega hoy",
+        clase:
+          "bg-orange-500/10 border-orange-500/30 text-orange-400",
+      };
+    }
+
+    return {
+      dias,
+      texto: `Vencida por ${Math.abs(dias)} ${
+        Math.abs(dias) === 1 ? "día" : "días"
+      }`,
+      clase:
+        "bg-red-500/10 border-red-500/30 text-red-400",
+    };
+  };
+
   const getEstadoTexto = (estado) => {
     switch (estado) {
       case "pendiente":
@@ -722,6 +853,13 @@ function CotizacionesAdmin() {
         ""
     );
 
+    setFechaEntregaEstimada(
+      cotizacion.propuestaActual?.fechaEntregaEstimada ??
+        cotizacion.fechaEntregaEstimada ??
+        cotizacion.fechaFinInstalacion ??
+        ""
+    );
+
     setGarantia(
       cotizacion.propuestaActual?.garantia ??
         cotizacion.garantia ??
@@ -803,6 +941,7 @@ function CotizacionesAdmin() {
         anticipo: Number(montoAnticipo),
         saldo: Number(saldoPendiente),
         tiempoEstimado: tiempoEstimado.trim(),
+        fechaEntregaEstimada: fechaEntregaEstimada.trim() || null,
         garantia: garantia.trim(),
         observaciones: observacionesAdmin.trim(),
         fecha: Timestamp.now(),
@@ -826,6 +965,7 @@ function CotizacionesAdmin() {
         saldoPendiente: Number(saldoPendiente),
 
         tiempoEstimado: tiempoEstimado.trim(),
+        fechaEntregaEstimada: fechaEntregaEstimada.trim() || null,
         garantia: garantia.trim(),
 
         observaciones: observacionesAdmin.trim(),
@@ -1092,6 +1232,7 @@ function CotizacionesAdmin() {
         saldoPendiente: null,
 
         tiempoEstimado: "",
+        fechaEntregaEstimada: null,
         garantia: "",
         observaciones: "",
         observacionesAdmin: "",
@@ -1342,6 +1483,9 @@ function CotizacionesAdmin() {
 
           propuestaActual: cotizacion.propuestaActual || null,
 
+          fechaEntregaEstimada:
+            obtenerFechaEntregaWealth(cotizacion),
+
           historial: historialFinal,
 
           fechaInicioInstalacion:
@@ -1557,6 +1701,15 @@ function CotizacionesAdmin() {
                         const precio = obtenerPrecio(cotizacion);
                         const imagenes = obtenerImagenes(cotizacion);
 
+                        const fechaDeseadaCliente =
+                          obtenerFechaDeseadaCliente(cotizacion);
+
+                        const fechaEntregaWealth =
+                          obtenerFechaEntregaWealth(cotizacion);
+
+                        const estadoEntrega =
+                          calcularEstadoEntrega(fechaEntregaWealth);
+
                         return (
                           <div
                             key={cotizacion.id}
@@ -1616,6 +1769,55 @@ function CotizacionesAdmin() {
                                     )}
                                   </span>
                                 </div>
+
+                                {(fechaDeseadaCliente ||
+                                  fechaEntregaWealth) && (
+                                  <div className="mt-4 grid sm:grid-cols-3 gap-2">
+                                    <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5">
+                                      <p className="text-[10px] uppercase tracking-wide text-zinc-600">
+                                        Cliente lo necesita
+                                      </p>
+                                      <p className="text-sm font-semibold text-zinc-200 mt-1">
+                                        {formatearFechaSoloDia(
+                                          fechaDeseadaCliente
+                                        )}
+                                      </p>
+                                    </div>
+
+                                    <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5">
+                                      <p className="text-[10px] uppercase tracking-wide text-zinc-600">
+                                        Entrega Wealth
+                                      </p>
+                                      <p className="text-sm font-semibold text-zinc-200 mt-1">
+                                        {formatearFechaSoloDia(
+                                          fechaEntregaWealth
+                                        )}
+                                      </p>
+                                    </div>
+
+                                    {estadoEntrega ? (
+                                      <div
+                                        className={`rounded-xl border px-3 py-2.5 ${estadoEntrega.clase}`}
+                                      >
+                                        <p className="text-[10px] uppercase tracking-wide opacity-70">
+                                          Tiempo restante
+                                        </p>
+                                        <p className="text-sm font-bold mt-1">
+                                          {estadoEntrega.texto}
+                                        </p>
+                                      </div>
+                                    ) : (
+                                      <div className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5">
+                                        <p className="text-[10px] uppercase tracking-wide text-zinc-600">
+                                          Tiempo restante
+                                        </p>
+                                        <p className="text-sm font-semibold text-zinc-500 mt-1">
+                                          Sin fecha de entrega
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
 
                                 {cotizacion.mensajeCliente && (
                                   <div className="mt-4 p-4 rounded-xl bg-orange-500/10 border border-orange-500/30">
@@ -1858,6 +2060,39 @@ function CotizacionesAdmin() {
                 </div>
               )}
 
+              <div className="grid md:grid-cols-3 gap-3">
+                <ResumenFecha
+                  titulo="Cliente lo necesita"
+                  valor={formatearFechaSoloDia(
+                    obtenerFechaDeseadaCliente(cotizacionActiva)
+                  )}
+                />
+
+                <ResumenFecha
+                  titulo="Entrega estimada Wealth"
+                  valor={
+                    fechaEntregaEstimada
+                      ? formatearFechaSoloDia(fechaEntregaEstimada)
+                      : "Sin definir"
+                  }
+                />
+
+                <ResumenFecha
+                  titulo="Tiempo restante"
+                  valor={
+                    calcularEstadoEntrega(
+                      fechaEntregaEstimada
+                    )?.texto || "Sin fecha de entrega"
+                  }
+                  clase={
+                    calcularEstadoEntrega(
+                      fechaEntregaEstimada
+                    )?.clase ||
+                    "border-zinc-800 text-zinc-400"
+                  }
+                />
+              </div>
+
               <div className="grid md:grid-cols-2 gap-4">
                 <Campo
                   label="Precio total"
@@ -1901,6 +2136,20 @@ function CotizacionesAdmin() {
                     }
                     className="inputAdmin"
                     placeholder="Ej. 15 días"
+                  />
+                </Campo>
+
+                <Campo
+                  label="Fecha estimada de entrega"
+                  icon={<FaFlagCheckered />}
+                >
+                  <input
+                    type="date"
+                    value={fechaEntregaEstimada}
+                    onChange={(e) =>
+                      setFechaEntregaEstimada(e.target.value)
+                    }
+                    className="inputAdmin"
                   />
                 </Campo>
 
@@ -2259,6 +2508,26 @@ function Resumen({ titulo, valor }) {
       </p>
 
       <p className="text-xl font-black mt-1">
+        {valor}
+      </p>
+    </div>
+  );
+}
+
+function ResumenFecha({
+  titulo,
+  valor,
+  clase = "border-zinc-800 text-white",
+}) {
+  return (
+    <div
+      className={`rounded-2xl bg-black border p-4 ${clase}`}
+    >
+      <p className="text-xs uppercase tracking-wide opacity-60">
+        {titulo}
+      </p>
+
+      <p className="text-base font-black mt-1">
         {valor}
       </p>
     </div>
