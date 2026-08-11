@@ -37,8 +37,7 @@ import {
 ========================================= */
 
 const API_URL =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:5001";
+  "/.netlify/functions/chat";
 
 const IA_TIMEOUT =
   20000;
@@ -427,8 +426,6 @@ const esPreguntaServicios = (
 
 /* =========================================
    CONCEPTOS DE SERVICIO
-
-   Aquí podemos agregar más en el futuro.
 ========================================= */
 
 const CONCEPTOS = {
@@ -856,8 +853,6 @@ const actualizarMemoriaProyecto = (
       area;
   }
 
-  /* TIPO */
-
   const nombres = {
     puerta:
       "Puerta",
@@ -936,8 +931,6 @@ const actualizarMemoriaProyecto = (
       nombres[tipo];
   }
 
-  /* MATERIALES */
-
   if (
     conceptos.includes(
       "herreria"
@@ -972,8 +965,6 @@ const actualizarMemoriaProyecto = (
       "Vidrio";
   }
 
-  /* MEDIDAS */
-
   const medida =
     t.match(
       /(\d+(?:[.,]\d+)?)\s*(?:m|metros?)?\s*(?:x|por)\s*(\d+(?:[.,]\d+)?)\s*(?:m|metros?)?/
@@ -992,8 +983,6 @@ const actualizarMemoriaProyecto = (
         "."
       );
   }
-
-  /* ESTILO */
 
   const estilos = [
     "moderno",
@@ -1018,8 +1007,6 @@ const actualizarMemoriaProyecto = (
       estilo;
   }
 
-  /* COLOR */
-
   const colores = [
     "negro",
     "negra",
@@ -1042,8 +1029,6 @@ const actualizarMemoriaProyecto = (
     memoria.color =
       color;
   }
-
-  /* PRIORIDAD */
 
   if (
     t.includes(
@@ -1110,13 +1095,6 @@ const textoGaleria = (
 
 /* =========================================
    COMPROBAR CONCEPTOS
-
-   IMPORTANTE:
-   Todos los conceptos principales
-   deben coincidir.
-
-   puerta + herrería
-   NO coincide con "cancel de baño".
 ========================================= */
 
 const coincideConceptos = (
@@ -1327,9 +1305,6 @@ const buscarGaleriaRelacionada = (
 
 /* =========================================
    BÚSQUEDA UNIVERSAL
-
-   PROYECTOS PRIMERO
-   GALERÍA DESPUÉS
 ========================================= */
 
 const buscarReferencias = (
@@ -1353,10 +1328,6 @@ const buscarReferencias = (
     ...proyectosEncontrados,
     ...galeriaEncontrada,
   ];
-
-  /*
-   * máximo 6 tarjetas
-   */
 
   return {
     proyectos:
@@ -1456,10 +1427,6 @@ export default function ChatIA() {
     setFaq,
   ] = useState([]);
 
-  /*
-   * CATÁLOGO EN MEMORIA
-   */
-
   const [
     proyectosDB,
     setProyectosDB,
@@ -1475,10 +1442,6 @@ export default function ChatIA() {
     setCatalogoReady,
   ] = useState(false);
 
-  /*
-   * MEMORIA CONVERSACIÓN
-   */
-
   const [
     areaActual,
     setAreaActual,
@@ -1488,10 +1451,6 @@ export default function ChatIA() {
     memoriaProyecto,
     setMemoriaProyecto,
   ] = useState({});
-
-  /*
-   * AUTH / HISTORIAL
-   */
 
   const [
     user,
@@ -1513,10 +1472,6 @@ export default function ChatIA() {
     setCurrentId,
   ] = useState(null);
 
-  /*
-   * REFS
-   */
-
   const messagesEndRef =
     useRef(null);
 
@@ -1528,10 +1483,6 @@ export default function ChatIA() {
 
   const operationIdRef =
     useRef(0);
-
-  /* =========================================
-     TIMEOUT
-  ========================================= */
 
   const limpiarTimeout =
     () => {
@@ -1547,10 +1498,6 @@ export default function ChatIA() {
       }
     };
 
-  /* =========================================
-     ABORT
-  ========================================= */
-
   const abortarPeticionActual =
     () => {
       limpiarTimeout();
@@ -1564,10 +1511,6 @@ export default function ChatIA() {
           null;
       }
     };
-
-  /* =========================================
-     CANCELAR
-  ========================================= */
 
   const cancelarRespuesta =
     () => {
@@ -1599,10 +1542,6 @@ export default function ChatIA() {
       );
     };
 
-  /* =========================================
-     LIMPIEZA
-  ========================================= */
-
   useEffect(() => {
     return () => {
       operationIdRef.current +=
@@ -1611,10 +1550,6 @@ export default function ChatIA() {
       abortarPeticionActual();
     };
   }, []);
-
-  /* =========================================
-     AUTH
-  ========================================= */
 
   useEffect(() => {
     const unsubscribe =
@@ -1650,12 +1585,6 @@ export default function ChatIA() {
       unsubscribe();
 
   }, []);
-
-  /* =========================================
-     CARGAR DATOS
-
-     Se hace UNA VEZ.
-  ========================================= */
 
   useEffect(() => {
     const cargar =
@@ -1700,10 +1629,6 @@ export default function ChatIA() {
     cargar();
 
   }, []);
-
-  /* =========================================
-     CARGAR HISTORIAL
-  ========================================= */
 
   useEffect(() => {
     if (!user) {
@@ -1770,10 +1695,6 @@ export default function ChatIA() {
 
   }, [user]);
 
-  /* =========================================
-     SCROLL
-  ========================================= */
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior:
@@ -1783,10 +1704,6 @@ export default function ChatIA() {
     messages,
     loading,
   ]);
-
-  /* =========================================
-     GUARDAR CONVERSACIÓN
-  ========================================= */
 
   const guardarConversacion =
     async (
@@ -1842,11 +1759,6 @@ export default function ChatIA() {
 
           titulo,
 
-          /*
-           * Incluye attachments.
-           * Por eso las imágenes quedan guardadas.
-           */
-
           messages:
             nuevosMensajes,
 
@@ -1901,10 +1813,6 @@ export default function ChatIA() {
       }
     };
 
-  /* =========================================
-     NUEVA CONVERSACIÓN
-  ========================================= */
-
   const nuevaConversacion =
     () => {
       operationIdRef.current +=
@@ -1932,10 +1840,6 @@ export default function ChatIA() {
 
       setInput("");
     };
-
-  /* =========================================
-     ABRIR CONVERSACIÓN
-  ========================================= */
 
   const abrirConversacion =
     (
@@ -1969,10 +1873,6 @@ export default function ChatIA() {
           {}
       );
     };
-
-  /* =========================================
-     ELIMINAR
-  ========================================= */
 
   const eliminarConversacion =
     async (id) => {
@@ -2012,13 +1912,6 @@ export default function ChatIA() {
       }
     };
 
-  /* =========================================
-     RESPONDER CON REFERENCIAS
-
-     NO usa Groq.
-     Es instantáneo.
-  ========================================= */
-
   const responderReferencias =
     async (
       newMessages,
@@ -2038,10 +1931,6 @@ export default function ChatIA() {
         );
 
       let content;
-
-      /*
-       * ENCONTRÓ ALGO
-       */
 
       if (
         resultado.items.length >
@@ -2065,13 +1954,7 @@ export default function ChatIA() {
           content =
             `Encontré referencias en nuestra galería relacionadas con ${descripcion}. Te las muestro para que puedas elegir la que más se acerque a lo que buscas.`;
         }
-      }
-
-      /*
-       * NO ENCONTRÓ NADA
-       */
-
-      else {
+      } else {
         content =
           `No encontré un proyecto ni una referencia publicada que coincida con ${descripcion}. ¿Ya tienes alguna idea, fotografía o diseño en mente? Puedes crear una cotización personalizada y enviarnos ahí los detalles o imágenes de lo que deseas.`;
       }
@@ -2132,10 +2015,6 @@ export default function ChatIA() {
       );
     };
 
-  /* =========================================
-     ENVIAR
-  ========================================= */
-
   const sendMessage =
     async (
       text = input
@@ -2173,10 +2052,6 @@ export default function ChatIA() {
 
       setInput("");
 
-      /* =========================================
-         MEMORIA
-      ========================================= */
-
       const nuevaMemoria =
         actualizarMemoriaProyecto(
           memoriaProyecto,
@@ -2186,10 +2061,6 @@ export default function ChatIA() {
       setMemoriaProyecto(
         nuevaMemoria
       );
-
-      /* =========================================
-         EMPRESA
-      ========================================= */
 
       const respuestaEmpresa =
         getRespuestaEmpresa(
@@ -2225,10 +2096,6 @@ export default function ChatIA() {
 
         return;
       }
-
-      /* =========================================
-         SERVICIOS GENERALES
-      ========================================= */
 
       if (
         esPreguntaServicios(
@@ -2297,10 +2164,6 @@ export default function ChatIA() {
         return;
       }
 
-      /* =========================================
-         MENSAJE INCOMPLETO
-      ========================================= */
-
       if (
         esMensajeMuyIncompleto(
           cleanText
@@ -2332,26 +2195,6 @@ export default function ChatIA() {
 
         return;
       }
-
-      /* =========================================
-         BÚSQUEDA UNIVERSAL
-
-         Si menciona cualquier servicio y
-         quiere cotizar / ver / buscar algo,
-         primero revisamos Firebase.
-
-         Ejemplos:
-
-         puerta
-         baño
-         cancel
-         ventana
-         construcción
-         fachada
-         terreno
-         remodelación
-         etc.
-      ========================================= */
 
       const consultaServicio =
         esConsultaServicio(
@@ -2385,14 +2228,6 @@ export default function ChatIA() {
         return;
       }
 
-      /* =========================================
-         PARA PREGUNTAS GENERALES SOBRE
-         UN SERVICIO:
-
-         También buscamos referencias,
-         pero dejamos a Groq explicar.
-      ========================================= */
-
       let referencias = {
         proyectos: [],
         galeria: [],
@@ -2411,10 +2246,6 @@ export default function ChatIA() {
             galeriaDB
           );
       }
-
-      /* =========================================
-         FAQ
-      ========================================= */
 
       const mensajeNormalizado =
         normalizarTexto(
@@ -2447,10 +2278,6 @@ export default function ChatIA() {
             3
           );
 
-      /* =========================================
-         OPERACIÓN
-      ========================================= */
-
       const operationId =
         ++operationIdRef.current;
 
@@ -2476,13 +2303,9 @@ export default function ChatIA() {
         );
 
       try {
-        /* =========================================
-           BACKEND
-        ========================================= */
-
         const response =
           await fetch(
-            `${API_URL}/chat`,
+            API_URL,
             {
               method:
                 "POST",
@@ -2587,11 +2410,6 @@ export default function ChatIA() {
 
         const actions = [];
 
-        /*
-         * Si habla de servicio,
-         * siempre puede cotizar.
-         */
-
         if (
           consultaServicio
         ) {
@@ -2610,14 +2428,6 @@ export default function ChatIA() {
 
           content:
             data.reply,
-
-          /*
-           * Si encontramos referencias
-           * relevantes, se muestran.
-           *
-           * NUNCA agregamos referencias
-           * de otra categoría.
-           */
 
           attachments:
             referencias.items,
@@ -2727,10 +2537,6 @@ export default function ChatIA() {
       }
     };
 
-  /* =========================================
-     ACCIONES
-  ========================================= */
-
   const handleAction =
     async (action) => {
       if (
@@ -2795,10 +2601,6 @@ export default function ChatIA() {
       }
     };
 
-  /* =========================================
-     RENDER
-  ========================================= */
-
   return (
     <div className="w-full min-h-[calc(100vh-95px)] bg-[#050505]">
 
@@ -2807,27 +2609,19 @@ export default function ChatIA() {
         <div
           className="
             flex
-
             h-[calc(100vh-135px)]
             min-h-[650px]
-
             overflow-hidden
-
             bg-gradient-to-b
             from-[#0b0b0b]
             via-[#070707]
             to-[#050505]
-
             border
             border-[#c89b3c]/20
-
             rounded-[28px]
-
             shadow-[0_30px_80px_rgba(0,0,0,0.45)]
           "
         >
-
-          {/* HISTORIAL */}
 
           {authReady &&
             user && (
@@ -2854,13 +2648,9 @@ export default function ChatIA() {
               />
             )}
 
-          {/* CHAT */}
-
           <div className="flex-1 min-w-0 flex flex-col">
 
             <ChatHeader />
-
-            {/* MENSAJES */}
 
             <div className="relative flex-1 overflow-y-auto scroll-smooth">
 
@@ -2911,13 +2701,10 @@ export default function ChatIA() {
 
             </div>
 
-            {/* INPUT */}
-
             <div
               className="
                 border-t
                 border-[#c89b3c]/15
-
                 bg-black/80
                 backdrop-blur-xl
               "
