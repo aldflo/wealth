@@ -2,6 +2,10 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import {
+  auth,
+} from "../firebase.config";
+
 export default function ProjectGallery({
   projects = [],
 }) {
@@ -51,52 +55,87 @@ export default function ProjectGallery({
   };
 
   /* =========================================
-     COTIZAR REFERENCIA
+     IR A COTIZACIÓN
+     SIN SESIÓN -> LOGIN
+     CON SESIÓN -> CREAR COTIZACIÓN
   ========================================= */
 
-  const cotizarElemento = (
-    project
+  const irACotizacion = (
+    state = {}
   ) => {
+    const usuario =
+      auth.currentUser;
+
+    if (!usuario) {
+      navigate(
+        "/login",
+        {
+          state: {
+            desdeIA: true,
+
+            redirectTo:
+              "/crear-cotizacion",
+
+            ...state,
+          },
+        }
+      );
+
+      return;
+    }
+
     navigate(
       "/crear-cotizacion",
       {
         state: {
           desdeIA: true,
 
-          proyecto: {
-            id:
-              project.id,
-
-            nombre:
-              project.title ||
-              "Referencia Wealth",
-
-            descripcion:
-              project.descripcion ||
-              `Me interesa un trabajo similar a "${project.title}".`,
-
-            categoria:
-              project.categoria ||
-              "",
-
-            subcategoria:
-              project.subcategoria ||
-              "",
-
-            imagen:
-              project.img ||
-              "",
-
-            imagenes:
-              project.img
-                ? [
-                    project.img,
-                  ]
-                : [],
-          },
+          ...state,
         },
       }
     );
+  };
+
+  /* =========================================
+     COTIZAR REFERENCIA
+  ========================================= */
+
+  const cotizarElemento = (
+    project
+  ) => {
+    irACotizacion({
+      proyecto: {
+        id:
+          project.id,
+
+        nombre:
+          project.title ||
+          "Referencia Wealth",
+
+        descripcion:
+          project.descripcion ||
+          `Me interesa un trabajo similar a "${project.title}".`,
+
+        categoria:
+          project.categoria ||
+          "",
+
+        subcategoria:
+          project.subcategoria ||
+          "",
+
+        imagen:
+          project.img ||
+          "",
+
+        imagenes:
+          project.img
+            ? [
+                project.img,
+              ]
+            : [],
+      },
+    });
   };
 
   const contieneProyecto =
@@ -323,15 +362,7 @@ export default function ProjectGallery({
         <button
           type="button"
           onClick={() =>
-            navigate(
-              "/crear-cotizacion",
-              {
-                state: {
-                  desdeIA:
-                    true,
-                },
-              }
-            )
+            irACotizacion()
           }
           className="
             shrink-0
