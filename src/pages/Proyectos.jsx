@@ -527,32 +527,35 @@ function Proyectos() {
 
   const esNuevo =
     (proyecto) => {
-      if (
-        !proyecto.fecha?.toDate
-      ) {
+      const fechaBase =
+        proyecto.fechaActualizacion?.toDate
+          ? proyecto.fechaActualizacion.toDate()
+          : proyecto.fecha?.toDate
+          ? proyecto.fecha.toDate()
+          : null;
+
+      if (!fechaBase) {
         return false;
       }
 
-      const fechaProyecto =
-        proyecto.fecha.toDate();
-
-      const hoy =
+      const ahora =
         new Date();
 
-      const diferencia =
-        hoy.getTime() -
-        fechaProyecto.getTime();
+      const diferenciaMs =
+        ahora.getTime() -
+        fechaBase.getTime();
 
-      const dias =
-        diferencia /
-        (
-          1000 *
-          60 *
-          60 *
-          24
-        );
+      const VEINTICUATRO_HORAS =
+        24 *
+        60 *
+        60 *
+        1000;
 
-      return dias <= 30;
+      return (
+        diferenciaMs >= 0 &&
+        diferenciaMs <=
+          VEINTICUATRO_HORAS
+      );
     };
 
   // ======================================================

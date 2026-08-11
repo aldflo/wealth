@@ -8,12 +8,16 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import { db } from "../firebase.config";
+import { auth, db } from "../firebase.config";
 
 import {
   collection,
   onSnapshot,
 } from "firebase/firestore";
+
+import {
+  onAuthStateChanged,
+} from "firebase/auth";
 
 import {
   FaSearch,
@@ -51,6 +55,34 @@ const normalizarCategoria = (
 function Galeria() {
   const navigate =
     useNavigate();
+
+  // ====================================================
+  // AUTENTICACIÓN
+  // ====================================================
+
+  const [usuario, setUsuario] =
+    useState(null);
+
+  const [authReady, setAuthReady] =
+    useState(false);
+
+  useEffect(() => {
+    const unsub =
+      onAuthStateChanged(
+        auth,
+        (user) => {
+          setUsuario(
+            user || null
+          );
+
+          setAuthReady(
+            true
+          );
+        }
+      );
+
+    return () => unsub();
+  }, []);
 
   // ====================================================
   // FIREBASE
@@ -415,28 +447,53 @@ function Galeria() {
         ? grupo.imagenes
         : [];
 
+    const proyectoReferencia = {
+      id:
+        `galeria_${grupo.id}`,
+
+      nombre:
+        grupo.subcategoria,
+
+      descripcion:
+        `Me interesa realizar un trabajo similar a los diseños de "${grupo.subcategoria}".`,
+
+      categoria:
+        grupo.categoria,
+
+      imagen:
+        imagenes[0] ||
+        "",
+
+      imagenes,
+    };
+
+    if (!authReady) {
+      return;
+    }
+
+    if (!usuario) {
+      navigate(
+        "/login",
+        {
+          state: {
+            mensaje:
+              "Inicia sesión para cotizar esta referencia.",
+
+            proyectoPendiente:
+              proyectoReferencia,
+          },
+        }
+      );
+
+      return;
+    }
+
     navigate(
       "/crear-cotizacion",
       {
         state: {
-          proyecto: {
-            id: `galeria_${grupo.id}`,
-
-            nombre:
-              grupo.subcategoria,
-
-            descripcion:
-              `Me interesa realizar un trabajo similar a los diseños de "${grupo.subcategoria}".`,
-
-            categoria:
-              grupo.categoria,
-
-            imagen:
-              imagenes[0] ||
-              "",
-
-            imagenes,
-          },
+          proyecto:
+            proyectoReferencia,
         },
       }
     );
@@ -460,30 +517,57 @@ function Galeria() {
           indiceImagen
         ];
 
+      const proyectoReferencia = {
+        id:
+          `galeria_${grupoActivo.id}_${indiceImagen}`,
+
+        nombre:
+          grupoActivo.subcategoria,
+
+        descripcion:
+          `Me interesa realizar un trabajo similar a esta referencia de "${grupoActivo.subcategoria}".`,
+
+        categoria:
+          grupoActivo.categoria,
+
+        imagen,
+
+        imagenes: [
+          imagen,
+        ],
+      };
+
+      if (!authReady) {
+        return;
+      }
+
+      if (!usuario) {
+        setModalOpen(false);
+
+        navigate(
+          "/login",
+          {
+            state: {
+              mensaje:
+                "Inicia sesión para usar esta imagen como referencia.",
+
+              proyectoPendiente:
+                proyectoReferencia,
+            },
+          }
+        );
+
+        return;
+      }
+
       setModalOpen(false);
 
       navigate(
         "/crear-cotizacion",
         {
           state: {
-            proyecto: {
-              id: `galeria_${grupoActivo.id}_${indiceImagen}`,
-
-              nombre:
-                grupoActivo.subcategoria,
-
-              descripcion:
-                `Me interesa realizar un trabajo similar a esta referencia de "${grupoActivo.subcategoria}".`,
-
-              categoria:
-                grupoActivo.categoria,
-
-              imagen,
-
-              imagenes: [
-                imagen,
-              ],
-            },
+            proyecto:
+              proyectoReferencia,
           },
         }
       );
@@ -809,7 +893,9 @@ function Galeria() {
                       >
                         <FaFileInvoiceDollar />
 
-                        Cotizar algo similar
+                        {usuario
+                          ? "Cotizar algo similar"
+                          : "Inicia sesión para cotizar"}
 
                         <FaArrowRight />
                       </button>
@@ -1079,7 +1165,9 @@ function Galeria() {
                   >
                     <FaFileInvoiceDollar />
 
-                    Usar esta imagen como referencia
+                    {usuario
+                      ? "Usar esta imagen como referencia"
+                      : "Inicia sesión para usar esta referencia"}
 
                     <FaArrowRight />
                   </button>

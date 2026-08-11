@@ -59,6 +59,16 @@ function DetalleProyecto() {
     setGuardandoFavorito,
   ] = useState(false);
 
+  const [
+    referenciasGaleria,
+    setReferenciasGaleria,
+  ] = useState([]);
+
+  const [
+    cargandoReferencias,
+    setCargandoReferencias,
+  ] = useState(true);
+
   const minSwipeDistance = 50;
 
   // ======================================================
@@ -101,6 +111,141 @@ function DetalleProyecto() {
 
     cargarProyecto();
   }, [id]);
+
+  // ======================================================
+  // REFERENCIAS DE GALERÍA
+  // ======================================================
+
+  const normalizarCategoria =
+    (categoria = "") => {
+      const texto =
+        String(categoria)
+          .trim()
+          .toLowerCase();
+
+      if (
+        texto ===
+        "vidrio y aluminio"
+      ) {
+        return "aluminios y vidrios";
+      }
+
+      return texto;
+    };
+
+  useEffect(() => {
+    const unsub =
+      onSnapshot(
+        collection(
+          db,
+          "galeria"
+        ),
+
+        (snapshot) => {
+          const grupos =
+            snapshot.docs.map(
+              (documento) => ({
+                id:
+                  documento.id,
+
+                ...documento.data(),
+              })
+            );
+
+          const categoriaProyecto =
+            normalizarCategoria(
+              proyecto?.categoria ||
+              ""
+            );
+
+          const porCategoria =
+            grupos.filter(
+              (grupo) =>
+                normalizarCategoria(
+                  grupo.categoria ||
+                  ""
+                ) ===
+                categoriaProyecto
+            );
+
+          const fuente =
+            porCategoria.length > 0
+              ? porCategoria
+              : grupos;
+
+          const fotos = [];
+
+          fuente.forEach(
+            (grupo) => {
+              const imagenesGrupo =
+                Array.isArray(
+                  grupo.imagenes
+                )
+                  ? grupo.imagenes
+                  : [];
+
+              imagenesGrupo.forEach(
+                (
+                  imagen,
+                  indice
+                ) => {
+                  if (
+                    !imagen ||
+                    fotos.length >= 4
+                  ) {
+                    return;
+                  }
+
+                  fotos.push({
+                    id:
+                      `${grupo.id}_${indice}`,
+
+                    imagen,
+
+                    categoria:
+                      grupo.categoria ||
+                      "Wealth",
+
+                    subcategoria:
+                      grupo.subcategoria ||
+                      grupo.nombre ||
+                      "Referencia",
+                  });
+                }
+              );
+            }
+          );
+
+          setReferenciasGaleria(
+            fotos
+          );
+
+          setCargandoReferencias(
+            false
+          );
+        },
+
+        (error) => {
+          console.error(
+            "Error cargando referencias de galería:",
+            error
+          );
+
+          setReferenciasGaleria(
+            []
+          );
+
+          setCargandoReferencias(
+            false
+          );
+        }
+      );
+
+    return () => unsub();
+
+  }, [
+    proyecto?.categoria,
+  ]);
 
   // ======================================================
   // SESIÓN
@@ -481,6 +626,38 @@ function DetalleProyecto() {
 
   const cotizarProyecto =
     () => {
+      if (!usuario) {
+        navigate(
+          "/login",
+          {
+            state: {
+              mensaje:
+                "Inicia sesión para cotizar este proyecto.",
+
+              proyectoPendiente: {
+                ...proyecto,
+
+                id:
+                  proyecto.id,
+
+                proyectoReferenciaId:
+                  proyecto.id,
+
+                proyectoReferenciaNombre:
+                  proyecto.nombre ||
+                  "",
+
+                proyectoReferenciaCategoria:
+                  proyecto.categoria ||
+                  "",
+              },
+            },
+          }
+        );
+
+        return;
+      }
+
       navigate(
         "/crear-cotizacion",
         {
@@ -732,7 +909,9 @@ function DetalleProyecto() {
             >
               <FaFileInvoiceDollar size={20} />
 
-              Cotizar este proyecto
+              {usuario
+                ? "Cotizar este proyecto"
+                : "Inicia sesión para cotizar"}
             </button>
 
             {/* FAVORITO */}
@@ -784,9 +963,13 @@ function DetalleProyecto() {
             <p className="text-sm text-zinc-300">
               ¿Te interesa este diseño?{" "}
               <strong className="text-yellow-400">
-                Cotizar este proyecto
+                {usuario
+                  ? "Cotizar este proyecto"
+                  : "Inicia sesión para cotizar"}
               </strong>{" "}
-              abrirá la solicitud de cotización usando este trabajo como referencia.
+              {usuario
+                ? "abrirá la solicitud de cotización usando este trabajo como referencia."
+                : "te llevará al inicio de sesión. Después podrás continuar con la cotización del proyecto."}
             </p>
           </div>
 
@@ -846,27 +1029,179 @@ function DetalleProyecto() {
       </div>
 
       {/* ================================================= */}
-      {/* GALERÍA DE DISEÑOS */}
+      {/* GALERÍA DE DISEÑOS / REFERENCIAS */}
       {/* ================================================= */}
 
-      {Array.isArray(
-        proyecto.galeria
-      ) &&
-        proyecto.galeria.length >
-          0 && (
-        <section className="max-w-7xl mx-auto px-5 md:px-8 pb-16">
+      <section className="max-w-7xl mx-auto px-5 md:px-8 pb-16">
 
-          <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+
+          <div>
+
+            <p className="text-xs uppercase tracking-[0.22em] text-yellow-500 font-semibold">
+              Más inspiración
+            </p>
+
+            <h3 className="text-2xl font-bold mt-1">
+              {Array.isArray(
+                proyecto.galeria
+              ) &&
+              proyecto.galeria.length >
+                0
+                ? "Galería de diseños"
+                : "Referencias relacionadas"}
+            </h3>
+
+            {!(
+              Array.isArray(
+                proyecto.galeria
+              ) &&
+              proyecto.galeria.length >
+                0
+            ) && (
+              <p className="text-zinc-500 text-sm mt-2 max-w-2xl">
+                Este proyecto no tiene imágenes de referencia adicionales cargadas. Te mostramos algunas ideas de nuestra galería para que sigas explorando.
+              </p>
+            )}
+
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                "/galeria"
+              )
+            }
+            className="bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 px-5 py-3 rounded-xl font-bold transition flex items-center gap-2"
+          >
+            <FaImages />
+
+            Ver galería completa
+          </button>
+
+        </div>
+
+        {Array.isArray(
+          proyecto.galeria
+        ) &&
+        proyecto.galeria.length >
+          0 ? (
+
+          <div className="flex gap-5 overflow-x-auto pb-3 snap-x snap-mandatory">
+
+            {proyecto.galeria
+              .slice(
+                0,
+                4
+              )
+              .map(
+                (img, i) => (
+                  <div
+                    key={`${img}-${i}`}
+                    className="min-w-[280px] md:min-w-[320px] overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 flex-shrink-0 snap-start"
+                  >
+                    <img
+                      src={img}
+                      alt={`Diseño ${
+                        i + 1
+                      }`}
+                      onClick={() =>
+                        abrirImagen(
+                          img
+                        )
+                      }
+                      className="w-full h-64 object-cover hover:scale-105 transition duration-300 cursor-zoom-in"
+                    />
+                  </div>
+                )
+              )}
+
+          </div>
+
+        ) : cargandoReferencias ? (
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            {[1, 2, 3, 4].map(
+              (item) => (
+                <div
+                  key={item}
+                  className="aspect-[4/3] rounded-2xl bg-zinc-900 border border-zinc-800 animate-pulse"
+                />
+              )
+            )}
+
+          </div>
+
+        ) : referenciasGaleria.length >
+          0 ? (
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+            {referenciasGaleria.map(
+              (referencia) => (
+                <button
+                  type="button"
+                  key={
+                    referencia.id
+                  }
+                  onClick={() =>
+                    abrirImagen(
+                      referencia.imagen
+                    )
+                  }
+                  className="group relative overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 hover:border-yellow-500/50 transition aspect-[4/3]"
+                >
+
+                  <img
+                    src={
+                      referencia.imagen
+                    }
+                    alt={
+                      referencia.subcategoria
+                    }
+                    loading="lazy"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+
+                  <div className="absolute left-3 right-3 bottom-3 text-left">
+
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-yellow-400">
+                      {
+                        referencia.categoria
+                      }
+                    </p>
+
+                    <p className="text-sm font-semibold mt-1 line-clamp-1">
+                      {
+                        referencia.subcategoria
+                      }
+                    </p>
+
+                  </div>
+
+                </button>
+              )
+            )}
+
+          </div>
+
+        ) : (
+
+          <div className="border border-zinc-800 bg-zinc-950 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
             <div>
 
-              <p className="text-xs uppercase tracking-[0.22em] text-yellow-500 font-semibold">
-                Más inspiración
+              <p className="font-semibold">
+                Explora más ideas en nuestra galería
               </p>
 
-              <h3 className="text-2xl font-bold mt-1">
-                Galería de diseños
-              </h3>
+              <p className="text-zinc-500 text-sm mt-1">
+                Aún no hay referencias relacionadas disponibles para este proyecto.
+              </p>
 
             </div>
 
@@ -877,41 +1212,15 @@ function DetalleProyecto() {
                   "/galeria"
                 )
               }
-              className="bg-yellow-500/10 hover:bg-yellow-500 text-yellow-400 hover:text-black border border-yellow-500/30 hover:border-yellow-500 px-5 py-3 rounded-xl font-bold transition"
+              className="shrink-0 bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold transition"
             >
-              Ver galería completa
+              Ver galería
             </button>
 
           </div>
+        )}
 
-          <div className="flex gap-5 overflow-x-auto pb-3 snap-x snap-mandatory">
-
-            {proyecto.galeria.map(
-              (img, i) => (
-                <div
-                  key={`${img}-${i}`}
-                  className="min-w-[280px] md:min-w-[320px] overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 flex-shrink-0 snap-start"
-                >
-                  <img
-                    src={img}
-                    alt={`Diseño ${
-                      i + 1
-                    }`}
-                    onClick={() =>
-                      abrirImagen(
-                        img
-                      )
-                    }
-                    className="w-full h-64 object-cover hover:scale-105 transition duration-300 cursor-zoom-in"
-                  />
-                </div>
-              )
-            )}
-
-          </div>
-
-        </section>
-      )}
+      </section>
 
       {/* ================================================= */}
       {/* MODAL IMAGEN */}

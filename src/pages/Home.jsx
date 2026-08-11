@@ -12,12 +12,16 @@ import {
 import Navbar from "../components/Navbar";
 import wealthLogo from "../assets/wealthlogo.jpeg";
 
-import { db } from "../firebase.config";
+import { auth, db } from "../firebase.config";
 
 import {
   collection,
   onSnapshot,
 } from "firebase/firestore";
+
+import {
+  onAuthStateChanged,
+} from "firebase/auth";
 
 import {
   FaArrowRight,
@@ -37,6 +41,35 @@ import {
 
 function Home() {
   const navigate = useNavigate();
+
+  // ======================================================
+  // AUTENTICACIÓN
+  // ======================================================
+
+  const [user, setUser] =
+    useState(null);
+
+  const [authReady, setAuthReady] =
+    useState(false);
+
+  useEffect(() => {
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+        (currentUser) => {
+          setUser(
+            currentUser
+          );
+
+          setAuthReady(
+            true
+          );
+        }
+      );
+
+    return () =>
+      unsubscribe();
+  }, []);
 
   // ======================================================
   // FIREBASE
@@ -590,11 +623,83 @@ function Home() {
   };
 
   // ======================================================
+  // CONTROL DE ACCESO A COTIZACIONES
+  // ======================================================
+
+  const irALoginParaCotizar =
+    () => {
+      navigate(
+        "/login",
+        {
+          state: {
+            mensaje:
+              "Inicia sesión para solicitar una cotización.",
+          },
+        }
+      );
+    };
+
+  const abrirCrearCotizacion =
+    () => {
+      if (!authReady) {
+        return;
+      }
+
+      if (!user) {
+        irALoginParaCotizar();
+        return;
+      }
+
+      navigate(
+        "/crear-cotizacion"
+      );
+    };
+
+  // ======================================================
   // COTIZAR PROYECTO
   // ======================================================
 
   const solicitarCotizacion =
     (proyecto) => {
+      if (!authReady) {
+        return;
+      }
+
+      if (!user) {
+        navigate(
+          "/login",
+          {
+            state: {
+              mensaje:
+                "Inicia sesión para cotizar este proyecto.",
+
+              proyectoPendiente: {
+                id:
+                  proyecto.id,
+
+                nombre:
+                  proyecto.nombre,
+
+                descripcion:
+                  proyecto.descripcion,
+
+                categoria:
+                  proyecto.categoria,
+
+                imagen:
+                  proyecto.imagen,
+
+                imagenes:
+                  proyecto.imagenes ||
+                  [],
+              },
+            },
+          }
+        );
+
+        return;
+      }
+
       navigate(
         "/crear-cotizacion",
         {
@@ -736,7 +841,7 @@ function Home() {
 
             {/* BOTONES */}
 
-            <div className="flex flex-col sm:flex-row gap-3 mt-7">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-7">
 
               <Link
                 to="/proyectos"
@@ -755,19 +860,46 @@ function Home() {
               </Link>
 
               <Link
-                to="/crear-cotizacion"
+                to="/galeria"
+                className={`
+                  ${botonBase}
+                  border-zinc-700
+                  text-zinc-200
+                  hover:border-[#c89b3c]/70
+                  hover:text-[#d6ab4c]
+                `}
+              >
+                <FaImages />
+
+                Explorar galería de fotos
+
+                <FaArrowRight />
+              </Link>
+
+              <button
+                type="button"
+                onClick={
+                  abrirCrearCotizacion
+                }
+                disabled={
+                  !authReady
+                }
                 className={`
                   ${botonBase}
                   border-zinc-600
                   text-white
                   hover:border-[#c89b3c]/70
                   hover:text-[#d6ab4c]
+                  disabled:opacity-50
+                  disabled:cursor-wait
                 `}
               >
                 <FaFileInvoiceDollar />
 
-                Solicitar cotización
-              </Link>
+                {user
+                  ? "Solicitar cotización"
+                  : "Inicia sesión para cotizar"}
+              </button>
 
             </div>
 
@@ -1157,7 +1289,9 @@ function Home() {
                         >
                           <FaFileInvoiceDollar />
 
-                          Cotizar
+                          {user
+                            ? "Cotizar"
+                            : "Iniciar sesión"}
                         </button>
 
                       </div>
@@ -1493,21 +1627,31 @@ function Home() {
 
             <div className="flex flex-col sm:flex-row gap-3">
 
-              <Link
-                to="/crear-cotizacion"
+              <button
+                type="button"
+                onClick={
+                  abrirCrearCotizacion
+                }
+                disabled={
+                  !authReady
+                }
                 className={`
                   ${botonBase}
                   border-[#c89b3c]/60
                   text-[#d6ab4c]
                   hover:bg-[#c89b3c]/10
+                  disabled:opacity-50
+                  disabled:cursor-wait
                 `}
               >
                 <FaFileInvoiceDollar />
 
-                Solicitar cotización
+                {user
+                  ? "Solicitar cotización"
+                  : "Inicia sesión para cotizar"}
 
                 <FaArrowRight />
-              </Link>
+              </button>
 
               <a
                 href="https://wa.me/529811574778"

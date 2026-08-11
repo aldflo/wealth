@@ -59,6 +59,24 @@ const normalizarTexto = (
     .trim();
 };
 
+
+/* =========================================
+   NORMALIZAR CATEGORÍA DE GALERÍA
+========================================= */
+
+const normalizarCategoriaGaleria = (
+  categoria = ""
+) => {
+  if (
+    categoria ===
+    "Vidrio y Aluminio"
+  ) {
+    return "Aluminios y Vidrios";
+  }
+
+  return categoria;
+};
+
 /* =========================================
    INFORMACIÓN EMPRESA
 ========================================= */
@@ -182,12 +200,22 @@ const getTodaGaleria =
         );
 
       return snapshot.docs.map(
-        (documento) => ({
-          id:
-            documento.id,
+        (documento) => {
+          const datos =
+            documento.data();
 
-          ...documento.data(),
-        })
+          return {
+            id:
+              documento.id,
+
+            ...datos,
+
+            categoria:
+              normalizarCategoriaGaleria(
+                datos.categoria
+              ),
+          };
+        }
       );
 
     } catch (error) {
@@ -374,6 +402,14 @@ const detectarCortesia = (
 
           label:
             "✨ Aluminios y Vidrios",
+        },
+
+        {
+          type:
+            "buscar-galeria-inmobiliaria",
+
+          label:
+            "📸 Ver galería",
         },
       ],
     };
@@ -838,6 +874,114 @@ const esIntencionMostrar = (
   );
 };
 
+
+/* =========================================
+   INTENCIÓN GALERÍA / FOTOS
+========================================= */
+
+const esIntencionGaleria = (
+  texto
+) => {
+  const t =
+    normalizarTexto(texto);
+
+  return (
+    t.includes("galeria") ||
+    t.includes("galería") ||
+    t.includes("fotos") ||
+    t.includes("foto") ||
+    t.includes("imagenes") ||
+    t.includes("imagen") ||
+    t.includes("fotografias") ||
+    t.includes("fotografia") ||
+    t.includes("diseños") ||
+    t.includes("disenos") ||
+    t.includes("referencias visuales") ||
+    t.includes("referencia visual") ||
+    t.includes("catalogo visual") ||
+    t.includes("catálogo visual")
+  );
+};
+
+/* =========================================
+   CONTEXTO PREVIO DE GALERÍA
+========================================= */
+
+const veniaHablandoDeGaleria = (
+  mensajes = []
+) => {
+  if (!Array.isArray(mensajes)) {
+    return false;
+  }
+
+  const ultimos =
+    mensajes.slice(-4);
+
+  return ultimos.some(
+    (mensaje) => {
+      if (
+        mensaje?.role ===
+          "user" &&
+        esIntencionGaleria(
+          mensaje?.content || ""
+        )
+      ) {
+        return true;
+      }
+
+      if (
+        mensaje?.role ===
+          "ai" &&
+        Array.isArray(
+          mensaje?.attachments
+        ) &&
+        mensaje.attachments.some(
+          (item) =>
+            item?.type ===
+            "galeria"
+        )
+      ) {
+        return true;
+      }
+
+      return false;
+    }
+  );
+};
+
+/* =========================================
+   SOLO CAMBIO DE ÁREA
+========================================= */
+
+const esCambioDeArea = (
+  texto
+) => {
+  const t =
+    normalizarTexto(texto);
+
+  const area =
+    detectarAreaProyecto(
+      texto
+    );
+
+  if (!area) {
+    return false;
+  }
+
+  const palabras =
+    t
+      .split(/\s+/)
+      .filter(Boolean);
+
+  return (
+    palabras.length <= 5 ||
+    t.startsWith("en ") ||
+    t.startsWith("de ") ||
+    t.startsWith("del ") ||
+    t.startsWith("sobre ")
+  );
+};
+
 /* =========================================
    MOSTRAR TODOS LOS PROYECTOS
 ========================================= */
@@ -1275,7 +1419,9 @@ const textoGaleria = (
 ) => {
   return normalizarTexto(
     [
-      grupo.categoria,
+      normalizarCategoriaGaleria(
+        grupo.categoria
+      ),
       grupo.subcategoria,
       grupo.nombre,
       grupo.descripcion,
@@ -1493,6 +1639,203 @@ const buscarGaleriaRelacionada = (
   return items.slice(
     0,
     6
+  );
+};
+
+/* =========================================
+   FORMATEAR TODA LA GALERÍA
+========================================= */
+
+const formatearTodaGaleria = (
+  galeria,
+  limite = 8
+) => {
+  const items = [];
+
+  galeria.forEach(
+    (grupo) => {
+      const imagenes =
+        Array.isArray(
+          grupo.imagenes
+        )
+          ? grupo.imagenes
+          : [];
+
+      imagenes.forEach(
+        (
+          imagen,
+          index
+        ) => {
+          if (!imagen) {
+            return;
+          }
+
+          items.push({
+            id:
+              `${grupo.id}_${index}`,
+
+            grupoId:
+              grupo.id,
+
+            type:
+              "galeria",
+
+            title:
+              grupo.subcategoria ||
+              grupo.nombre ||
+              "Referencia Wealth",
+
+            img:
+              imagen,
+
+            descripcion:
+              grupo.descripcion ||
+              "Referencia disponible en nuestra galería.",
+
+            categoria:
+              normalizarCategoriaGaleria(
+                grupo.categoria ||
+                ""
+              ),
+
+            subcategoria:
+              grupo.subcategoria ||
+              "",
+
+            route:
+              "/galeria",
+          });
+        }
+      );
+    }
+  );
+
+  return items.slice(
+    0,
+    limite
+  );
+};
+
+/* =========================================
+   FILTRAR GALERÍA POR ÁREA
+========================================= */
+
+const filtrarGaleriaPorArea = (
+  galeria,
+  area
+) => {
+  if (!area) {
+    return galeria;
+  }
+
+  const equivalencias = {
+    construccion: [
+      "construccion",
+      "construcciones",
+    ],
+
+    inmobiliaria: [
+      "inmobiliaria",
+      "inmobiliario",
+    ],
+
+    aluminios: [
+      "aluminios y vidrios",
+      "vidrio y aluminio",
+      "aluminio",
+      "vidrio",
+      "aluminios",
+    ],
+  };
+
+  const palabras =
+    equivalencias[
+      area
+    ] || [];
+
+  return galeria.filter(
+    (grupo) => {
+      const categoria =
+        normalizarTexto(
+          normalizarCategoriaGaleria(
+            grupo.categoria ||
+            ""
+          )
+        );
+
+      return palabras.some(
+        (palabra) =>
+          categoria.includes(
+            normalizarTexto(
+              palabra
+            )
+          )
+      );
+    }
+  );
+};
+
+/* =========================================
+   OBTENER FOTOS PARA CONSULTA
+========================================= */
+
+const obtenerFotosGaleria = (
+  texto,
+  galeria,
+  areaContexto = null
+) => {
+  const conceptos =
+    detectarConceptos(
+      texto
+    );
+
+  const areaTexto =
+    detectarAreaProyecto(
+      texto
+    );
+
+  const area =
+    areaTexto ||
+    areaContexto ||
+    null;
+
+  if (
+    conceptos.length >
+    0
+  ) {
+    const relacionadas =
+      buscarGaleriaRelacionada(
+        texto,
+        galeria
+      );
+
+    if (
+      relacionadas.length >
+      0
+    ) {
+      return relacionadas;
+    }
+  }
+
+  const gruposArea =
+    filtrarGaleriaPorArea(
+      galeria,
+      area
+    );
+
+  if (
+    gruposArea.length >
+    0
+  ) {
+    return formatearTodaGaleria(
+      gruposArea,
+      8
+    );
+  }
+
+  return formatearTodaGaleria(
+    galeria,
+    8
   );
 };
 
@@ -2150,6 +2493,147 @@ export default function ChatIA() {
     };
 
   /* =========================================
+     RESPONDER GALERÍA / FOTOS
+  ========================================= */
+
+  const responderGaleria =
+    async (
+      newMessages,
+      texto,
+      nuevaMemoria,
+      areaForzada = null
+    ) => {
+      const areaConsulta =
+        detectarAreaProyecto(
+          texto
+        ) ||
+        areaForzada ||
+        areaActual ||
+        null;
+
+      const fotos =
+        obtenerFotosGaleria(
+          texto,
+          galeriaDB,
+          areaConsulta
+        );
+
+      const conceptos =
+        detectarConceptos(
+          texto
+        );
+
+      let content =
+        "";
+
+      if (
+        fotos.length === 0
+      ) {
+        content =
+          "En este momento no encontré fotografías publicadas que coincidan con esa búsqueda. Puedes pedirme otra categoría o solicitar una cotización personalizada.";
+      } else if (
+        conceptos.length >
+        0
+      ) {
+        content =
+          `Claro 📸. Encontré ${fotos.length} referencia${fotos.length === 1 ? "" : "s"} de nuestra galería relacionadas con ${describirConsulta(texto)}. Puedes abrir cualquiera para verla mejor o usarla como referencia para una cotización.`;
+      } else if (
+        areaConsulta ===
+        "inmobiliaria"
+      ) {
+        content =
+          "Claro 🏢📸. Te muestro algunas fotografías y referencias publicadas en la galería de Inmobiliaria. Puedes abrir cualquiera para verla con más detalle.";
+      } else if (
+        areaConsulta ===
+        "construccion"
+      ) {
+        content =
+          "Claro 🏗️📸. Te muestro algunas fotografías y referencias de nuestra galería de Construcción.";
+      } else if (
+        areaConsulta ===
+        "aluminios"
+      ) {
+        content =
+          "Claro ✨📸. Te muestro algunas fotografías y referencias de Aluminios y Vidrios.";
+      } else {
+        content =
+          "Claro 📸. Aquí tienes algunas fotografías y referencias disponibles en la galería de Wealth. Si quieres, también puedo filtrarlas por Inmobiliaria, Construcción o Aluminios y Vidrios.";
+      }
+
+      const mensajeIA = {
+        role:
+          "ai",
+
+        content,
+
+        attachments:
+          fotos,
+
+        actions: [
+          {
+            type:
+              "buscar-galeria-inmobiliaria",
+
+            label:
+              "🏢 Inmobiliaria",
+          },
+
+          {
+            type:
+              "buscar-galeria-construccion",
+
+            label:
+              "🏗️ Construcción",
+          },
+
+          {
+            type:
+              "buscar-galeria-aluminios",
+
+            label:
+              "✨ Aluminios y Vidrios",
+          },
+
+          {
+            type:
+              "cotizar",
+
+            label:
+              "📋 Cotizar referencia",
+          },
+        ],
+      };
+
+      const finales = [
+        ...newMessages,
+        mensajeIA,
+      ];
+
+      setMessages(
+        finales
+      );
+
+      if (
+        areaConsulta
+      ) {
+        setAreaActual(
+          areaConsulta
+        );
+      }
+
+      await guardarConversacion(
+        finales,
+        {
+          areaActual:
+            areaConsulta,
+
+          memoriaProyecto:
+            nuevaMemoria,
+        }
+      );
+    };
+
+  /* =========================================
      RESPONDER REFERENCIAS ESPECÍFICAS
   ========================================= */
 
@@ -2524,6 +3008,49 @@ export default function ChatIA() {
       }
 
       /* =========================================
+         GALERÍA / FOTOS
+
+         Atiende frases como:
+         - "muéstrame la galería"
+         - "quiero ver fotos"
+         - "fotos de canceles"
+         - "en inmobiliario" después
+           de pedir la galería
+      ========================================= */
+
+      const contextoGaleria =
+        veniaHablandoDeGaleria(
+          previousMessages
+        );
+
+      if (
+        catalogoReady &&
+        (
+          esIntencionGaleria(
+            cleanText
+          ) ||
+          (
+            contextoGaleria &&
+            esCambioDeArea(
+              cleanText
+            )
+          )
+        )
+      ) {
+        await responderGaleria(
+          newMessages,
+          cleanText,
+          nuevaMemoria,
+          detectarAreaProyecto(
+            cleanText
+          ) ||
+          areaActual
+        );
+
+        return;
+      }
+
+      /* =========================================
          MOSTRAR TODOS LOS PROYECTOS
       ========================================= */
 
@@ -2539,6 +3066,31 @@ export default function ChatIA() {
         await responderTodosLosProyectos(
           newMessages,
           nuevaMemoria
+        );
+
+        return;
+      }
+
+      /* =========================================
+         SEGUIMIENTO CORTO CON CONTEXTO
+      ========================================= */
+
+      if (
+        catalogoReady &&
+        veniaHablandoDeGaleria(
+          previousMessages
+        ) &&
+        detectarAreaProyecto(
+          cleanText
+        )
+      ) {
+        await responderGaleria(
+          newMessages,
+          cleanText,
+          nuevaMemoria,
+          detectarAreaProyecto(
+            cleanText
+          )
         );
 
         return;
@@ -2989,6 +3541,39 @@ export default function ChatIA() {
       ) {
         await sendMessage(
           "Muéstrame trabajos de aluminio y vidrio"
+        );
+
+        return;
+      }
+
+      if (
+        action.type ===
+        "buscar-galeria-inmobiliaria"
+      ) {
+        await sendMessage(
+          "Muéstrame fotos de la galería de inmobiliaria"
+        );
+
+        return;
+      }
+
+      if (
+        action.type ===
+        "buscar-galeria-construccion"
+      ) {
+        await sendMessage(
+          "Muéstrame fotos de la galería de construcción"
+        );
+
+        return;
+      }
+
+      if (
+        action.type ===
+        "buscar-galeria-aluminios"
+      ) {
+        await sendMessage(
+          "Muéstrame fotos de la galería de aluminios y vidrios"
         );
 
         return;
