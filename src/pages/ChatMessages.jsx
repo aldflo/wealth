@@ -2,7 +2,12 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import {
+  auth,
+} from "../firebase.config";
+
 import ProjectGallery from "./ProjectGallery";
+
 
 export default function ChatMessages({
   messages = [],
@@ -12,11 +17,51 @@ export default function ChatMessages({
   const navigate =
     useNavigate();
 
+
   /* =========================================
      COTIZAR
+
+     SIN SESIÓN:
+     → LOGIN
+
+     CON SESIÓN:
+     → CREAR COTIZACIÓN
   ========================================= */
 
   const irACotizacion = () => {
+
+    const usuario =
+      auth.currentUser;
+
+
+    /* =========================================
+       NO HAY USUARIO
+    ========================================= */
+
+    if (!usuario) {
+
+      navigate(
+        "/login",
+        {
+          state: {
+            desdeIA: true,
+
+            redirectTo:
+              "/crear-cotizacion",
+
+            memoriaProyecto,
+          },
+        }
+      );
+
+      return;
+    }
+
+
+    /* =========================================
+       USUARIO LOGUEADO
+    ========================================= */
+
     navigate(
       "/crear-cotizacion",
       {
@@ -29,13 +74,16 @@ export default function ChatMessages({
     );
   };
 
+
   return (
     <div className="space-y-6 px-4 sm:px-6">
 
       {messages.map(
         (msg, index) => {
+
           const esUsuario =
             msg.role === "user";
+
 
           return (
             <div
@@ -55,7 +103,9 @@ export default function ChatMessages({
                 }
               >
 
-                {/* NOMBRE IA */}
+                {/* =========================================
+                    NOMBRE IA
+                ========================================= */}
 
                 {!esUsuario && (
                   <div className="flex items-center gap-2 mb-2">
@@ -84,7 +134,10 @@ export default function ChatMessages({
                   </div>
                 )}
 
-                {/* BURBUJA */}
+
+                {/* =========================================
+                    BURBUJA
+                ========================================= */}
 
                 <div
                   className={
@@ -120,6 +173,7 @@ export default function ChatMessages({
                   {msg.content}
                 </div>
 
+
                 {/* =========================================
                     ARCHIVOS / FOTOS / PROYECTOS
                 ========================================= */}
@@ -130,12 +184,15 @@ export default function ChatMessages({
                   ) &&
                   msg.attachments.length >
                     0 && (
+
                     <ProjectGallery
                       projects={
                         msg.attachments
                       }
                     />
+
                   )}
+
 
                 {/* =========================================
                     ACCIONES
@@ -147,6 +204,7 @@ export default function ChatMessages({
                   ) &&
                   msg.actions.length >
                     0 && (
+
                     <div className="flex flex-wrap gap-2 mt-4">
 
                       {msg.actions.map(
@@ -154,25 +212,41 @@ export default function ChatMessages({
                           action,
                           actionIndex
                         ) => (
+
                           <button
                             key={
                               actionIndex
                             }
+
                             type="button"
+
                             onClick={() => {
+
+                              /* ============================
+                                 COTIZAR
+                              ============================ */
+
                               if (
                                 action.type ===
                                 "cotizar"
                               ) {
+
                                 irACotizacion();
 
                                 return;
                               }
 
+
+                              /* ============================
+                                 RESTO DE ACCIONES
+                              ============================ */
+
                               onAction?.(
                                 action
                               );
+
                             }}
+
                             className="
                               px-4
                               py-2.5
@@ -188,14 +262,18 @@ export default function ChatMessages({
                               transition
                             "
                           >
+
                             {
                               action.label
                             }
+
                           </button>
+
                         )
                       )}
 
                     </div>
+
                   )}
 
               </div>
