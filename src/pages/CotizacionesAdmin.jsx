@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase.config";
 
 import {
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -24,6 +25,7 @@ import {
   FaEdit,
   FaEye,
   FaFlagCheckered,
+  FaHistory,
   FaImages,
   FaMapMarkerAlt,
   FaPaperPlane,
@@ -92,6 +94,13 @@ function CotizacionesAdmin() {
   const [previewsFinales, setPreviewsFinales] = useState([]);
   const [errorFinalizar, setErrorFinalizar] = useState("");
   const [subiendoFinales, setSubiendoFinales] = useState(false);
+
+  /* ======================================================
+     HISTORIAL / LÍNEA DE TIEMPO
+  ====================================================== */
+
+  const [historialOpen, setHistorialOpen] = useState(false);
+  const [cotizacionHistorial, setCotizacionHistorial] = useState(null);
 
   /* ======================================================
      FIRESTORE - COTIZACIONES
@@ -498,6 +507,160 @@ function CotizacionesAdmin() {
   };
 
   /* ======================================================
+     HISTORIAL / LÍNEA DE TIEMPO
+  ====================================================== */
+
+  const crearEventoHistorial = (
+    tipo,
+    titulo,
+    descripcion = "",
+    actor = "admin",
+    extra = {}
+  ) => ({
+    tipo,
+    titulo,
+    descripcion,
+    actor,
+    fecha: Timestamp.now(),
+    ...extra,
+  });
+
+  const obtenerMillis = (fecha) => {
+    if (!fecha) return 0;
+
+    try {
+      if (typeof fecha.toMillis === "function") {
+        return fecha.toMillis();
+      }
+
+      if (typeof fecha.toDate === "function") {
+        return fecha.toDate().getTime();
+      }
+
+      return new Date(fecha).getTime() || 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const obtenerHistorialVisible = (cotizacion) => {
+    const eventos = Array.isArray(cotizacion?.historial)
+      ? [...cotizacion.historial]
+      : [];
+
+    // Compatibilidad con cotizaciones creadas antes de agregar el historial.
+    if (
+      cotizacion?.fecha &&
+      !eventos.some((evento) => evento.tipo === "solicitud_creada")
+    ) {
+      eventos.push({
+        tipo: "solicitud_creada",
+        titulo: "Solicitud creada",
+        descripcion: "El cliente envió la solicitud de cotización.",
+        actor: "cliente",
+        fecha: cotizacion.fecha,
+      });
+    }
+
+    if (
+      cotizacion?.fechaPropuesta &&
+      !eventos.some((evento) =>
+        ["propuesta_enviada", "propuesta_modificada"].includes(evento.tipo)
+      )
+    ) {
+      eventos.push({
+        tipo: "propuesta_enviada",
+        titulo: "Propuesta enviada",
+        descripcion: "Wealth envió una propuesta al cliente.",
+        actor: "admin",
+        fecha: cotizacion.fechaPropuesta,
+      });
+    }
+
+    if (
+      cotizacion?.fechaRespuestaCliente &&
+      !eventos.some((evento) =>
+        [
+          "propuesta_aceptada",
+          "cambios_solicitados",
+          "propuesta_rechazada",
+          "solicitud_cancelada",
+        ].includes(evento.tipo)
+      )
+    ) {
+      let titulo = "Respuesta del cliente";
+      let tipo = "respuesta_cliente";
+      let descripcion = "El cliente respondió a la propuesta.";
+
+      if (
+        cotizacion.respuestaCliente === "aceptada" ||
+        cotizacion.estado === "aceptada_cliente"
+      ) {
+        tipo = "propuesta_aceptada";
+        titulo = "Propuesta aceptada";
+        descripcion = "El cliente aceptó la propuesta.";
+      } else if (
+        cotizacion.respuestaCliente === "solicita_modificacion" ||
+        cotizacion.estado === "cambios_solicitados"
+      ) {
+        tipo = "cambios_solicitados";
+        titulo = "Cambios solicitados";
+        descripcion =
+          cotizacion.mensajeCliente ||
+          "El cliente solicitó cambios a la propuesta.";
+      } else if (
+        cotizacion.respuestaCliente === "rechazada" ||
+        cotizacion.estado === "rechazada_cliente"
+      ) {
+        tipo = "propuesta_rechazada";
+        titulo = "Propuesta rechazada";
+        descripcion = "El cliente rechazó la propuesta.";
+      }
+
+      eventos.push({
+        tipo,
+        titulo,
+        descripcion,
+        actor: "cliente",
+        fecha: cotizacion.fechaRespuestaCliente,
+      });
+    }
+
+    if (
+      cotizacion?.fechaFinalizacion &&
+      !eventos.some((evento) => evento.tipo === "trabajo_finalizado")
+    ) {
+      eventos.push({
+        tipo: "trabajo_finalizado",
+        titulo: "Trabajo finalizado",
+        descripcion: "Wealth marcó el trabajo como terminado.",
+        actor: "admin",
+        fecha: cotizacion.fechaFinalizacion,
+      });
+    }
+
+    return eventos
+      .filter((evento) => evento && evento.fecha)
+      .sort((a, b) => obtenerMillis(a.fecha) - obtenerMillis(b.fecha));
+  };
+
+  const abrirHistorial = async (cotizacion) => {
+    setCotizacionHistorial(cotizacion);
+    setHistorialOpen(true);
+
+    if (cotizacion.vistoPorAdmin === false) {
+      try {
+        await updateDoc(doc(db, "cotizaciones", cotizacion.id), {
+          vistoPorAdmin: true,
+          fechaVistaAdmin: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error("Error marcando historial como visto:", err);
+      }
+    }
+  };
+
+  /* ======================================================
      NOTIFICACIONES ADMIN
   ====================================================== */
 
@@ -682,6 +845,20 @@ function CotizacionesAdmin() {
 
         fechaPropuesta: serverTimestamp(),
         fechaActualizacion: serverTimestamp(),
+
+        historial: arrayUnion(
+          crearEventoHistorial(
+            yaTeniaPropuesta
+              ? "propuesta_modificada"
+              : "propuesta_enviada",
+            yaTeniaPropuesta
+              ? "Propuesta modificada"
+              : "Propuesta enviada",
+            yaTeniaPropuesta
+              ? `Wealth envió la versión ${nuevaVersion} de la propuesta.`
+              : `Wealth envió la propuesta versión ${nuevaVersion}.`
+          )
+        ),
       };
 
       const historialAnterior = Array.isArray(
@@ -720,14 +897,61 @@ function CotizacionesAdmin() {
     estado,
     mensajeClienteSistema
   ) => {
+    const eventosPorEstado = {
+      en_revision: {
+        tipo: "en_revision",
+        titulo: "Solicitud en revisión",
+        descripcion: "Wealth comenzó a revisar la solicitud.",
+      },
+      confirmada_admin: {
+        tipo: "trabajo_confirmado",
+        titulo: "Trabajo confirmado",
+        descripcion: "Wealth confirmó el trabajo aceptado por el cliente.",
+      },
+      anticipo_pendiente: {
+        tipo: "anticipo_pendiente",
+        titulo: "Anticipo pendiente",
+        descripcion: "Wealth indicó que el anticipo está pendiente.",
+      },
+      anticipo_recibido: {
+        tipo: "anticipo_recibido",
+        titulo: "Anticipo recibido",
+        descripcion: "Wealth confirmó la recepción del anticipo.",
+      },
+      en_proceso: {
+        tipo: "trabajo_iniciado",
+        titulo: "Trabajo en ejecución",
+        descripcion: "Wealth inició la ejecución del trabajo.",
+      },
+      rechazada: {
+        tipo: "solicitud_rechazada_admin",
+        titulo: "Solicitud rechazada por Wealth",
+        descripcion: "Wealth rechazó la solicitud.",
+      },
+    };
+
+    const evento = eventosPorEstado[estado];
+
     try {
-      await updateDoc(doc(db, "cotizaciones", cotizacion.id), {
+      const datos = {
         estado,
         vistoPorAdmin: true,
         vistoPorCliente: false,
         mensajeClienteSistema,
         fechaActualizacion: serverTimestamp(),
-      });
+      };
+
+      if (evento) {
+        datos.historial = arrayUnion(
+          crearEventoHistorial(
+            evento.tipo,
+            evento.titulo,
+            evento.descripcion
+          )
+        );
+      }
+
+      await updateDoc(doc(db, "cotizaciones", cotizacion.id), datos);
     } catch (err) {
       console.error("Error actualizando estado:", err);
       window.alert("No se pudo actualizar el estado.");
@@ -769,12 +993,65 @@ function CotizacionesAdmin() {
       "Tu trabajo ya está en proceso."
     );
 
-  const programarInstalacion = (cotizacion) =>
-    actualizarEstado(
-      cotizacion,
-      "instalacion_programada",
-      "La instalación fue programada."
+  const programarInstalacion = async (cotizacion) => {
+    const inicio = window.prompt(
+      "Fecha de inicio de instalación (AAAA-MM-DD):",
+      cotizacion.fechaInicioInstalacion || ""
     );
+
+    if (inicio === null) return;
+
+    const fin = window.prompt(
+      "Fecha de término de instalación (AAAA-MM-DD):",
+      cotizacion.fechaFinInstalacion || inicio
+    );
+
+    if (fin === null) return;
+
+    if (!inicio.trim() || !fin.trim()) {
+      window.alert("Debes indicar la fecha de inicio y término.");
+      return;
+    }
+
+    if (new Date(fin) < new Date(inicio)) {
+      window.alert(
+        "La fecha de término no puede ser anterior a la fecha de inicio."
+      );
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "cotizaciones", cotizacion.id), {
+        estado: "instalacion_programada",
+
+        fechaInicioInstalacion: inicio.trim(),
+        fechaFinInstalacion: fin.trim(),
+
+        vistoPorAdmin: true,
+        vistoPorCliente: false,
+
+        mensajeClienteSistema: `Instalación programada del ${inicio.trim()} al ${fin.trim()}.`,
+
+        fechaActualizacion: serverTimestamp(),
+
+        historial: arrayUnion(
+          crearEventoHistorial(
+            "instalacion_programada",
+            "Instalación programada",
+            `Instalación programada del ${inicio.trim()} al ${fin.trim()}.`,
+            "admin",
+            {
+              fechaInicioInstalacion: inicio.trim(),
+              fechaFinInstalacion: fin.trim(),
+            }
+          )
+        ),
+      });
+    } catch (err) {
+      console.error("Error programando instalación:", err);
+      window.alert("No se pudo programar la instalación.");
+    }
+  };
 
   const rechazarCotizacion = async (cotizacion) => {
     const ok = window.confirm(
@@ -830,6 +1107,14 @@ function CotizacionesAdmin() {
           "La cotización fue reiniciada por Wealth.",
 
         fechaActualizacion: serverTimestamp(),
+
+        historial: arrayUnion(
+          crearEventoHistorial(
+            "cotizacion_reiniciada",
+            "Cotización reiniciada",
+            "Wealth reinició la cotización para elaborar una nueva propuesta."
+          )
+        ),
       });
     } catch (err) {
       console.error(err);
@@ -994,6 +1279,18 @@ function CotizacionesAdmin() {
       );
 
       const cotizacion = cotizacionFinalizar;
+
+      const eventoFinal = crearEventoHistorial(
+        "trabajo_finalizado",
+        "Trabajo finalizado",
+        "Wealth finalizó el trabajo y agregó las fotografías finales."
+      );
+
+      const historialFinal = [
+        ...obtenerHistorialVisible(cotizacion),
+        eventoFinal,
+      ];
+
       const batch = writeBatch(db);
 
       const proyectoRef = doc(
@@ -1045,6 +1342,14 @@ function CotizacionesAdmin() {
 
           propuestaActual: cotizacion.propuestaActual || null,
 
+          historial: historialFinal,
+
+          fechaInicioInstalacion:
+            cotizacion.fechaInicioInstalacion || null,
+
+          fechaFinInstalacion:
+            cotizacion.fechaFinInstalacion || null,
+
           estado: "finalizada",
           fechaFinalizacion: serverTimestamp(),
           fechaActualizacion: serverTimestamp(),
@@ -1065,6 +1370,8 @@ function CotizacionesAdmin() {
 
         fechaFinalizacion: serverTimestamp(),
         fechaActualizacion: serverTimestamp(),
+
+        historial: arrayUnion(eventoFinal),
       });
 
       await batch.commit();
@@ -1351,6 +1658,16 @@ function CotizacionesAdmin() {
                                     Fotos ({imagenes.length})
                                   </button>
                                 )}
+
+                                <button
+                                  onClick={() =>
+                                    abrirHistorial(cotizacion)
+                                  }
+                                  className="px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-200 flex items-center gap-2"
+                                >
+                                  <FaHistory className="text-yellow-500" />
+                                  Historial
+                                </button>
 
                                 {["pendiente", "revision"].includes(
                                   cotizacion.estado
@@ -1657,6 +1974,109 @@ function CotizacionesAdmin() {
                   Cancelar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================
+          HISTORIAL / LÍNEA DE TIEMPO
+      ================================================= */}
+
+      {historialOpen && cotizacionHistorial && (
+        <div
+          className="fixed inset-0 z-[105] bg-black/90 backdrop-blur-sm p-4 overflow-y-auto"
+          onClick={() => setHistorialOpen(false)}
+        >
+          <div
+            className="max-w-2xl mx-auto my-8 bg-zinc-950 border border-zinc-800 rounded-[28px] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-zinc-800 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-yellow-500 text-xs uppercase tracking-[0.2em] font-bold">
+                  Expediente Wealth
+                </p>
+
+                <h2 className="text-2xl font-bold mt-1">
+                  Historial del proyecto
+                </h2>
+
+                <p className="text-zinc-500 mt-1">
+                  {cotizacionHistorial.nombre || "Cotización"}
+                </p>
+              </div>
+
+              <button
+                onClick={() => setHistorialOpen(false)}
+                className="w-10 h-10 rounded-xl bg-black border border-zinc-800 flex items-center justify-center"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {obtenerHistorialVisible(cotizacionHistorial).length === 0 ? (
+                <div className="rounded-2xl border border-zinc-800 bg-black p-8 text-center text-zinc-500">
+                  Todavía no hay movimientos registrados.
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="absolute left-[11px] top-2 bottom-2 w-px bg-zinc-800" />
+
+                  <div className="space-y-6">
+                    {obtenerHistorialVisible(cotizacionHistorial).map(
+                      (evento, indice) => (
+                        <div
+                          key={`${evento.tipo}-${obtenerMillis(
+                            evento.fecha
+                          )}-${indice}`}
+                          className="relative pl-10"
+                        >
+                          <div className="absolute left-0 top-1.5 w-[23px] h-[23px] rounded-full bg-black border-2 border-yellow-500 flex items-center justify-center">
+                            <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                          </div>
+
+                          <div className="rounded-2xl border border-zinc-800 bg-black p-4">
+                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                              <div>
+                                <p className="font-bold text-white">
+                                  {evento.titulo}
+                                </p>
+
+                                {evento.descripcion && (
+                                  <p className="text-zinc-400 text-sm mt-1">
+                                    {evento.descripcion}
+                                  </p>
+                                )}
+                              </div>
+
+                              <span className="text-xs text-zinc-600 shrink-0">
+                                {evento.actor === "cliente"
+                                  ? "Cliente"
+                                  : "Wealth"}
+                              </span>
+                            </div>
+
+                            <p className="text-yellow-500/80 text-xs mt-3">
+                              {formatearFecha(evento.fecha)}
+                            </p>
+
+                            {evento.fechaInicioInstalacion &&
+                              evento.fechaFinInstalacion && (
+                                <p className="text-cyan-400 text-xs mt-2">
+                                  Instalación:{" "}
+                                  {evento.fechaInicioInstalacion} →{" "}
+                                  {evento.fechaFinInstalacion}
+                                </p>
+                              )}
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -20,6 +20,7 @@ import {
   FaClock,
   FaImages,
   FaEye,
+  FaHistory,
   FaTimes,
   FaBuilding,
 } from "react-icons/fa";
@@ -43,6 +44,16 @@ function MisProyectos() {
 
   const [imagenActual, setImagenActual] =
     useState(0);
+
+  /* ======================================================
+     HISTORIAL / LÍNEA DE TIEMPO
+  ====================================================== */
+
+  const [historialOpen, setHistorialOpen] =
+    useState(false);
+
+  const [proyectoHistorial, setProyectoHistorial] =
+    useState(null);
 
   // ======================================================
   // PROYECTOS DEL CLIENTE
@@ -193,6 +204,247 @@ function MisProyectos() {
     } catch {
       return "Sin fecha";
     }
+  };
+
+  // ======================================================
+  // FORMATEAR FECHA Y HORA
+  // ======================================================
+
+  const formatearFechaHora = (
+    fecha
+  ) => {
+    if (!fecha) {
+      return "Sin fecha";
+    }
+
+    try {
+      const date =
+        fecha?.toDate
+          ? fecha.toDate()
+          : new Date(fecha);
+
+      if (
+        !date ||
+        Number.isNaN(
+          date.getTime()
+        )
+      ) {
+        return "Sin fecha";
+      }
+
+      return date.toLocaleString(
+        "es-MX",
+        {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+        }
+      );
+    } catch {
+      return "Sin fecha";
+    }
+  };
+
+  // ======================================================
+  // PROPUESTA / PRECIO NORMALIZADOS
+  // ======================================================
+
+  const obtenerPrecioProyecto = (
+    proyecto
+  ) => {
+    return (
+      proyecto?.precioFinal ??
+      proyecto?.precioTotal ??
+      proyecto?.propuestaActual?.precioTotal ??
+      proyecto?.presupuestoAdmin ??
+      null
+    );
+  };
+
+  const obtenerTiempoEstimado = (
+    proyecto
+  ) => {
+    return (
+      proyecto?.tiempoEstimado ||
+      proyecto?.propuestaActual?.tiempoEstimado ||
+      "No especificado"
+    );
+  };
+
+  const obtenerGarantia = (
+    proyecto
+  ) => {
+    return (
+      proyecto?.garantia ||
+      proyecto?.propuestaActual?.garantia ||
+      "No especificada"
+    );
+  };
+
+  // ======================================================
+  // HISTORIAL
+  // ======================================================
+
+  const obtenerMillis = (
+    fecha
+  ) => {
+    if (!fecha) {
+      return 0;
+    }
+
+    try {
+      if (
+        typeof fecha.toMillis ===
+        "function"
+      ) {
+        return fecha.toMillis();
+      }
+
+      if (
+        typeof fecha.toDate ===
+        "function"
+      ) {
+        return fecha
+          .toDate()
+          .getTime();
+      }
+
+      return (
+        new Date(
+          fecha
+        ).getTime() ||
+        0
+      );
+    } catch {
+      return 0;
+    }
+  };
+
+  const obtenerHistorialVisible = (
+    proyecto
+  ) => {
+    const eventos =
+      Array.isArray(
+        proyecto?.historial
+      )
+        ? [
+            ...proyecto.historial,
+          ]
+        : [];
+
+    // Compatibilidad con proyectos terminados antes
+    // de agregar la línea de tiempo.
+    if (
+      proyecto?.fechaCreacion &&
+      !eventos.some(
+        (evento) =>
+          evento.tipo ===
+          "solicitud_creada"
+      )
+    ) {
+      eventos.push({
+        tipo:
+          "solicitud_creada",
+
+        titulo:
+          "Solicitud creada",
+
+        descripcion:
+          "Se creó la solicitud de cotización.",
+
+        actor:
+          "cliente",
+
+        fecha:
+          proyecto.fechaCreacion,
+      });
+    }
+
+    if (
+      proyecto?.propuestaActual?.fecha &&
+      !eventos.some(
+        (evento) =>
+          [
+            "propuesta_enviada",
+            "propuesta_modificada",
+          ].includes(
+            evento.tipo
+          )
+      )
+    ) {
+      eventos.push({
+        tipo:
+          "propuesta_enviada",
+
+        titulo:
+          "Propuesta enviada",
+
+        descripcion:
+          "Wealth envió la propuesta del proyecto.",
+
+        actor:
+          "admin",
+
+        fecha:
+          proyecto.propuestaActual.fecha,
+      });
+    }
+
+    if (
+      proyecto?.fechaFinalizacion &&
+      !eventos.some(
+        (evento) =>
+          evento.tipo ===
+          "trabajo_finalizado"
+      )
+    ) {
+      eventos.push({
+        tipo:
+          "trabajo_finalizado",
+
+        titulo:
+          "Trabajo finalizado",
+
+        descripcion:
+          "Wealth finalizó el trabajo y lo agregó a Mis Proyectos.",
+
+        actor:
+          "admin",
+
+        fecha:
+          proyecto.fechaFinalizacion,
+      });
+    }
+
+    return eventos
+      .filter(
+        (evento) =>
+          evento &&
+          evento.fecha
+      )
+      .sort(
+        (a, b) =>
+          obtenerMillis(
+            a.fecha
+          ) -
+          obtenerMillis(
+            b.fecha
+          )
+      );
+  };
+
+  const abrirHistorial = (
+    proyecto
+  ) => {
+    setProyectoHistorial(
+      proyecto
+    );
+
+    setHistorialOpen(
+      true
+    );
   };
 
   // ======================================================
@@ -522,9 +774,13 @@ function MisProyectos() {
 
                   {/* PRECIO */}
 
-                  {proyecto.precioTotal !==
+                  {obtenerPrecioProyecto(
+                    proyecto
+                  ) !==
                     null &&
-                    proyecto.precioTotal !==
+                    obtenerPrecioProyecto(
+                      proyecto
+                    ) !==
                       undefined && (
                       <div className="mt-5 bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
 
@@ -534,29 +790,50 @@ function MisProyectos() {
 
                         <p className="text-2xl font-bold text-white mt-1">
                           {moneda(
-                            proyecto.precioTotal
+                            obtenerPrecioProyecto(
+                              proyecto
+                            )
                           )}
                         </p>
 
                       </div>
                     )}
 
-                  {/* BOTÓN */}
+                  {/* BOTONES */}
 
-                  <button
-                    onClick={() =>
-                      abrirProyecto(
-                        proyecto
-                      )
-                    }
-                    className="w-full mt-5 bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
-                  >
+                  <div className="grid grid-cols-2 gap-3 mt-5">
 
-                    <FaEye />
+                    <button
+                      onClick={() =>
+                        abrirHistorial(
+                          proyecto
+                        )
+                      }
+                      className="bg-zinc-950 hover:bg-zinc-800 border border-zinc-700 text-white py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
+                    >
 
-                    Ver proyecto
+                      <FaHistory className="text-yellow-500" />
 
-                  </button>
+                      Historial
+
+                    </button>
+
+                    <button
+                      onClick={() =>
+                        abrirProyecto(
+                          proyecto
+                        )
+                      }
+                      className="bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
+                    >
+
+                      <FaEye />
+
+                      Ver proyecto
+
+                    </button>
+
+                  </div>
 
                 </div>
 
@@ -785,7 +1062,9 @@ function MisProyectos() {
                       }
                       titulo="Precio total"
                       valor={moneda(
-                        proyectoActivo.precioTotal
+                        obtenerPrecioProyecto(
+                          proyectoActivo
+                        )
                       )}
                     />
 
@@ -795,10 +1074,35 @@ function MisProyectos() {
                       }
                       titulo="Tiempo estimado"
                       valor={
-                        proyectoActivo.tiempoEstimado ||
-                        "No especificado"
+                        obtenerTiempoEstimado(
+                          proyectoActivo
+                        )
                       }
                     />
+
+                    {proyectoActivo.fechaInicioInstalacion && (
+                      <Detalle
+                        icon={
+                          <FaCalendarAlt />
+                        }
+                        titulo="Inicio de instalación"
+                        valor={
+                          proyectoActivo.fechaInicioInstalacion
+                        }
+                      />
+                    )}
+
+                    {proyectoActivo.fechaFinInstalacion && (
+                      <Detalle
+                        icon={
+                          <FaCalendarAlt />
+                        }
+                        titulo="Fin de instalación"
+                        valor={
+                          proyectoActivo.fechaFinInstalacion
+                        }
+                      />
+                    )}
 
                     <Detalle
                       icon={
@@ -806,8 +1110,9 @@ function MisProyectos() {
                       }
                       titulo="Garantía"
                       valor={
-                        proyectoActivo.garantia ||
-                        "No especificada"
+                        obtenerGarantia(
+                          proyectoActivo
+                        )
                       }
                     />
 
@@ -837,6 +1142,87 @@ function MisProyectos() {
                   </section>
                 )}
 
+                {/* HISTORIAL */}
+
+                <section>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+
+                    <div>
+
+                      <h3 className="font-bold text-white flex items-center gap-2">
+
+                        <FaHistory className="text-yellow-500" />
+
+                        Historial del proyecto
+
+                      </h3>
+
+                      <p className="text-zinc-500 text-sm mt-1">
+                        Fechas y movimientos registrados durante el trabajo.
+                      </p>
+
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        abrirHistorial(
+                          proyectoActivo
+                        )
+                      }
+                      className="px-4 py-2.5 bg-zinc-900 border border-zinc-700 hover:border-yellow-500/40 rounded-xl text-sm font-semibold flex items-center justify-center gap-2"
+                    >
+
+                      <FaEye />
+
+                      Ver línea de tiempo
+
+                    </button>
+
+                  </div>
+
+                  {obtenerHistorialVisible(
+                    proyectoActivo
+                  ).length >
+                    0 && (
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
+
+                      <p className="text-zinc-500 text-xs uppercase tracking-wider">
+                        Último movimiento
+                      </p>
+
+                      <p className="text-white font-bold mt-2">
+                        {
+                          obtenerHistorialVisible(
+                            proyectoActivo
+                          )[
+                            obtenerHistorialVisible(
+                              proyectoActivo
+                            ).length -
+                              1
+                          ]?.titulo
+                        }
+                      </p>
+
+                      <p className="text-yellow-500/80 text-sm mt-1">
+                        {formatearFechaHora(
+                          obtenerHistorialVisible(
+                            proyectoActivo
+                          )[
+                            obtenerHistorialVisible(
+                              proyectoActivo
+                            ).length -
+                              1
+                          ]?.fecha
+                        )}
+                      </p>
+
+                    </div>
+                  )}
+
+                </section>
+
                 {/* MENSAJE */}
 
                 <div className="bg-green-500/5 border border-green-500/20 rounded-2xl p-5">
@@ -857,6 +1243,196 @@ function MisProyectos() {
 
           </div>
         )}
+
+      {/* ================================================= */}
+      {/* HISTORIAL / LÍNEA DE TIEMPO */}
+      {/* ================================================= */}
+
+      {historialOpen &&
+        proyectoHistorial && (
+        <div
+          className="fixed inset-0 bg-black/90 backdrop-blur-sm z-[65] overflow-y-auto p-4"
+          onClick={() =>
+            setHistorialOpen(
+              false
+            )
+          }
+        >
+
+          <div
+            className="w-full max-w-2xl mx-auto my-8 bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden"
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+          >
+
+            <header className="p-6 md:p-8 border-b border-zinc-800 flex items-start justify-between gap-4">
+
+              <div>
+
+                <p className="text-yellow-500 text-xs uppercase tracking-[0.2em] font-bold">
+                  Expediente Wealth
+                </p>
+
+                <h2 className="text-2xl md:text-3xl font-bold text-white mt-2">
+                  Historial del proyecto
+                </h2>
+
+                <p className="text-zinc-500 mt-1">
+                  {proyectoHistorial.nombre ||
+                    "Proyecto"}
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setHistorialOpen(
+                    false
+                  )
+                }
+                className="w-11 h-11 bg-black border border-zinc-800 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white"
+              >
+
+                <FaTimes />
+
+              </button>
+
+            </header>
+
+            <div className="p-6 md:p-8">
+
+              {obtenerHistorialVisible(
+                proyectoHistorial
+              ).length ===
+              0 ? (
+                <div className="bg-black border border-zinc-800 rounded-2xl p-8 text-center">
+
+                  <FaHistory className="text-zinc-700 text-4xl mx-auto" />
+
+                  <p className="text-zinc-500 mt-4">
+                    Todavía no hay movimientos registrados para este proyecto.
+                  </p>
+
+                </div>
+              ) : (
+                <div className="relative">
+
+                  <div className="absolute left-[11px] top-2 bottom-2 w-px bg-zinc-800" />
+
+                  <div className="space-y-6">
+
+                    {obtenerHistorialVisible(
+                      proyectoHistorial
+                    ).map(
+                      (
+                        evento,
+                        indice
+                      ) => (
+                        <div
+                          key={`${evento.tipo}-${obtenerMillis(
+                            evento.fecha
+                          )}-${indice}`}
+                          className="relative pl-10"
+                        >
+
+                          <div className="absolute left-0 top-1.5 w-[23px] h-[23px] rounded-full bg-black border-2 border-yellow-500 flex items-center justify-center">
+
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+
+                          </div>
+
+                          <div className="bg-black border border-zinc-800 rounded-2xl p-4">
+
+                            <div className="flex flex-col sm:flex-row sm:justify-between gap-2">
+
+                              <div>
+
+                                <p className="text-white font-bold">
+                                  {
+                                    evento.titulo
+                                  }
+                                </p>
+
+                                {evento.descripcion && (
+                                  <p className="text-zinc-400 text-sm mt-1">
+                                    {
+                                      evento.descripcion
+                                    }
+                                  </p>
+                                )}
+
+                              </div>
+
+                              <span className="text-zinc-600 text-xs shrink-0">
+                                {evento.actor ===
+                                "cliente"
+                                  ? "Cliente"
+                                  : "Wealth"}
+                              </span>
+
+                            </div>
+
+                            <p className="text-yellow-500/80 text-xs mt-3">
+                              {formatearFechaHora(
+                                evento.fecha
+                              )}
+                            </p>
+
+                            {evento.fechaInicioInstalacion &&
+                              evento.fechaFinInstalacion && (
+                                <div className="mt-3 bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-3">
+
+                                  <p className="text-cyan-400 text-xs font-bold">
+                                    Periodo de instalación
+                                  </p>
+
+                                  <p className="text-zinc-300 text-sm mt-1">
+                                    {
+                                      evento.fechaInicioInstalacion
+                                    }{" "}
+                                    →{" "}
+                                    {
+                                      evento.fechaFinInstalacion
+                                    }
+                                  </p>
+
+                                </div>
+                              )}
+
+                          </div>
+
+                        </div>
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+              )}
+
+              <div className="mt-8 bg-green-500/5 border border-green-500/20 rounded-2xl p-4">
+
+                <p className="text-green-400 font-bold text-sm">
+                  Proyecto finalizado
+                </p>
+
+                <p className="text-zinc-400 text-sm mt-1">
+                  Finalización registrada:{" "}
+                  {formatearFechaHora(
+                    proyectoHistorial.fechaFinalizacion
+                  )}
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
 
       {/* ================================================= */}
       {/* GALERÍA */}

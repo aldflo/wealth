@@ -11,6 +11,7 @@ import {
 } from "../firebase.config";
 
 import {
+  arrayUnion,
   collection,
   query,
   onSnapshot,
@@ -18,6 +19,7 @@ import {
   updateDoc,
   doc,
   serverTimestamp,
+  Timestamp,
   writeBatch,
 } from "firebase/firestore";
 
@@ -352,6 +354,20 @@ function Cotizaciones() {
   const [
     cotizacionSeleccionada,
     setCotizacionSeleccionada,
+  ] = useState(null);
+
+  /* ======================================================
+     HISTORIAL / LÍNEA DE TIEMPO
+  ====================================================== */
+
+  const [
+    historialOpen,
+    setHistorialOpen,
+  ] = useState(false);
+
+  const [
+    cotizacionHistorial,
+    setCotizacionHistorial,
   ] = useState(null);
 
   /* ======================================================
@@ -709,6 +725,246 @@ function Cotizaciones() {
       }
     };
   }, []);
+
+  /* ======================================================
+     HISTORIAL / LÍNEA DE TIEMPO
+  ====================================================== */
+
+  const crearEventoHistorial =
+    (
+      tipo,
+      titulo,
+      descripcion = "",
+      actor = "cliente",
+      extra = {}
+    ) => ({
+      tipo,
+      titulo,
+      descripcion,
+      actor,
+      fecha:
+        Timestamp.now(),
+      ...extra,
+    });
+
+  const obtenerMillis =
+    (fecha) => {
+      if (!fecha) {
+        return 0;
+      }
+
+      try {
+        if (
+          typeof fecha.toMillis ===
+          "function"
+        ) {
+          return fecha.toMillis();
+        }
+
+        if (
+          typeof fecha.toDate ===
+          "function"
+        ) {
+          return fecha
+            .toDate()
+            .getTime();
+        }
+
+        return (
+          new Date(
+            fecha
+          ).getTime() ||
+          0
+        );
+      } catch {
+        return 0;
+      }
+    };
+
+  const obtenerHistorialVisible =
+    (cotizacion) => {
+      const eventos =
+        Array.isArray(
+          cotizacion?.historial
+        )
+          ? [
+              ...cotizacion.historial,
+            ]
+          : [];
+
+      // Compatibilidad con solicitudes anteriores a esta función.
+      if (
+        cotizacion?.fecha &&
+        !eventos.some(
+          (evento) =>
+            evento.tipo ===
+            "solicitud_creada"
+        )
+      ) {
+        eventos.push({
+          tipo:
+            "solicitud_creada",
+
+          titulo:
+            "Solicitud enviada",
+
+          descripcion:
+            "Enviaste la solicitud de cotización a Wealth.",
+
+          actor:
+            "cliente",
+
+          fecha:
+            cotizacion.fecha,
+        });
+      }
+
+      if (
+        cotizacion?.fechaPropuesta &&
+        !eventos.some(
+          (evento) =>
+            [
+              "propuesta_enviada",
+              "propuesta_modificada",
+            ].includes(
+              evento.tipo
+            )
+        )
+      ) {
+        eventos.push({
+          tipo:
+            "propuesta_enviada",
+
+          titulo:
+            "Propuesta recibida",
+
+          descripcion:
+            "Wealth envió una propuesta.",
+
+          actor:
+            "admin",
+
+          fecha:
+            cotizacion.fechaPropuesta,
+        });
+      }
+
+      if (
+        cotizacion?.fechaRespuestaCliente &&
+        !eventos.some(
+          (evento) =>
+            [
+              "propuesta_aceptada",
+              "cambios_solicitados",
+              "propuesta_rechazada",
+            ].includes(
+              evento.tipo
+            )
+        )
+      ) {
+        if (
+          cotizacion.respuestaCliente ===
+            "aceptada" ||
+          cotizacion.estado ===
+            "aceptada_cliente"
+        ) {
+          eventos.push({
+            tipo:
+              "propuesta_aceptada",
+
+            titulo:
+              "Propuesta aceptada",
+
+            descripcion:
+              "Aceptaste la propuesta de Wealth.",
+
+            actor:
+              "cliente",
+
+            fecha:
+              cotizacion.fechaRespuestaCliente,
+          });
+        } else if (
+          cotizacion.respuestaCliente ===
+            "solicita_modificacion" ||
+          cotizacion.estado ===
+            "cambios_solicitados"
+        ) {
+          eventos.push({
+            tipo:
+              "cambios_solicitados",
+
+            titulo:
+              "Cambios solicitados",
+
+            descripcion:
+              cotizacion.mensajeCliente ||
+              "Solicitaste cambios a la propuesta.",
+
+            actor:
+              "cliente",
+
+            fecha:
+              cotizacion.fechaRespuestaCliente,
+          });
+        } else if (
+          cotizacion.respuestaCliente ===
+            "rechazada" ||
+          cotizacion.estado ===
+            "rechazada_cliente"
+        ) {
+          eventos.push({
+            tipo:
+              "propuesta_rechazada",
+
+            titulo:
+              "Propuesta rechazada",
+
+            descripcion:
+              "Rechazaste la propuesta.",
+
+            actor:
+              "cliente",
+
+            fecha:
+              cotizacion.fechaRespuestaCliente,
+          });
+        }
+      }
+
+      return eventos
+        .filter(
+          (evento) =>
+            evento &&
+            evento.fecha
+        )
+        .sort(
+          (a, b) =>
+            obtenerMillis(
+              a.fecha
+            ) -
+            obtenerMillis(
+              b.fecha
+            )
+        );
+    };
+
+  const abrirHistorial =
+    async (
+      cotizacion
+    ) => {
+      setCotizacionHistorial(
+        cotizacion
+      );
+
+      setHistorialOpen(
+        true
+      );
+
+      await marcarComoVista(
+        cotizacion
+      );
+    };
 
   /* ======================================================
      ESTADO
@@ -2077,6 +2333,15 @@ function Cotizaciones() {
 
             mensajeAdmin:
               "El cliente modificó su solicitud.",
+
+            historial:
+              arrayUnion(
+                crearEventoHistorial(
+                  "solicitud_modificada",
+                  "Solicitud modificada",
+                  "Modificaste los datos de la solicitud."
+                )
+              ),
           }
         );
 
@@ -2171,6 +2436,15 @@ function Cotizaciones() {
 
             mensajeAdmin:
               "El cliente canceló la solicitud.",
+
+            historial:
+              arrayUnion(
+                crearEventoHistorial(
+                  "solicitud_cancelada",
+                  "Solicitud cancelada",
+                  "Cancelaste la solicitud antes de que el trabajo fuera confirmado."
+                )
+              ),
           }
         );
 
@@ -2277,6 +2551,19 @@ function Cotizaciones() {
 
             mensajeAdmin:
               "El cliente aceptó la propuesta.",
+
+            historial:
+              arrayUnion(
+                crearEventoHistorial(
+                  "propuesta_aceptada",
+                  "Propuesta aceptada",
+                  precio
+                    ? `Aceptaste la propuesta por ${moneda(
+                        precio
+                      )}.`
+                    : "Aceptaste la propuesta de Wealth."
+                )
+              ),
           }
         );
 
@@ -2358,6 +2645,15 @@ function Cotizaciones() {
 
             mensajeAdmin:
               "El cliente solicitó cambios.",
+
+            historial:
+              arrayUnion(
+                crearEventoHistorial(
+                  "cambios_solicitados",
+                  "Cambios solicitados",
+                  motivo.trim()
+                )
+              ),
           }
         );
 
@@ -2428,6 +2724,18 @@ function Cotizaciones() {
 
             vistoPorCliente:
               true,
+
+            mensajeAdmin:
+              "El cliente rechazó la propuesta.",
+
+            historial:
+              arrayUnion(
+                crearEventoHistorial(
+                  "propuesta_rechazada",
+                  "Propuesta rechazada",
+                  "Rechazaste la propuesta de Wealth."
+                )
+              ),
           }
         );
 
@@ -3452,43 +3760,84 @@ function Cotizaciones() {
                   )}
 
                   {!modoSeleccion && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        verPropuesta(
-                          cotizacion
-                        )
-                      }
-                      className="
-                        w-full
+                    <div className="grid grid-cols-2 gap-3 mt-4">
 
-                        mt-4
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
 
-                        py-3.5
+                          abrirHistorial(
+                            cotizacion
+                          );
+                        }}
+                        className="
+                          py-3.5
 
-                        bg-yellow-500
-                        hover:bg-yellow-400
+                          bg-zinc-900
+                          hover:bg-zinc-800
 
-                        text-black
+                          border
+                          border-zinc-700
 
-                        rounded-xl
+                          text-white
 
-                        font-bold
+                          rounded-xl
 
-                        flex
-                        items-center
-                        justify-center
-                        gap-2
+                          font-bold
 
-                        transition
-                      "
-                    >
+                          flex
+                          items-center
+                          justify-center
+                          gap-2
 
-                      <FaEye />
+                          transition
+                        "
+                      >
 
-                      Ver detalles
+                        <FaHistory className="text-yellow-500" />
 
-                    </button>
+                        Historial
+
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+
+                          verPropuesta(
+                            cotizacion
+                          );
+                        }}
+                        className="
+                          py-3.5
+
+                          bg-yellow-500
+                          hover:bg-yellow-400
+
+                          text-black
+
+                          rounded-xl
+
+                          font-bold
+
+                          flex
+                          items-center
+                          justify-center
+                          gap-2
+
+                          transition
+                        "
+                      >
+
+                        <FaEye />
+
+                        Ver detalles
+
+                      </button>
+
+                    </div>
                   )}
 
                   {modoSeleccion && (
@@ -5077,6 +5426,172 @@ function Cotizaciones() {
                 </>
               );
             })()}
+
+          </div>
+
+        </div>
+      )}
+
+      {/* =================================================
+          HISTORIAL / LÍNEA DE TIEMPO
+      ================================================= */}
+
+      {historialOpen &&
+        cotizacionHistorial && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/90 backdrop-blur-sm overflow-y-auto p-4"
+          onClick={() =>
+            setHistorialOpen(
+              false
+            )
+          }
+        >
+
+          <div
+            className="w-full max-w-2xl mx-auto my-8 bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden"
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+          >
+
+            <header className="p-6 md:p-8 border-b border-zinc-800 flex items-start justify-between gap-4">
+
+              <div>
+
+                <p className="text-yellow-500 text-xs uppercase tracking-[0.2em] font-bold">
+                  Seguimiento Wealth
+                </p>
+
+                <h2 className="text-2xl md:text-3xl font-bold mt-2">
+                  Historial del proyecto
+                </h2>
+
+                <p className="text-zinc-500 mt-1">
+                  {cotizacionHistorial.nombre ||
+                    "Cotización"}
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setHistorialOpen(
+                    false
+                  )
+                }
+                className="w-11 h-11 bg-black border border-zinc-800 rounded-xl flex items-center justify-center text-zinc-400 hover:text-white"
+              >
+
+                <FaTimes />
+
+              </button>
+
+            </header>
+
+            <div className="p-6 md:p-8">
+
+              {obtenerHistorialVisible(
+                cotizacionHistorial
+              ).length ===
+              0 ? (
+                <div className="bg-black border border-zinc-800 rounded-2xl p-8 text-center text-zinc-500">
+                  Todavía no hay movimientos registrados.
+                </div>
+              ) : (
+                <div className="relative">
+
+                  <div className="absolute left-[11px] top-2 bottom-2 w-px bg-zinc-800" />
+
+                  <div className="space-y-6">
+
+                    {obtenerHistorialVisible(
+                      cotizacionHistorial
+                    ).map(
+                      (
+                        evento,
+                        indice
+                      ) => (
+                        <div
+                          key={`${evento.tipo}-${obtenerMillis(
+                            evento.fecha
+                          )}-${indice}`}
+                          className="relative pl-10"
+                        >
+
+                          <div className="absolute left-0 top-1.5 w-[23px] h-[23px] rounded-full bg-black border-2 border-yellow-500 flex items-center justify-center">
+
+                            <div className="w-2 h-2 bg-yellow-500 rounded-full" />
+
+                          </div>
+
+                          <div className="bg-black border border-zinc-800 rounded-2xl p-4">
+
+                            <div className="flex flex-col sm:flex-row sm:justify-between gap-2">
+
+                              <div>
+
+                                <p className="font-bold">
+                                  {
+                                    evento.titulo
+                                  }
+                                </p>
+
+                                {evento.descripcion && (
+                                  <p className="text-zinc-400 text-sm mt-1">
+                                    {
+                                      evento.descripcion
+                                    }
+                                  </p>
+                                )}
+
+                              </div>
+
+                              <span className="text-zinc-600 text-xs shrink-0">
+                                {evento.actor ===
+                                "cliente"
+                                  ? "Tú"
+                                  : "Wealth"}
+                              </span>
+
+                            </div>
+
+                            <p className="text-yellow-500/80 text-xs mt-3">
+                              {
+                                formatearFecha(
+                                  evento.fecha
+                                )
+                              }
+                            </p>
+
+                            {evento.fechaInicioInstalacion &&
+                              evento.fechaFinInstalacion && (
+                                <p className="text-cyan-400 text-xs mt-2">
+
+                                  Instalación:{" "}
+                                  {
+                                    evento.fechaInicioInstalacion
+                                  }{" "}
+                                  →{" "}
+                                  {
+                                    evento.fechaFinInstalacion
+                                  }
+
+                                </p>
+                              )}
+
+                          </div>
+
+                        </div>
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+              )}
+
+            </div>
 
           </div>
 
