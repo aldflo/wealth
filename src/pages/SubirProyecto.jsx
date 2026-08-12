@@ -132,7 +132,6 @@ function SubirProyecto() {
 
   const MAX_IMAGENES = 8;
   const MAX_GALERIA = 12;
-  const MAX_MB = 5;
 
   const categorias = [
     "Construcciones",
@@ -217,13 +216,6 @@ function SubirProyecto() {
   const validarArchivo = (file) => {
     if (!file.type.startsWith("image/")) {
       return `"${file.name}" no es una imagen válida.`;
-    }
-
-    if (
-      file.size >
-      MAX_MB * 1024 * 1024
-    ) {
-      return `"${file.name}" supera los ${MAX_MB} MB.`;
     }
 
     return null;
@@ -424,8 +416,23 @@ function SubirProyecto() {
     );
 
     if (!res.ok) {
+      let detalle = "";
+
+      try {
+        const errorData =
+          await res.json();
+
+        detalle =
+          errorData?.error?.message ||
+          "";
+      } catch {
+        // Si Cloudinary no devuelve JSON, conservamos el mensaje general.
+      }
+
       throw new Error(
-        `No se pudo subir "${file.name}".`
+        detalle
+          ? `No se pudo subir "${file.name}": ${detalle}`
+          : `No se pudo subir "${file.name}".`
       );
     }
 
@@ -1295,7 +1302,7 @@ function SubirProyecto() {
                   </p>
 
                   <p className="text-sm text-zinc-500 mt-2">
-                    JPG, PNG o WEBP · Máximo {MAX_MB} MB por imagen
+                    JPG, PNG o WEBP · Se permiten fotografías de alta resolución
                   </p>
 
                   <p className="text-xs text-zinc-600 mt-1">
@@ -1454,7 +1461,7 @@ function SubirProyecto() {
                   </p>
 
                   <p className="text-sm text-zinc-500 mt-2">
-                    JPG, PNG o WEBP · Máximo {MAX_MB} MB por imagen
+                    JPG, PNG o WEBP · Se permiten fotografías de alta resolución
                   </p>
 
                   <p className="text-xs text-zinc-600 mt-1">
@@ -1696,7 +1703,7 @@ function SubirProyecto() {
                   type="submit"
                   disabled={loading}
                   className={`
-                    ${botonBase}
+                    ${botonBase(modoOscuro)}
                     flex-1
                     border-yellow-500/50
                     text-yellow-400
