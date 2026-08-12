@@ -31,9 +31,11 @@ import MenuAdmin from "./pages/MenuAdmin";
 import Favoritos from "./pages/favoritos";
 import ChatIA from "./pages/ChatIA";
 import Perfil from "./pages/Perfil";
+import PerfilAdmin from "./pages/PerfilAdmin";
 
 import MisProyectos from "./pages/MisProyectos";
 import ProyectosTerminadosAdmin from "./pages/ProyectosTerminadosAdmin";
+
 
 function App() {
   return (
@@ -76,6 +78,7 @@ function App() {
           element={<Favoritos />}
         />
 
+
         {/* ================================================= */}
         {/* EMPRESAS */}
         {/* ================================================= */}
@@ -94,6 +97,7 @@ function App() {
           path="/aluminios"
           element={<WealthVyA />}
         />
+
 
         {/* ================================================= */}
         {/* CLIENTE */}
@@ -131,6 +135,7 @@ function App() {
           element={<Perfil />}
         />
 
+
         {/* COMPATIBILIDAD CON LINKS ANTIGUOS */}
 
         <Route
@@ -153,6 +158,7 @@ function App() {
           }
         />
 
+
         {/* ================================================= */}
         {/* ADMIN */}
         {/* ================================================= */}
@@ -160,6 +166,11 @@ function App() {
         <Route
           path="/admin"
           element={<MenuAdmin />}
+        />
+
+        <Route
+          path="/admin/perfil"
+          element={<PerfilAdmin />}
         />
 
         <Route
@@ -182,6 +193,7 @@ function App() {
           element={<SubirProyecto />}
         />
 
+
         {/* ================================================= */}
         {/* PROYECTOS / CATÁLOGO */}
         {/* ================================================= */}
@@ -195,6 +207,7 @@ function App() {
           path="/proyecto/:id"
           element={<DetalleProyecto />}
         />
+
 
         {/* ================================================= */}
         {/* GALERÍA */}
@@ -215,5 +228,6 @@ function App() {
     </Routes>
   );
 }
+
 
 export default App;

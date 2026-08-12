@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import { db, auth } from "../firebase.config";
 
@@ -32,6 +32,8 @@ import {
 
 function Proyectos() {
   const navigate = useNavigate();
+
+  const { modoOscuro } = useOutletContext() || {};
 
   // ======================================================
   // PROYECTOS
@@ -569,7 +571,13 @@ function Proyectos() {
     };
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div
+      className={`min-h-screen transition-colors duration-300 ${
+        modoOscuro
+          ? "bg-black text-white"
+          : "bg-gray-50 text-gray-900"
+      }`}
+    >
 
       {/* ================================================= */}
       {/* CONTENIDO */}
@@ -598,22 +606,23 @@ function Proyectos() {
                 )
               }
               placeholder="Buscar por proyecto, categoría, descripción..."
-              className="
+              className={`
                 w-full
-                bg-zinc-900/70
                 border
-                border-white/10
                 rounded-2xl
                 pr-12
                 py-4
-                text-white
-                placeholder:text-zinc-600
                 outline-none
                 focus:border-yellow-500/60
                 focus:ring-2
                 focus:ring-yellow-500/10
                 transition
-              "
+                ${
+                  modoOscuro
+                    ? "bg-zinc-900/70 border-white/10 text-white placeholder:text-zinc-600"
+                    : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+                }
+              `}
               style={{
                 paddingLeft:
                   "3.2rem",
@@ -644,19 +653,21 @@ function Proyectos() {
                 e.target.value
               )
             }
-            className="
+            className={`
               min-w-[220px]
-              bg-zinc-900/70
               border
-              border-white/10
               rounded-2xl
               px-5
               py-4
-              text-white
               outline-none
               focus:border-yellow-500/60
               transition
-            "
+              ${
+                modoOscuro
+                  ? "bg-zinc-900/70 border-white/10 text-white"
+                  : "bg-white border-gray-300 text-gray-900"
+              }
+            `}
           >
 
             {categorias.map(
@@ -749,7 +760,11 @@ function Proyectos() {
         {!cargando &&
           proyectos.length ===
             0 && (
-            <div className="border border-zinc-800 bg-zinc-950 rounded-3xl py-20 px-6 text-center">
+            <div className={`border rounded-3xl py-20 px-6 text-center ${
+                modoOscuro
+                  ? "border-zinc-800 bg-zinc-950"
+                  : "border-gray-200 bg-white shadow-sm"
+              }`}>
 
               <FaLayerGroup className="text-zinc-700 text-5xl mx-auto" />
 
@@ -773,7 +788,11 @@ function Proyectos() {
             0 &&
           filtrados.length ===
             0 && (
-            <div className="border border-zinc-800 bg-zinc-950 rounded-3xl py-20 px-6 text-center">
+            <div className={`border rounded-3xl py-20 px-6 text-center ${
+                modoOscuro
+                  ? "border-zinc-800 bg-zinc-950"
+                  : "border-gray-200 bg-white shadow-sm"
+              }`}>
 
               <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center mx-auto">
 
@@ -842,12 +861,10 @@ function Proyectos() {
                           p
                         )
                       }
-                      className="
+                      className={`
                         relative
                         group
-                        bg-zinc-950
                         border
-                        border-white/10
                         rounded-[28px]
                         overflow-hidden
                         cursor-pointer
@@ -856,8 +873,12 @@ function Proyectos() {
                         hover:border-yellow-500/30
                         hover:-translate-y-1
                         hover:shadow-2xl
-                        hover:shadow-black/40
-                      "
+                        ${
+                          modoOscuro
+                            ? "bg-zinc-950 border-white/10 hover:shadow-black/40"
+                            : "bg-white border-gray-200 shadow-sm hover:shadow-gray-200/70"
+                        }
+                      `}
                     >
 
                       {/* ================================= */}
@@ -1012,17 +1033,27 @@ function Proyectos() {
 
                         </div>
 
-                        <h2 className="text-xl md:text-2xl font-semibold mt-3 leading-tight group-hover:text-yellow-50 transition">
+                        <h2 className={`text-xl md:text-2xl font-semibold mt-3 leading-tight transition ${
+                          modoOscuro
+                            ? "group-hover:text-yellow-50"
+                            : "text-gray-900 group-hover:text-[#9b7429]"
+                        }`}>
                           {p.nombre ||
                             "Proyecto Wealth"}
                         </h2>
 
-                        <p className="text-zinc-400 mt-3 text-sm leading-relaxed line-clamp-3 min-h-[63px]">
+                        <p className={`mt-3 text-sm leading-relaxed line-clamp-3 min-h-[63px] ${
+                          modoOscuro ? "text-zinc-400" : "text-gray-600"
+                        }`}>
                           {p.descripcion ||
                             "Conoce los detalles de este proyecto realizado por Wealth."}
                         </p>
 
-                        <div className="mt-6 flex items-center gap-2 text-sm font-medium text-zinc-300 group-hover:text-white transition">
+                        <div className={`mt-6 flex items-center gap-2 text-sm font-medium transition ${
+                          modoOscuro
+                            ? "text-zinc-300 group-hover:text-white"
+                            : "text-gray-600 group-hover:text-gray-900"
+                        }`}>
 
                           Ver proyecto
 
@@ -1084,7 +1115,11 @@ function Proyectos() {
           0 && (
           <section className="max-w-7xl mx-auto px-5 md:px-6 pb-16">
 
-            <div className="relative overflow-hidden bg-zinc-950 border border-white/10 rounded-[32px] px-6 py-12 md:px-12 md:py-14">
+            <div className={`relative overflow-hidden border rounded-[32px] px-6 py-12 md:px-12 md:py-14 ${
+              modoOscuro
+                ? "bg-zinc-950 border-white/10"
+                : "bg-white border-gray-200 shadow-sm"
+            }`}>
 
               <div className="absolute right-0 top-0 w-64 h-64 bg-yellow-500/5 blur-3xl rounded-full pointer-events-none" />
 
@@ -1100,7 +1135,9 @@ function Proyectos() {
                     Hagamos realidad tu próximo proyecto.
                   </h2>
 
-                  <p className="text-zinc-400 mt-3 max-w-2xl">
+                  <p className={`mt-3 max-w-2xl ${
+                    modoOscuro ? "text-zinc-400" : "text-gray-600"
+                  }`}>
                     Cuéntanos qué necesitas y nuestro equipo podrá preparar una propuesta personalizada.
                   </p>
 
@@ -1176,17 +1213,21 @@ function Proyectos() {
         >
 
           <div
-            className="
+            className={`
               relative
               w-full
               max-w-md
-              bg-zinc-950
               border
               border-yellow-500/20
               rounded-3xl
               p-8
               shadow-2xl
-            "
+              ${
+                modoOscuro
+                  ? "bg-zinc-950 text-white"
+                  : "bg-white text-gray-900"
+              }
+            `}
             onClick={(e) =>
               e.stopPropagation()
             }
@@ -1221,7 +1262,9 @@ function Proyectos() {
               Accede a Wealth
             </h2>
 
-            <p className="text-zinc-400 text-center mb-8 leading-relaxed">
+            <p className={`text-center mb-8 leading-relaxed ${
+              modoOscuro ? "text-zinc-400" : "text-gray-600"
+            }`}>
               Inicia sesión para guardar proyectos y solicitar cotizaciones personalizadas.
             </p>
 
@@ -1263,15 +1306,17 @@ function Proyectos() {
                     "/register"
                   );
                 }}
-                className="
+                className={`
                   w-full
-                  bg-zinc-800
-                  hover:bg-zinc-700
-                  text-white
                   py-4
                   rounded-2xl
                   transition
-                "
+                  ${
+                    modoOscuro
+                      ? "bg-zinc-800 hover:bg-zinc-700 text-white"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-900"
+                  }
+                `}
               >
                 Crear cuenta
               </button>

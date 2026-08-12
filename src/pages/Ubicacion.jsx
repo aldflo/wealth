@@ -1,20 +1,49 @@
 import {
+  useOutletContext,
+} from "react-router-dom";
+
+import {
   FaMapMarkerAlt,
   FaPhoneAlt,
   FaEnvelope,
-  FaLocationArrow
+  FaLocationArrow,
 } from "react-icons/fa";
 
 function Ubicacion() {
+  const {
+    modoOscuro,
+  } = useOutletContext() || {};
 
   return (
+    <div
+      className={`
+        min-h-screen
+        pt-24
+        transition-colors
+        duration-300
 
-    <div className="min-h-screen bg-black text-white pt-24">
-
+        ${
+          modoOscuro
+            ? "bg-black text-white"
+            : "bg-gray-50 text-gray-900"
+        }
+      `}
+    >
       {/* HERO */}
 
-      <section className="py-20 px-6 border-b border-yellow-600/20">
+      <section
+        className={`
+          py-20
+          px-6
+          border-b
 
+          ${
+            modoOscuro
+              ? "border-yellow-600/20"
+              : "border-yellow-600/15 bg-white"
+          }
+        `}
+      >
         <div className="max-w-7xl mx-auto text-center">
 
           <p className="text-yellow-500 uppercase tracking-[6px] mb-4 font-semibold">
@@ -22,23 +51,31 @@ function Ubicacion() {
           </p>
 
           <h1 className="text-5xl md:text-7xl font-bold mb-6">
-
             Nuestra
             <span className="text-yellow-500">
               {" "}Ubicación
             </span>
-
           </h1>
 
-          <p className="text-zinc-400 text-lg md:text-xl max-w-3xl mx-auto">
+          <p
+            className={`
+              text-lg
+              md:text-xl
+              max-w-3xl
+              mx-auto
 
+              ${
+                modoOscuro
+                  ? "text-zinc-400"
+                  : "text-gray-600"
+              }
+            `}
+          >
             Visítanos en nuestras oficinas y conoce más sobre nuestros
             servicios de construcción, inmobiliaria, aluminio y vidrio.
-
           </p>
 
         </div>
-
       </section>
 
       {/* CONTENIDO */}
@@ -49,23 +86,43 @@ function Ubicacion() {
 
           {/* INFORMACION */}
 
-          <div className="bg-zinc-900 rounded-3xl p-10 border border-zinc-800 shadow-2xl">
+          <div
+            className={`
+              rounded-3xl
+              p-10
+              border
+              shadow-2xl
 
+              ${
+                modoOscuro
+                  ? "bg-zinc-900 border-zinc-800"
+                  : "bg-white border-gray-200 shadow-gray-200/70"
+              }
+            `}
+          >
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-3xl p-8 mb-10">
 
               <h2 className="text-3xl font-bold text-yellow-500 mb-3">
                 Oficina Principal
               </h2>
 
-              <p className="text-zinc-300 text-lg">
+              <p
+                className={`
+                  text-lg
+
+                  ${
+                    modoOscuro
+                      ? "text-zinc-300"
+                      : "text-gray-700"
+                  }
+                `}
+              >
                 Wealth Grupo Empresarial
               </p>
 
             </div>
 
             <div className="space-y-8">
-
-              {/* DIRECCION */}
 
               <div className="flex gap-5">
 
@@ -80,20 +137,26 @@ function Ubicacion() {
                     Dirección
                   </h3>
 
-                  <p className="text-zinc-400 leading-relaxed">
+                  <p
+                    className={`
+                      leading-relaxed
 
+                      ${
+                        modoOscuro
+                          ? "text-zinc-400"
+                          : "text-gray-600"
+                      }
+                    `}
+                  >
                     Av Aviación 89,
                     Héroe de Nacozari,
                     24070 San Francisco de Campeche,
                     Campeche, México.
-
                   </p>
 
                 </div>
 
               </div>
-
-              {/* TELEFONO */}
 
               <div className="flex gap-5">
 
@@ -108,15 +171,19 @@ function Ubicacion() {
                     Teléfono
                   </h3>
 
-                  <p className="text-zinc-400">
+                  <p
+                    className={
+                      modoOscuro
+                        ? "text-zinc-400"
+                        : "text-gray-600"
+                    }
+                  >
                     981 157 4778
                   </p>
 
                 </div>
 
               </div>
-
-              {/* CORREO */}
 
               <div className="flex gap-5">
 
@@ -131,7 +198,13 @@ function Ubicacion() {
                     Correo Electrónico
                   </h3>
 
-                  <p className="text-zinc-400">
+                  <p
+                    className={
+                      modoOscuro
+                        ? "text-zinc-400"
+                        : "text-gray-600"
+                    }
+                  >
                     contabilidad_siph@hotmail.com
                   </p>
 
@@ -141,34 +214,40 @@ function Ubicacion() {
 
             </div>
 
-            {/* BOTON MAPS */}
-
             <a
               href="https://maps.app.goo.gl/973XtiipZF6YVPPYA"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 mt-10 bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-8 py-4 rounded-2xl transition duration-300"
             >
-
               <FaLocationArrow />
-
               Abrir en Google Maps
-
             </a>
 
           </div>
 
           {/* MAPA */}
 
-          <div className="bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-800 shadow-2xl">
+          <div
+            className={`
+              rounded-3xl
+              overflow-hidden
+              border
+              shadow-2xl
 
+              ${
+                modoOscuro
+                  ? "bg-zinc-900 border-zinc-800"
+                  : "bg-white border-gray-200 shadow-gray-200/70"
+              }
+            `}
+          >
             <iframe
               title="Ubicación Wealth"
               src="https://maps.google.com/maps?q=Av%20Aviacion%2089%20Heroe%20de%20Nacozari%20Campeche&t=&z=17&ie=UTF8&iwloc=&output=embed"
               className="w-full h-[600px]"
               loading="lazy"
             />
-
           </div>
 
         </div>
@@ -179,33 +258,53 @@ function Ubicacion() {
 
       <section className="pb-24 px-6">
 
-        <div className="max-w-5xl mx-auto bg-zinc-900 rounded-3xl border border-yellow-600/20 p-12 text-center shadow-2xl">
+        <div
+          className={`
+            max-w-5xl
+            mx-auto
+            rounded-3xl
+            border
+            border-yellow-600/20
+            p-12
+            text-center
+            shadow-2xl
 
+            ${
+              modoOscuro
+                ? "bg-zinc-900"
+                : "bg-white shadow-gray-200/70"
+            }
+          `}
+        >
           <h2 className="text-4xl md:text-5xl font-bold mb-6">
-
             Construimos más que proyectos,
             <span className="text-yellow-500">
               {" "}creamos confianza.
             </span>
-
           </h2>
 
-          <p className="text-zinc-400 text-lg leading-relaxed">
+          <p
+            className={`
+              text-lg
+              leading-relaxed
 
+              ${
+                modoOscuro
+                  ? "text-zinc-400"
+                  : "text-gray-600"
+              }
+            `}
+          >
             Wealth Grupo Empresarial integra soluciones de construcción,
             desarrollo inmobiliario y aluminio arquitectónico,
             ofreciendo calidad, innovación y profesionalismo en cada proyecto.
-
           </p>
-
         </div>
 
       </section>
 
     </div>
-
   );
-
 }
 
 export default Ubicacion;

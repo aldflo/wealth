@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { db } from "../firebase.config";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import {
   collection,
@@ -37,6 +37,8 @@ import {
 
 function SubirProyecto() {
   const navigate = useNavigate();
+
+  const { modoOscuro } = useOutletContext() || {};
 
   // ======================================================
   // FORMULARIO
@@ -867,7 +869,13 @@ function SubirProyecto() {
   // ======================================================
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 sm:px-6 py-8 md:py-12">
+    <div
+      className={`min-h-screen px-4 sm:px-6 py-8 md:py-12 transition-colors duration-300 ${
+        modoOscuro
+          ? "bg-black text-white"
+          : "bg-gray-50 text-gray-900"
+      }`}
+    >
 
       {/* ================================================= */}
       {/* HEADER */}
@@ -919,7 +927,7 @@ function SubirProyecto() {
             onClick={() =>
               navigate("/proyectos")
             }
-            className={`${botonBase} border-zinc-600 text-zinc-300 hover:border-yellow-500/60 hover:text-yellow-400`}
+            className={`${botonBase(modoOscuro)} ${modoOscuro ? "border-zinc-600 text-zinc-300" : "border-gray-300 text-gray-700"} hover:border-yellow-500/60 hover:text-yellow-500`}
           >
             <FaBuilding />
 
@@ -971,7 +979,7 @@ function SubirProyecto() {
 
               <div>
 
-                <p className="font-bold text-white">
+                <p className={modoOscuro ? "font-bold text-white" : "font-bold text-gray-900"}>
                   Editando proyecto
                 </p>
 
@@ -988,7 +996,7 @@ function SubirProyecto() {
               onClick={
                 cancelarEdicion
               }
-              className={`${botonBase} border-zinc-600 text-zinc-300 hover:border-red-500/50 hover:text-red-400`}
+              className={`${botonBase(modoOscuro)} border-zinc-600 text-zinc-300 hover:border-red-500/50 hover:text-red-400`}
             >
               <FaTimes />
 
@@ -1003,19 +1011,24 @@ function SubirProyecto() {
         {/* ================================================= */}
 
         <div
-          className="
-            bg-zinc-950
+          className={`
             border
-            border-zinc-700
             rounded-[30px]
             overflow-hidden
             shadow-2xl
-          "
+            ${
+              modoOscuro
+                ? "bg-zinc-950 border-zinc-700"
+                : "bg-white border-gray-200 shadow-gray-200/70"
+            }
+          `}
         >
 
           {/* CABECERA FORMULARIO */}
 
-          <div className="p-6 md:p-8 border-b border-zinc-800">
+          <div className={`p-6 md:p-8 border-b ${
+            modoOscuro ? "border-zinc-800" : "border-gray-200"
+          }`}>
 
             <div className="flex items-center gap-3">
 
@@ -1035,7 +1048,7 @@ function SubirProyecto() {
                     : "Nuevo proyecto"}
                 </h2>
 
-                <p className="text-sm text-zinc-500 mt-1">
+                <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
                   Completa la información que aparecerá en el catálogo.
                 </p>
 
@@ -1080,7 +1093,7 @@ function SubirProyecto() {
                     }
                     maxLength={120}
                     placeholder="Ej: Fachada residencial con herrería moderna"
-                    className={inputClass}
+                    className={inputClass(modoOscuro)}
                   />
 
                   <ContadorTexto
@@ -1106,7 +1119,7 @@ function SubirProyecto() {
                           e.target.value
                         )
                       }
-                      className={inputClass}
+                      className={inputClass(modoOscuro)}
                     >
                       {categorias.map(
                         (cat) => (
@@ -1132,7 +1145,7 @@ function SubirProyecto() {
                           e.target.value
                         )
                       }
-                      className={inputClass}
+                      className={inputClass(modoOscuro)}
                     >
                       {tiposObra.map(
                         (tipoObra) => (
@@ -1171,7 +1184,7 @@ function SubirProyecto() {
                       )
                     }
                     placeholder="Ej: San Francisco de Campeche, Campeche"
-                    className={inputClass}
+                    className={inputClass(modoOscuro)}
                   />
                 </Campo>
 
@@ -1193,7 +1206,7 @@ function SubirProyecto() {
                     }
                     maxLength={1200}
                     placeholder="Describe el trabajo realizado, materiales, acabados, características principales..."
-                    className={inputClass}
+                    className={inputClass(modoOscuro)}
                   />
 
                   <ContadorTexto
@@ -1212,7 +1225,9 @@ function SubirProyecto() {
             {/* MULTIMEDIA */}
             {/* ================================================= */}
 
-            <section className="border-t border-zinc-800 pt-9">
+            <section className={`border-t pt-9 ${
+              modoOscuro ? "border-zinc-800" : "border-gray-200"
+            }`}>
 
               <TituloSeccion
                 numero="02"
@@ -1241,7 +1256,11 @@ function SubirProyecto() {
 
                   </div>
 
-                  <span className="text-xs bg-black border border-zinc-700 px-3 py-1.5 rounded-full text-zinc-400">
+                  <span className={`text-xs border px-3 py-1.5 rounded-full ${
+                    modoOscuro
+                      ? "bg-black border-zinc-700 text-zinc-400"
+                      : "bg-gray-50 border-gray-300 text-gray-600"
+                  }`}>
                     {totalPrincipales}/{MAX_IMAGENES}
                   </span>
 
@@ -1271,7 +1290,7 @@ function SubirProyecto() {
 
                   </div>
 
-                  <p className="font-bold text-white mt-4">
+                  <p className={`font-bold mt-4 ${modoOscuro ? "text-white" : "text-gray-900"}`}>
                     Agregar imágenes del proyecto
                   </p>
 
@@ -1396,7 +1415,11 @@ function SubirProyecto() {
 
                   </div>
 
-                  <span className="text-xs bg-black border border-zinc-700 px-3 py-1.5 rounded-full text-zinc-400">
+                  <span className={`text-xs border px-3 py-1.5 rounded-full ${
+                    modoOscuro
+                      ? "bg-black border-zinc-700 text-zinc-400"
+                      : "bg-gray-50 border-gray-300 text-gray-600"
+                  }`}>
                     {totalGaleria}/{MAX_GALERIA}
                   </span>
 
@@ -1426,7 +1449,7 @@ function SubirProyecto() {
 
                   </div>
 
-                  <p className="font-bold text-white mt-4">
+                  <p className={`font-bold mt-4 ${modoOscuro ? "text-white" : "text-gray-900"}`}>
                     Agregar diseños relacionados
                   </p>
 
@@ -1532,7 +1555,9 @@ function SubirProyecto() {
             {/* PUBLICACIÓN */}
             {/* ================================================= */}
 
-            <section className="border-t border-zinc-800 pt-9">
+            <section className={`border-t pt-9 ${
+              modoOscuro ? "border-zinc-800" : "border-gray-200"
+            }`}>
 
               <TituloSeccion
                 numero="03"
@@ -1564,7 +1589,9 @@ function SubirProyecto() {
                   ${
                     destacado
                       ? "bg-yellow-500/5 border-yellow-500/50"
-                      : "bg-black border-zinc-700 hover:border-zinc-500"
+                      : modoOscuro
+                      ? "bg-black border-zinc-700 hover:border-zinc-500"
+                      : "bg-gray-50 border-gray-300 hover:border-gray-400"
                   }
                 `}
               >
@@ -1602,7 +1629,7 @@ function SubirProyecto() {
                       Proyecto destacado
                     </p>
 
-                    <p className="text-sm text-zinc-500 mt-1">
+                    <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
                       Los proyectos destacados tendrán mayor presencia visual en el catálogo.
                     </p>
 
@@ -1657,7 +1684,7 @@ function SubirProyecto() {
                       cancelarEdicion
                     }
                     disabled={loading}
-                    className={`${botonBase} sm:w-auto border-zinc-600 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 disabled:opacity-50`}
+                    className={`${botonBase(modoOscuro)} sm:w-auto border-zinc-600 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500 disabled:opacity-50`}
                   >
                     <FaTimes />
 
@@ -1752,7 +1779,7 @@ function SubirProyecto() {
                   )
                 }
                 placeholder="Buscar proyecto, ubicación, categoría..."
-                className={`${inputClass} pl-12 pr-11`}
+                className={`${inputClass(modoOscuro)} pl-12 pr-11`}
               />
 
               {busqueda && (
@@ -1776,7 +1803,7 @@ function SubirProyecto() {
                   e.target.value
                 )
               }
-              className={`${inputClass} md:w-[240px]`}
+              className={`${inputClass(modoOscuro)} md:w-[240px]`}
             >
 
               <option value="Todos">
@@ -1816,7 +1843,11 @@ function SubirProyecto() {
 
           {proyectosFiltrados.length ===
             0 && (
-            <div className="bg-zinc-950 border border-zinc-700 rounded-3xl p-12 text-center">
+            <div className={`border rounded-3xl p-12 text-center ${
+              modoOscuro
+                ? "bg-zinc-950 border-zinc-700"
+                : "bg-white border-gray-200 shadow-sm"
+            }`}>
 
               <FaSearch className="text-zinc-700 text-4xl mx-auto" />
 
@@ -1836,7 +1867,7 @@ function SubirProyecto() {
                     "Todos"
                   );
                 }}
-                className={`${botonBase} mx-auto mt-5 border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500`}
+                className={`${botonBase(modoOscuro)} mx-auto mt-5 border-yellow-500/40 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500`}
               >
                 Ver todos
               </button>
@@ -1854,11 +1885,9 @@ function SubirProyecto() {
               (p) => (
                 <article
                   key={p.id}
-                  className="
+                  className={`
                     group
-                    bg-zinc-950
                     border
-                    border-zinc-700
                     rounded-3xl
                     overflow-hidden
                     hover:border-yellow-500/50
@@ -1866,7 +1895,12 @@ function SubirProyecto() {
                     duration-300
                     hover:-translate-y-1
                     shadow-xl
-                  "
+                    ${
+                      modoOscuro
+                        ? "bg-zinc-950 border-zinc-700"
+                        : "bg-white border-gray-200 shadow-gray-200/70"
+                    }
+                  `}
                 >
 
                   {/* IMAGEN */}
@@ -1974,7 +2008,7 @@ function SubirProyecto() {
                         onClick={() =>
                           handleEdit(p)
                         }
-                        className={`${botonBase} border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500`}
+                        className={`${botonBase(modoOscuro)} border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500`}
                       >
                         <FaEdit />
 
@@ -1988,7 +2022,7 @@ function SubirProyecto() {
                             p.id
                           )
                         }
-                        className={`${botonBase} border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500`}
+                        className={`${botonBase(modoOscuro)} border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500`}
                       >
                         <FaTrash />
 
@@ -2017,24 +2051,24 @@ function SubirProyecto() {
 // ESTILOS
 // ======================================================
 
-const inputClass = `
+const inputClass = (modoOscuro) => `
   w-full
-  bg-zinc-900
   border
-  border-zinc-700
   rounded-2xl
   p-4
-  text-white
-  placeholder:text-zinc-600
   outline-none
   focus:border-yellow-500/70
   focus:ring-2
   focus:ring-yellow-500/10
   transition
+  ${
+    modoOscuro
+      ? "bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-600"
+      : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+  }
 `;
 
-const botonBase = `
-  bg-black
+const botonBase = (modoOscuro) => `
   border
   px-5
   py-3.5
@@ -2048,6 +2082,9 @@ const botonBase = `
   duration-200
   hover:-translate-y-[1px]
   active:translate-y-0
+  ${
+    modoOscuro ? "bg-black" : "bg-white"
+  }
 `;
 
 // ======================================================
@@ -2059,6 +2096,7 @@ function TituloSeccion({
   titulo,
   descripcion,
 }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
     <div className="flex items-start gap-4">
 
@@ -2072,7 +2110,7 @@ function TituloSeccion({
           {titulo}
         </h3>
 
-        <p className="text-sm text-zinc-500 mt-1">
+        <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
           {descripcion}
         </p>
 
@@ -2088,10 +2126,11 @@ function Campo({
   children,
   opcional = false,
 }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
     <div>
 
-      <label className="flex items-center gap-2 text-sm text-zinc-400 mb-2">
+      <label className={`flex items-center gap-2 text-sm mb-2 ${modoOscuro ? "text-zinc-400" : "text-gray-600"}`}>
 
         <span className="text-yellow-500">
           {icon}
@@ -2100,7 +2139,7 @@ function Campo({
         {titulo}
 
         {opcional && (
-          <span className="text-xs text-zinc-600">
+          <span className={`text-xs ${modoOscuro ? "text-zinc-600" : "text-gray-400"}`}>
             (opcional)
           </span>
         )}
@@ -2117,9 +2156,10 @@ function ContadorTexto({
   actual,
   max,
 }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
     <div className="text-right mt-2">
-      <span className="text-xs text-zinc-600">
+      <span className={`text-xs ${modoOscuro ? "text-zinc-600" : "text-gray-400"}`}>
         {actual}/{max}
       </span>
     </div>

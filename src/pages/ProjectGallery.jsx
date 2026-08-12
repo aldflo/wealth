@@ -1,5 +1,6 @@
 import {
   useNavigate,
+  useOutletContext,
 } from "react-router-dom";
 
 import {
@@ -11,6 +12,10 @@ export default function ProjectGallery({
 }) {
   const navigate =
     useNavigate();
+
+  const {
+    modoOscuro,
+  } = useOutletContext() || {};
 
   if (
     !projects.length
@@ -153,27 +158,44 @@ export default function ProjectGallery({
       <div className="mb-3">
 
         <p className="text-[11px] uppercase tracking-[0.18em] text-[#c89b3c] font-bold">
-
           {contieneProyecto
             ? "Proyectos Wealth"
             : "Galería Wealth"}
-
         </p>
 
-        <h3 className="text-lg font-bold text-white mt-1">
+        <h3
+          className={`
+            text-lg
+            font-bold
+            mt-1
 
+            ${
+              modoOscuro
+                ? "text-white"
+                : "text-gray-900"
+            }
+          `}
+        >
           {contieneProyecto
             ? "Proyectos relacionados"
             : "Diseños disponibles"}
-
         </h3>
 
-        <p className="text-xs text-zinc-500 mt-1">
+        <p
+          className={`
+            text-xs
+            mt-1
 
+            ${
+              modoOscuro
+                ? "text-zinc-500"
+                : "text-gray-500"
+            }
+          `}
+        >
           {contieneProyecto
             ? "Proyectos reales publicados por Wealth."
             : "Referencias reales disponibles en nuestra galería."}
-
         </p>
 
       </div>
@@ -189,7 +211,6 @@ export default function ProjectGallery({
           gap-3
         "
       >
-
         {projects.map(
           (
             project,
@@ -200,16 +221,27 @@ export default function ProjectGallery({
                 project.id ||
                 index
               }
-              className="
+              className={`
                 group
                 overflow-hidden
                 rounded-2xl
-                bg-[#151517]
                 border
-                border-zinc-800
                 hover:border-[#c89b3c]/60
                 transition
-              "
+
+                ${
+                  modoOscuro
+                    ? `
+                      bg-[#151517]
+                      border-zinc-800
+                    `
+                    : `
+                      bg-white
+                      border-gray-200
+                      shadow-sm
+                    `
+                }
+              `}
             >
 
               {/* FOTO */}
@@ -221,9 +253,18 @@ export default function ProjectGallery({
                     project
                   )
                 }
-                className="w-full aspect-[4/3] bg-zinc-900 overflow-hidden"
-              >
+                className={`
+                  w-full
+                  aspect-[4/3]
+                  overflow-hidden
 
+                  ${
+                    modoOscuro
+                      ? "bg-zinc-900"
+                      : "bg-gray-100"
+                  }
+                `}
+              >
                 {project.img ? (
                   <img
                     src={
@@ -244,35 +285,80 @@ export default function ProjectGallery({
                     "
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-600 text-sm">
+                  <div
+                    className={`
+                      w-full
+                      h-full
+                      flex
+                      items-center
+                      justify-center
+                      text-sm
+
+                      ${
+                        modoOscuro
+                          ? "text-zinc-600"
+                          : "text-gray-400"
+                      }
+                    `}
+                  >
                     Sin imagen
                   </div>
                 )}
-
               </button>
 
               {/* INFO */}
 
               <div className="p-3">
 
-                <h4 className="font-bold text-white text-sm sm:text-base line-clamp-2">
+                <h4
+                  className={`
+                    font-bold
+                    text-sm
+                    sm:text-base
+                    line-clamp-2
+
+                    ${
+                      modoOscuro
+                        ? "text-white"
+                        : "text-gray-900"
+                    }
+                  `}
+                >
                   {project.title}
                 </h4>
 
                 {project.descripcion && (
-                  <p className="text-xs text-zinc-500 mt-1 line-clamp-2">
-                    {
-                      project.descripcion
-                    }
+                  <p
+                    className={`
+                      text-xs
+                      mt-1
+                      line-clamp-2
+
+                      ${
+                        modoOscuro
+                          ? "text-zinc-500"
+                          : "text-gray-500"
+                      }
+                    `}
+                  >
+                    {project.descripcion}
                   </p>
                 )}
 
                 {project.ubicacion && (
-                  <p className="text-[11px] text-zinc-600 mt-2">
-                    📍{" "}
-                    {
-                      project.ubicacion
-                    }
+                  <p
+                    className={`
+                      text-[11px]
+                      mt-2
+
+                      ${
+                        modoOscuro
+                          ? "text-zinc-600"
+                          : "text-gray-400"
+                      }
+                    `}
+                  >
+                    📍 {project.ubicacion}
                   </p>
                 )}
 
@@ -285,16 +371,27 @@ export default function ProjectGallery({
                         project
                       )
                     }
-                    className="
+                    className={`
                       py-2
                       rounded-xl
                       border
-                      border-zinc-700
                       text-sm
-                      text-zinc-300
-                      hover:border-[#c89b3c]
                       transition
-                    "
+                      hover:border-[#c89b3c]
+
+                      ${
+                        modoOscuro
+                          ? `
+                            border-zinc-700
+                            text-zinc-300
+                          `
+                          : `
+                            border-gray-300
+                            text-gray-700
+                            hover:bg-gray-50
+                          `
+                      }
+                    `}
                   >
                     Ver
                   </button>
@@ -327,34 +424,66 @@ export default function ProjectGallery({
             </article>
           )
         )}
-
       </div>
 
       {/* COTIZACIÓN SIN REFERENCIA */}
 
       <div
-        className="
+        className={`
           mt-4
           p-4
           rounded-2xl
           border
-          border-zinc-800
-          bg-[#0d0d0f]
           flex
           flex-col
           sm:flex-row
           sm:items-center
           sm:justify-between
           gap-3
-        "
+
+          ${
+            modoOscuro
+              ? `
+                border-zinc-800
+                bg-[#0d0d0f]
+              `
+              : `
+                border-gray-200
+                bg-white
+                shadow-sm
+              `
+          }
+        `}
       >
 
         <div>
-          <p className="text-sm font-semibold text-white">
+          <p
+            className={`
+              text-sm
+              font-semibold
+
+              ${
+                modoOscuro
+                  ? "text-white"
+                  : "text-gray-900"
+              }
+            `}
+          >
             ¿Buscas algo diferente?
           </p>
 
-          <p className="text-xs text-zinc-500 mt-1">
+          <p
+            className={`
+              text-xs
+              mt-1
+
+              ${
+                modoOscuro
+                  ? "text-zinc-500"
+                  : "text-gray-500"
+              }
+            `}
+          >
             Puedes solicitar un diseño completamente personalizado.
           </p>
         </div>

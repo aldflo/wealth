@@ -7,6 +7,7 @@ import {
 import {
   Link,
   useNavigate,
+  useOutletContext,
 } from "react-router-dom";
 
 import {
@@ -103,6 +104,8 @@ const telefonoAEmailInterno = (telefonoE164) => {
 ====================================================== */
 
 function Login() {
+  const { modoOscuro = false } = useOutletContext() || {};
+
   const navigate = useNavigate();
 
   /* ======================================================
@@ -1149,7 +1152,8 @@ function Login() {
   ====================================================== */
 
   return (
-    <div className="min-h-screen bg-black text-white overflow-hidden relative">
+    <div className={`min-h-screen overflow-hidden relative transition-colors duration-300 ${modoOscuro ? "bg-black text-white" : "wealth-light bg-gray-50 text-gray-900"}`}>
+      <style>{temaClaroCss}</style>
 
       {/* FONDO */}
 
@@ -1168,7 +1172,7 @@ function Login() {
       {/* CONTENIDO */}
 
       <div className="relative z-20 min-h-screen flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-md bg-zinc-950/95 backdrop-blur-xl border border-zinc-700 rounded-[30px] p-6 sm:p-8 shadow-2xl">
+        <div className={`w-full max-w-md backdrop-blur-xl border rounded-[30px] p-6 sm:p-8 shadow-2xl ${modoOscuro ? "bg-zinc-950/95 border-zinc-700" : "bg-white/95 border-gray-200"}`}>
 
           {/* HEADER */}
 
@@ -1799,6 +1803,69 @@ const botonVolver = `
   items-center
   justify-center
   gap-2
+`;
+
+
+const temaClaroCss = `
+  .wealth-light .bg-black { background-color: #ffffff !important; }
+  .wealth-light .bg-zinc-950 { background-color: #ffffff !important; }
+  .wealth-light .bg-zinc-900 { background-color: #f9fafb !important; }
+  .wealth-light .bg-zinc-800 { background-color: #f3f4f6 !important; }
+  .wealth-light .bg-zinc-700 { background-color: #e5e7eb !important; }
+
+  .wealth-light .bg-zinc-950\\/95 { background-color: rgba(255,255,255,.95) !important; }
+  .wealth-light .bg-zinc-950\\/70 { background-color: rgba(255,255,255,.92) !important; }
+  .wealth-light .bg-zinc-950\\/60 { background-color: rgba(255,255,255,.88) !important; }
+  .wealth-light .bg-zinc-900\\/90 { background-color: rgba(249,250,251,.95) !important; }
+  .wealth-light .bg-zinc-900\\/70 { background-color: rgba(249,250,251,.90) !important; }
+  .wealth-light .bg-zinc-900\\/60 { background-color: rgba(249,250,251,.88) !important; }
+  .wealth-light .bg-zinc-800\\/70 { background-color: rgba(243,244,246,.90) !important; }
+  .wealth-light .bg-zinc-800\\/40 { background-color: rgba(243,244,246,.75) !important; }
+
+  .wealth-light .text-white { color: #111827 !important; }
+  .wealth-light .text-zinc-100 { color: #111827 !important; }
+  .wealth-light .text-zinc-200 { color: #1f2937 !important; }
+  .wealth-light .text-zinc-300 { color: #374151 !important; }
+  .wealth-light .text-zinc-400 { color: #4b5563 !important; }
+  .wealth-light .text-zinc-500 { color: #6b7280 !important; }
+  .wealth-light .text-zinc-600 { color: #9ca3af !important; }
+  .wealth-light .text-zinc-700 { color: #9ca3af !important; }
+  .wealth-light .text-zinc-800 { color: #6b7280 !important; }
+
+  .wealth-light .border-zinc-900 { border-color: #e5e7eb !important; }
+  .wealth-light .border-zinc-800 { border-color: #e5e7eb !important; }
+  .wealth-light .border-zinc-700 { border-color: #d1d5db !important; }
+  .wealth-light .border-zinc-600 { border-color: #d1d5db !important; }
+  .wealth-light .border-white\\/10 { border-color: rgba(17,24,39,.10) !important; }
+  .wealth-light .border-white\\/20 { border-color: rgba(17,24,39,.15) !important; }
+  .wealth-light .border-white\\/30 { border-color: rgba(17,24,39,.20) !important; }
+
+  .wealth-light .hover\\:bg-zinc-900:hover { background-color: #f3f4f6 !important; }
+  .wealth-light .hover\\:bg-zinc-800:hover { background-color: #e5e7eb !important; }
+  .wealth-light .hover\\:bg-zinc-700:hover { background-color: #d1d5db !important; }
+  .wealth-light .hover\\:text-white:hover { color: #111827 !important; }
+  .wealth-light .hover\\:border-zinc-500:hover { border-color: #9ca3af !important; }
+  .wealth-light .hover\\:border-zinc-600:hover { border-color: #9ca3af !important; }
+
+  .wealth-light input,
+  .wealth-light textarea,
+  .wealth-light select {
+    color: #111827;
+    color-scheme: light;
+  }
+
+  .wealth-light input::placeholder,
+  .wealth-light textarea::placeholder {
+    color: #9ca3af !important;
+  }
+
+  .wealth-light option {
+    background-color: #ffffff;
+    color: #111827;
+  }
+
+  /* Los visores de imágenes y overlays con transparencia se mantienen oscuros
+     intencionalmente para conservar contraste sobre fotografías. */
 `;
 
 export default Login;

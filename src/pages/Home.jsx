@@ -7,12 +7,15 @@ import {
 import {
   Link,
   useNavigate,
+  useOutletContext,
 } from "react-router-dom";
 
-import Navbar from "../components/Navbar";
 import wealthLogo from "../assets/wealthlogo.jpeg";
 
-import { auth, db } from "../firebase.config";
+import {
+  auth,
+  db,
+} from "../firebase.config";
 
 import {
   collection,
@@ -39,8 +42,17 @@ import {
   FaPhoneAlt,
 } from "react-icons/fa";
 
+
 function Home() {
-  const navigate = useNavigate();
+
+  const navigate =
+    useNavigate();
+
+  const {
+    modoOscuro,
+  } =
+    useOutletContext();
+
 
   // ======================================================
   // AUTENTICACIÓN
@@ -49,14 +61,20 @@ function Home() {
   const [user, setUser] =
     useState(null);
 
-  const [authReady, setAuthReady] =
+  const [
+    authReady,
+    setAuthReady,
+  ] =
     useState(false);
 
+
   useEffect(() => {
+
     const unsubscribe =
       onAuthStateChanged(
         auth,
         (currentUser) => {
+
           setUser(
             currentUser
           );
@@ -64,28 +82,34 @@ function Home() {
           setAuthReady(
             true
           );
+
         }
       );
 
+
     return () =>
       unsubscribe();
+
   }, []);
+
 
   // ======================================================
   // FIREBASE
   // ======================================================
 
-  const [proyectos, setProyectos] =
+  const [
+    proyectos,
+    setProyectos,
+  ] =
     useState([]);
 
-  /*
-    Aquí guardaremos directamente TODAS las fotos
-    que encontremos dentro de galeria -> imagenes[]
-  */
+
   const [
     fotosGaleria,
     setFotosGaleria,
-  ] = useState([]);
+  ] =
+    useState([]);
+
 
   // ======================================================
   // ROTACIÓN
@@ -94,20 +118,29 @@ function Home() {
   const [
     indiceProyecto,
     setIndiceProyecto,
-  ] = useState(0);
+  ] =
+    useState(0);
+
 
   const [
     indiceGaleria,
     setIndiceGaleria,
-  ] = useState(0);
+  ] =
+    useState(0);
 
-  const PROYECTOS_VISIBLES = 3;
 
-  const FOTOS_VISIBLES = 6;
+  const PROYECTOS_VISIBLES =
+    3;
 
-  const TIEMPO_PROYECTOS = 8000;
+  const FOTOS_VISIBLES =
+    6;
 
-  const TIEMPO_GALERIA = 6500;
+  const TIEMPO_PROYECTOS =
+    8000;
+
+  const TIEMPO_GALERIA =
+    6500;
+
 
   // ======================================================
   // DIVISIONES
@@ -115,216 +148,284 @@ function Home() {
 
   const divisiones = [
     {
-      icon: <FaHardHat size={24} />,
+      icon: (
+        <FaHardHat
+          size={24}
+        />
+      ),
 
-      titulo: "Construcciones",
+      titulo:
+        "Construcciones",
 
       descripcion:
         "Obra civil, infraestructura, urbanización, mantenimiento y soluciones integrales.",
 
-      ruta: "/construcciones",
-    },
-
-    {
-      icon: <FaBuilding size={24} />,
-
-      titulo: "Inmobiliaria",
-
-      descripcion:
-        "Ingeniería, arquitectura, planeación y desarrollo integral de proyectos.",
-
-      ruta: "/inmobiliaria",
+      ruta:
+        "/construcciones",
     },
 
     {
       icon: (
-        <FaDraftingCompass size={24} />
+        <FaBuilding
+          size={24}
+        />
       ),
 
-      titulo: "Aluminios y Vidrios",
+      titulo:
+        "Inmobiliaria",
+
+      descripcion:
+        "Ingeniería, arquitectura, planeación y desarrollo integral de proyectos.",
+
+      ruta:
+        "/inmobiliaria",
+    },
+
+    {
+      icon: (
+        <FaDraftingCompass
+          size={24}
+        />
+      ),
+
+      titulo:
+        "Aluminios y Vidrios",
 
       descripcion:
         "Cancelería, vidrio templado, estructuras de aluminio y diseños personalizados.",
 
-      ruta: "/aluminios",
+      ruta:
+        "/aluminios",
     },
   ];
+
 
   // ======================================================
   // PROYECTOS FIRESTORE
   // ======================================================
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "proyectos"),
 
-      (snapshot) => {
-        const lista =
-          snapshot.docs.map(
-            (documento) => ({
-              id: documento.id,
+    const unsub =
+      onSnapshot(
+        collection(
+          db,
+          "proyectos"
+        ),
 
-              ...documento.data(),
-            })
+        (snapshot) => {
+
+          const lista =
+            snapshot.docs.map(
+              (
+                documento
+              ) => ({
+                id:
+                  documento.id,
+
+                ...documento.data(),
+              })
+            );
+
+
+          lista.sort(
+            (a, b) => {
+
+              if (
+                Boolean(
+                  a.destacado
+                ) !==
+                Boolean(
+                  b.destacado
+                )
+              ) {
+                return b.destacado
+                  ? 1
+                  : -1;
+              }
+
+
+              const fechaA =
+                a.fechaActualizacion
+                  ?.toMillis?.() ||
+                a.fecha
+                  ?.toMillis?.() ||
+                0;
+
+
+              const fechaB =
+                b.fechaActualizacion
+                  ?.toMillis?.() ||
+                b.fecha
+                  ?.toMillis?.() ||
+                0;
+
+
+              return (
+                fechaB -
+                fechaA
+              );
+
+            }
           );
 
-        /*
-          Primero destacados.
-          Después los más recientes.
-        */
 
-        lista.sort((a, b) => {
-          if (
-            Boolean(a.destacado) !==
-            Boolean(b.destacado)
-          ) {
-            return b.destacado
-              ? 1
-              : -1;
-          }
+          setProyectos(
+            lista
+          );
 
-          const fechaA =
-            a.fechaActualizacion
-              ?.toMillis?.() ||
-            a.fecha?.toMillis?.() ||
-            0;
 
-          const fechaB =
-            b.fechaActualizacion
-              ?.toMillis?.() ||
-            b.fecha?.toMillis?.() ||
-            0;
+          setIndiceProyecto(
+            (
+              actual
+            ) => {
 
-          return fechaB - fechaA;
-        });
+              if (
+                actual >=
+                lista.length
+              ) {
+                return 0;
+              }
 
-        setProyectos(lista);
+              return actual;
 
-        setIndiceProyecto(
-          (actual) => {
-            if (
-              actual >=
-              lista.length
-            ) {
-              return 0;
             }
+          );
 
-            return actual;
-          }
-        );
-      },
+        },
 
-      (error) => {
-        console.error(
-          "❌ Error cargando proyectos:",
-          error
-        );
-      }
-    );
+        (error) => {
 
-    return () => unsub();
+          console.error(
+            "❌ Error cargando proyectos:",
+            error
+          );
+
+        }
+      );
+
+
+    return () =>
+      unsub();
+
   }, []);
+
 
   // ======================================================
   // GALERÍA FIRESTORE
   // ======================================================
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      collection(db, "galeria"),
 
-      (snapshot) => {
-        const fotos = [];
+    const unsub =
+      onSnapshot(
+        collection(
+          db,
+          "galeria"
+        ),
 
-        snapshot.docs.forEach(
-          (documento) => {
-            const datos =
-              documento.data();
+        (snapshot) => {
 
-            /*
-              Galeria.jsx utiliza:
+          const fotos =
+            [];
 
-              grupo.imagenes
 
-              como un array.
-            */
+          snapshot.docs.forEach(
+            (
+              documento
+            ) => {
 
-            const imagenes =
-              Array.isArray(
-                datos.imagenes
-              )
-                ? datos.imagenes
-                : [];
+              const datos =
+                documento.data();
 
-            imagenes.forEach(
-              (imagen, index) => {
-                /*
-                  Evitar URLs vacías
-                */
 
-                if (!imagen) return;
+              const imagenes =
+                Array.isArray(
+                  datos.imagenes
+                )
+                  ? datos.imagenes
+                  : [];
 
-                fotos.push({
-                  id: `${documento.id}_${index}`,
 
+              imagenes.forEach(
+                (
                   imagen,
+                  index
+                ) => {
 
-                  categoria:
-                    datos.categoria ||
-                    "Wealth",
+                  if (!imagen)
+                    return;
 
-                  subcategoria:
-                    datos.subcategoria ||
-                    "Diseño",
-                });
-              }
-            );
-          }
-        );
 
-        console.log(
-          "✅ FOTOS GALERÍA HOME:",
-          fotos
-        );
+                  fotos.push({
+                    id:
+                      `${documento.id}_${index}`,
 
-        setFotosGaleria(fotos);
+                    imagen,
 
-        /*
-          Si la galería cambia y el índice
-          queda fuera de rango, regresamos
-          al inicio.
-        */
+                    categoria:
+                      datos.categoria ||
+                      "Wealth",
 
-        setIndiceGaleria(
-          (actual) => {
-            if (
-              actual >=
-              fotos.length
-            ) {
-              return 0;
+                    subcategoria:
+                      datos.subcategoria ||
+                      "Diseño",
+                  });
+
+                }
+              );
+
             }
+          );
 
-            return actual;
-          }
-        );
-      },
 
-      (error) => {
-        console.error(
-          "❌ Error cargando galería en Home:",
-          error
-        );
-      }
-    );
+          setFotosGaleria(
+            fotos
+          );
 
-    return () => unsub();
+
+          setIndiceGaleria(
+            (
+              actual
+            ) => {
+
+              if (
+                actual >=
+                fotos.length
+              ) {
+                return 0;
+              }
+
+              return actual;
+
+            }
+          );
+
+        },
+
+        (error) => {
+
+          console.error(
+            "❌ Error cargando galería en Home:",
+            error
+          );
+
+        }
+      );
+
+
+    return () =>
+      unsub();
+
   }, []);
+
 
   // ======================================================
   // ROTACIÓN AUTOMÁTICA PROYECTOS
   // ======================================================
 
   useEffect(() => {
+
     if (
       proyectos.length <=
       PROYECTOS_VISIBLES
@@ -332,37 +433,55 @@ function Home() {
       return;
     }
 
+
     const intervalo =
-      setInterval(() => {
-        setIndiceProyecto(
-          (actual) => {
-            const siguiente =
-              actual +
-              PROYECTOS_VISIBLES;
+      setInterval(
+        () => {
 
-            if (
-              siguiente >=
-              proyectos.length
-            ) {
-              return 0;
+          setIndiceProyecto(
+            (
+              actual
+            ) => {
+
+              const siguiente =
+                actual +
+                PROYECTOS_VISIBLES;
+
+
+              if (
+                siguiente >=
+                proyectos.length
+              ) {
+                return 0;
+              }
+
+
+              return siguiente;
+
             }
+          );
 
-            return siguiente;
-          }
-        );
-      }, TIEMPO_PROYECTOS);
+        },
+        TIEMPO_PROYECTOS
+      );
+
 
     return () =>
       clearInterval(
         intervalo
       );
-  }, [proyectos]);
+
+  }, [
+    proyectos,
+  ]);
+
 
   // ======================================================
   // ROTACIÓN AUTOMÁTICA GALERÍA
   // ======================================================
 
   useEffect(() => {
+
     if (
       fotosGaleria.length <=
       FOTOS_VISIBLES
@@ -370,123 +489,152 @@ function Home() {
       return;
     }
 
+
     const intervalo =
-      setInterval(() => {
-        setIndiceGaleria(
-          (actual) => {
-            const siguiente =
-              actual +
-              FOTOS_VISIBLES;
+      setInterval(
+        () => {
 
-            if (
-              siguiente >=
-              fotosGaleria.length
-            ) {
-              return 0;
+          setIndiceGaleria(
+            (
+              actual
+            ) => {
+
+              const siguiente =
+                actual +
+                FOTOS_VISIBLES;
+
+
+              if (
+                siguiente >=
+                fotosGaleria.length
+              ) {
+                return 0;
+              }
+
+
+              return siguiente;
+
             }
+          );
 
-            return siguiente;
-          }
-        );
-      }, TIEMPO_GALERIA);
+        },
+        TIEMPO_GALERIA
+      );
+
 
     return () =>
       clearInterval(
         intervalo
       );
-  }, [fotosGaleria]);
+
+  }, [
+    fotosGaleria,
+  ]);
+
 
   // ======================================================
   // PROYECTOS VISIBLES
   // ======================================================
 
   const proyectosVisibles =
-    useMemo(() => {
-      if (
-        proyectos.length <=
-        PROYECTOS_VISIBLES
-      ) {
-        return proyectos;
-      }
+    useMemo(
+      () => {
 
-      let visibles =
-        proyectos.slice(
-          indiceProyecto,
-          indiceProyecto +
-            PROYECTOS_VISIBLES
-        );
+        if (
+          proyectos.length <=
+          PROYECTOS_VISIBLES
+        ) {
+          return proyectos;
+        }
 
-      /*
-        Si estamos al final y faltan tarjetas,
-        completar con proyectos del inicio.
-      */
 
-      if (
-        visibles.length <
-        PROYECTOS_VISIBLES
-      ) {
-        visibles = [
-          ...visibles,
+        let visibles =
+          proyectos.slice(
+            indiceProyecto,
+            indiceProyecto +
+              PROYECTOS_VISIBLES
+          );
 
-          ...proyectos.slice(
-            0,
-            PROYECTOS_VISIBLES -
-              visibles.length
-          ),
-        ];
-      }
 
-      return visibles;
-    }, [
-      proyectos,
-      indiceProyecto,
-    ]);
+        if (
+          visibles.length <
+          PROYECTOS_VISIBLES
+        ) {
+
+          visibles = [
+            ...visibles,
+
+            ...proyectos.slice(
+              0,
+              PROYECTOS_VISIBLES -
+                visibles.length
+            ),
+          ];
+
+        }
+
+
+        return visibles;
+
+      },
+      [
+        proyectos,
+        indiceProyecto,
+      ]
+    );
+
 
   // ======================================================
   // FOTOS VISIBLES
   // ======================================================
 
   const fotosVisibles =
-    useMemo(() => {
-      if (
-        fotosGaleria.length <=
-        FOTOS_VISIBLES
-      ) {
-        return fotosGaleria;
-      }
+    useMemo(
+      () => {
 
-      let visibles =
-        fotosGaleria.slice(
-          indiceGaleria,
-          indiceGaleria +
-            FOTOS_VISIBLES
-        );
+        if (
+          fotosGaleria.length <=
+          FOTOS_VISIBLES
+        ) {
+          return fotosGaleria;
+        }
 
-      /*
-        Si estamos al final y faltan fotos,
-        completar con fotografías iniciales.
-      */
 
-      if (
-        visibles.length <
-        FOTOS_VISIBLES
-      ) {
-        visibles = [
-          ...visibles,
+        let visibles =
+          fotosGaleria.slice(
+            indiceGaleria,
+            indiceGaleria +
+              FOTOS_VISIBLES
+          );
 
-          ...fotosGaleria.slice(
-            0,
-            FOTOS_VISIBLES -
-              visibles.length
-          ),
-        ];
-      }
 
-      return visibles;
-    }, [
-      fotosGaleria,
-      indiceGaleria,
-    ]);
+        if (
+          visibles.length <
+          FOTOS_VISIBLES
+        ) {
+
+          visibles = [
+            ...visibles,
+
+            ...fotosGaleria.slice(
+              0,
+              FOTOS_VISIBLES -
+                visibles.length
+            ),
+          ];
+
+        }
+
+
+        return visibles;
+
+      },
+      [
+        fotosGaleria,
+        indiceGaleria,
+      ]
+    );
+
 
   // ======================================================
   // ANTERIOR PROYECTOS
@@ -494,6 +642,7 @@ function Home() {
 
   const proyectosAnteriores =
     () => {
+
       if (
         proyectos.length <=
         PROYECTOS_VISIBLES
@@ -501,29 +650,43 @@ function Home() {
         return;
       }
 
+
       setIndiceProyecto(
-        (actual) => {
+        (
+          actual
+        ) => {
+
           const anterior =
             actual -
             PROYECTOS_VISIBLES;
 
-          if (anterior < 0) {
+
+          if (
+            anterior < 0
+          ) {
+
             const ultimaPagina =
               Math.ceil(
                 proyectos.length /
                   PROYECTOS_VISIBLES
               ) - 1;
 
+
             return (
               ultimaPagina *
               PROYECTOS_VISIBLES
             );
+
           }
 
+
           return anterior;
+
         }
       );
+
     };
+
 
   // ======================================================
   // SIGUIENTE PROYECTOS
@@ -531,6 +694,7 @@ function Home() {
 
   const proyectosSiguientes =
     () => {
+
       if (
         proyectos.length <=
         PROYECTOS_VISIBLES
@@ -538,11 +702,16 @@ function Home() {
         return;
       }
 
+
       setIndiceProyecto(
-        (actual) => {
+        (
+          actual
+        ) => {
+
           const siguiente =
             actual +
             PROYECTOS_VISIBLES;
+
 
           if (
             siguiente >=
@@ -551,83 +720,115 @@ function Home() {
             return 0;
           }
 
+
           return siguiente;
+
         }
       );
+
     };
+
 
   // ======================================================
   // ANTERIOR GALERÍA
   // ======================================================
 
-  const galeriaAnterior = () => {
-    if (
-      fotosGaleria.length <=
-      FOTOS_VISIBLES
-    ) {
-      return;
-    }
+  const galeriaAnterior =
+    () => {
 
-    setIndiceGaleria(
-      (actual) => {
-        const anterior =
-          actual -
-          FOTOS_VISIBLES;
-
-        if (anterior < 0) {
-          const ultimaPagina =
-            Math.ceil(
-              fotosGaleria.length /
-                FOTOS_VISIBLES
-            ) - 1;
-
-          return (
-            ultimaPagina *
-            FOTOS_VISIBLES
-          );
-        }
-
-        return anterior;
+      if (
+        fotosGaleria.length <=
+        FOTOS_VISIBLES
+      ) {
+        return;
       }
-    );
-  };
+
+
+      setIndiceGaleria(
+        (
+          actual
+        ) => {
+
+          const anterior =
+            actual -
+            FOTOS_VISIBLES;
+
+
+          if (
+            anterior < 0
+          ) {
+
+            const ultimaPagina =
+              Math.ceil(
+                fotosGaleria.length /
+                  FOTOS_VISIBLES
+              ) - 1;
+
+
+            return (
+              ultimaPagina *
+              FOTOS_VISIBLES
+            );
+
+          }
+
+
+          return anterior;
+
+        }
+      );
+
+    };
+
 
   // ======================================================
   // SIGUIENTE GALERÍA
   // ======================================================
 
-  const galeriaSiguiente = () => {
-    if (
-      fotosGaleria.length <=
-      FOTOS_VISIBLES
-    ) {
-      return;
-    }
+  const galeriaSiguiente =
+    () => {
 
-    setIndiceGaleria(
-      (actual) => {
-        const siguiente =
-          actual +
-          FOTOS_VISIBLES;
-
-        if (
-          siguiente >=
-          fotosGaleria.length
-        ) {
-          return 0;
-        }
-
-        return siguiente;
+      if (
+        fotosGaleria.length <=
+        FOTOS_VISIBLES
+      ) {
+        return;
       }
-    );
-  };
+
+
+      setIndiceGaleria(
+        (
+          actual
+        ) => {
+
+          const siguiente =
+            actual +
+            FOTOS_VISIBLES;
+
+
+          if (
+            siguiente >=
+            fotosGaleria.length
+          ) {
+            return 0;
+          }
+
+
+          return siguiente;
+
+        }
+      );
+
+    };
+
 
   // ======================================================
-  // CONTROL DE ACCESO A COTIZACIONES
+  // COTIZACIONES
   // ======================================================
 
   const irALoginParaCotizar =
     () => {
+
       navigate(
         "/login",
         {
@@ -637,39 +838,55 @@ function Home() {
           },
         }
       );
+
     };
+
 
   const abrirCrearCotizacion =
     () => {
-      if (!authReady) {
+
+      if (
+        !authReady
+      ) {
         return;
       }
 
+
       if (!user) {
+
         irALoginParaCotizar();
+
         return;
+
       }
+
 
       navigate(
         "/crear-cotizacion"
       );
+
     };
 
-  // ======================================================
-  // COTIZAR PROYECTO
-  // ======================================================
 
   const solicitarCotizacion =
-    (proyecto) => {
-      if (!authReady) {
+    (
+      proyecto
+    ) => {
+
+      if (
+        !authReady
+      ) {
         return;
       }
 
+
       if (!user) {
+
         navigate(
           "/login",
           {
             state: {
+
               mensaje:
                 "Inicia sesión para cotizar este proyecto.",
 
@@ -693,19 +910,25 @@ function Home() {
                   proyecto.imagenes ||
                   [],
               },
+
             },
           }
         );
 
+
         return;
+
       }
+
 
       navigate(
         "/crear-cotizacion",
         {
           state: {
+
             proyecto: {
-              id: proyecto.id,
+              id:
+                proyecto.id,
 
               nombre:
                 proyecto.nombre,
@@ -723,34 +946,58 @@ function Home() {
                 proyecto.imagenes ||
                 [],
             },
+
           },
         }
       );
+
     };
+
 
   // ======================================================
   // RENDER
   // ======================================================
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div
+      className={`
+        min-h-screen
+        transition-colors
+        duration-300
 
-      {/* ================================================= */}
-      {/* NAVBAR */}
-      {/* ================================================= */}
-
-      <Navbar />
+        ${
+          modoOscuro
+            ? `
+              bg-black
+              text-white
+            `
+            : `
+              bg-gray-50
+              text-gray-900
+            `
+        }
+      `}
+    >
 
       {/* ================================================= */}
       {/* HERO */}
       {/* ================================================= */}
 
-      <section className="relative overflow-hidden border-b border-zinc-900">
-
-        {/* FONDO */}
+      <section
+        className="
+          relative
+          overflow-hidden
+          border-b
+          border-zinc-900
+          bg-black
+          text-white
+        "
+      >
 
         <img
-          src={wealthLogo}
+          src={
+            wealthLogo
+          }
           alt="Wealth Grupo Empresarial"
           className="
             absolute
@@ -764,15 +1011,22 @@ function Home() {
           "
         />
 
-        {/* OVERLAY */}
 
         <div className="absolute inset-0 bg-gradient-to-r from-black via-black/95 md:via-black/80 to-black/35" />
 
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/30" />
 
-        {/* LÍNEAS */}
 
-        <div className="absolute inset-0 overflow-hidden hidden lg:block pointer-events-none">
+        <div
+          className="
+            absolute
+            inset-0
+            overflow-hidden
+            hidden
+            lg:block
+            pointer-events-none
+          "
+        >
 
           <div className="absolute w-[170%] h-[3px] bg-[#c89b3c] rotate-[27deg] top-[19%] -left-60 opacity-45" />
 
@@ -784,7 +1038,6 @@ function Home() {
 
         </div>
 
-        {/* CONTENIDO */}
 
         <div
           className="
@@ -804,8 +1057,11 @@ function Home() {
           <div className="max-w-3xl">
 
             <p className="text-[#c89b3c] uppercase tracking-[0.32em] text-xs font-semibold mb-4">
+
               Wealth Grupo Empresarial
+
             </p>
+
 
             <h1
               className="
@@ -818,63 +1074,82 @@ function Home() {
                 tracking-tight
               "
             >
+
               Construcción,
               innovación{" "}
 
               <span className="text-[#c89b3c]">
+
                 y desarrollo integral.
+
               </span>
 
             </h1>
 
+
             <p className="text-zinc-300 text-base md:text-lg leading-relaxed max-w-2xl mt-5">
 
               En Wealth integramos
-              construcción, ingeniería,
-              desarrollo inmobiliario y
-              soluciones en aluminio y
-              vidrio para transformar ideas
-              en proyectos funcionales,
-              modernos y duraderos.
+              construcción,
+              ingeniería,
+              desarrollo inmobiliario
+              y soluciones en aluminio
+              y vidrio para transformar
+              ideas en proyectos
+              funcionales, modernos
+              y duraderos.
 
             </p>
 
-            {/* BOTONES */}
 
             <div className="flex flex-col sm:flex-row flex-wrap gap-3 mt-7">
 
               <Link
                 to="/proyectos"
                 className={`
-                  ${botonBase}
+                  ${botonBase(
+                    true
+                  )}
+
                   border-[#c89b3c]
                   text-[#d6ab4c]
+
                   hover:bg-[#c89b3c]/10
                 `}
               >
+
                 <FaImages />
 
                 Explorar proyectos
 
                 <FaArrowRight />
+
               </Link>
+
 
               <Link
                 to="/galeria"
                 className={`
-                  ${botonBase}
+                  ${botonBase(
+                    true
+                  )}
+
                   border-zinc-700
                   text-zinc-200
+
                   hover:border-[#c89b3c]/70
                   hover:text-[#d6ab4c]
                 `}
               >
+
                 <FaImages />
 
                 Explorar galería de fotos
 
                 <FaArrowRight />
+
               </Link>
+
 
               <button
                 type="button"
@@ -885,20 +1160,27 @@ function Home() {
                   !authReady
                 }
                 className={`
-                  ${botonBase}
+                  ${botonBase(
+                    true
+                  )}
+
                   border-zinc-600
                   text-white
+
                   hover:border-[#c89b3c]/70
                   hover:text-[#d6ab4c]
+
                   disabled:opacity-50
                   disabled:cursor-wait
                 `}
               >
+
                 <FaFileInvoiceDollar />
 
                 {user
                   ? "Solicitar cotización"
                   : "Inicia sesión para cotizar"}
+
               </button>
 
             </div>
@@ -909,11 +1191,13 @@ function Home() {
 
       </section>
 
+
       {/* ================================================= */}
       {/* CONTENIDO */}
       {/* ================================================= */}
 
       <main className="max-w-7xl mx-auto px-5 md:px-8">
+
 
         {/* ================================================= */}
         {/* DIVISIONES */}
@@ -924,23 +1208,50 @@ function Home() {
           <div className="mb-6">
 
             <p className="text-xs uppercase tracking-[0.25em] text-[#c89b3c] font-semibold">
+
               Grupo Wealth
+
             </p>
 
+
             <h2 className="text-3xl md:text-4xl font-bold mt-2">
-              Una empresa. Tres divisiones.
+
+              Una empresa.
+              Tres divisiones.
+
             </h2>
 
-            <p className="text-zinc-500 mt-2 max-w-2xl">
-              Soluciones integrales para desarrollar proyectos desde la idea hasta su ejecución.
+
+            <p
+              className={`
+                mt-2
+                max-w-2xl
+
+                ${
+                  modoOscuro
+                    ? "text-zinc-500"
+                    : "text-gray-600"
+                }
+              `}
+            >
+
+              Soluciones integrales
+              para desarrollar
+              proyectos desde la idea
+              hasta su ejecución.
+
             </p>
 
           </div>
 
+
           <div className="grid md:grid-cols-3 gap-4">
 
             {divisiones.map(
-              (division) => (
+              (
+                division
+              ) => (
+
                 <Link
                   key={
                     division.titulo
@@ -948,23 +1259,54 @@ function Home() {
                   to={
                     division.ruta
                   }
-                  className="
+                  className={`
                     group
-                    bg-zinc-950
                     border
-                    border-zinc-800
                     hover:border-[#c89b3c]/60
                     rounded-2xl
                     p-5
+
                     transition-all
                     duration-300
+
                     hover:-translate-y-[2px]
-                  "
+
+                    ${
+                      modoOscuro
+                        ? `
+                          bg-zinc-950
+                          border-zinc-800
+                        `
+                        : `
+                          bg-white
+                          border-gray-200
+                          shadow-sm
+                        `
+                    }
+                  `}
                 >
 
                   <div className="flex items-start gap-4">
 
-                    <div className="w-12 h-12 shrink-0 rounded-xl bg-[#c89b3c]/10 border border-[#c89b3c]/20 text-[#d6ab4c] flex items-center justify-center">
+                    <div
+                      className="
+                        w-12
+                        h-12
+                        shrink-0
+                        rounded-xl
+
+                        bg-[#c89b3c]/10
+
+                        border
+                        border-[#c89b3c]/20
+
+                        text-[#d6ab4c]
+
+                        flex
+                        items-center
+                        justify-center
+                      "
+                    >
 
                       {
                         division.icon
@@ -972,23 +1314,42 @@ function Home() {
 
                     </div>
 
+
                     <div>
 
                       <h3 className="text-xl font-bold">
+
                         {
                           division.titulo
                         }
+
                       </h3>
 
-                      <p className="text-zinc-500 text-sm mt-2 leading-relaxed">
+
+                      <p
+                        className={`
+                          text-sm
+                          mt-2
+                          leading-relaxed
+
+                          ${
+                            modoOscuro
+                              ? "text-zinc-500"
+                              : "text-gray-600"
+                          }
+                        `}
+                      >
+
                         {
                           division.descripcion
                         }
+
                       </p>
 
                     </div>
 
                   </div>
+
 
                   <div className="flex items-center gap-2 text-sm text-[#d6ab4c] mt-5">
 
@@ -999,12 +1360,14 @@ function Home() {
                   </div>
 
                 </Link>
+
               )
             )}
 
           </div>
 
         </section>
+
 
         {/* ================================================= */}
         {/* CONFIANZA */}
@@ -1015,6 +1378,9 @@ function Home() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
             <MiniBeneficio
+              modoOscuro={
+                modoOscuro
+              }
               icon={
                 <FaCheckCircle />
               }
@@ -1022,7 +1388,11 @@ function Home() {
               texto="Diseño y ejecución"
             />
 
+
             <MiniBeneficio
+              modoOscuro={
+                modoOscuro
+              }
               icon={
                 <FaShieldAlt />
               }
@@ -1030,7 +1400,11 @@ function Home() {
               texto="Seguimiento personalizado"
             />
 
+
             <MiniBeneficio
+              modoOscuro={
+                modoOscuro
+              }
               icon={
                 <FaFileInvoiceDollar />
               }
@@ -1038,7 +1412,11 @@ function Home() {
               texto="Proceso claro"
             />
 
+
             <MiniBeneficio
+              modoOscuro={
+                modoOscuro
+              }
               icon={
                 <FaMapMarkerAlt />
               }
@@ -1050,7 +1428,19 @@ function Home() {
 
         </section>
 
-        <div className="border-t border-zinc-900" />
+
+        <div
+          className={`
+            border-t
+
+            ${
+              modoOscuro
+                ? "border-zinc-900"
+                : "border-gray-200"
+            }
+          `}
+        />
+
 
         {/* ================================================= */}
         {/* PROYECTOS */}
@@ -1063,36 +1453,60 @@ function Home() {
             <div>
 
               <p className="text-xs uppercase tracking-[0.25em] text-[#c89b3c] font-semibold">
+
                 Nuestro trabajo
+
               </p>
 
+
               <h2 className="text-3xl md:text-4xl font-bold mt-2">
+
                 Proyectos recientes
+
               </h2>
 
-              <p className="text-zinc-500 mt-2">
-                Conoce algunos proyectos desarrollados por Wealth.
+
+              <p
+                className={`
+                  mt-2
+
+                  ${
+                    modoOscuro
+                      ? "text-zinc-500"
+                      : "text-gray-600"
+                  }
+                `}
+              >
+
+                Conoce algunos
+                proyectos desarrollados
+                por Wealth.
+
               </p>
 
             </div>
+
 
             <div className="flex flex-wrap gap-2">
 
               {proyectos.length >
                 PROYECTOS_VISIBLES && (
                 <>
+
                   <button
                     type="button"
                     onClick={
                       proyectosAnteriores
                     }
                     className={
-                      botonCuadrado
+                      botonCuadrado(
+                        modoOscuro
+                      )
                     }
-                    aria-label="Proyectos anteriores"
                   >
                     <FaChevronLeft />
                   </button>
+
 
                   <button
                     type="button"
@@ -1100,36 +1514,56 @@ function Home() {
                       proyectosSiguientes
                     }
                     className={
-                      botonCuadrado
+                      botonCuadrado(
+                        modoOscuro
+                      )
                     }
-                    aria-label="Proyectos siguientes"
                   >
                     <FaChevronRight />
                   </button>
+
                 </>
               )}
+
 
               <Link
                 to="/proyectos"
                 className={`
-                  ${botonBase}
-                  border-zinc-600
-                  text-zinc-300
+                  ${botonBase(
+                    modoOscuro
+                  )}
+
+                  ${
+                    modoOscuro
+                      ? `
+                        border-zinc-600
+                        text-zinc-300
+                      `
+                      : `
+                        border-gray-300
+                        text-gray-700
+                      `
+                  }
+
                   hover:text-[#d6ab4c]
                   hover:border-[#c89b3c]/60
                 `}
               >
+
                 Ver todos
 
                 <FaArrowRight />
+
               </Link>
 
             </div>
 
           </div>
 
+
           {proyectos.length >
           0 ? (
+
             <div
               key={
                 indiceProyecto
@@ -1138,26 +1572,41 @@ function Home() {
             >
 
               {proyectosVisibles.map(
-                (proyecto) => (
+                (
+                  proyecto
+                ) => (
+
                   <article
                     key={
                       proyecto.id
                     }
-                    className="
+                    className={`
                       group
-                      bg-zinc-950
                       border
-                      border-zinc-800
                       hover:border-[#c89b3c]/60
+
                       rounded-2xl
                       overflow-hidden
+
                       transition-all
                       duration-300
-                      hover:-translate-y-[2px]
-                    "
-                  >
 
-                    {/* IMAGEN */}
+                      hover:-translate-y-[2px]
+
+                      ${
+                        modoOscuro
+                          ? `
+                            bg-zinc-950
+                            border-zinc-800
+                          `
+                          : `
+                            bg-white
+                            border-gray-200
+                            shadow-sm
+                          `
+                      }
+                    `}
+                  >
 
                     <button
                       type="button"
@@ -1166,10 +1615,24 @@ function Home() {
                           `/proyecto/${proyecto.id}`
                         )
                       }
-                      className="relative block w-full h-52 md:h-56 bg-zinc-900 overflow-hidden"
+                      className={`
+                        relative
+                        block
+                        w-full
+                        h-52
+                        md:h-56
+                        overflow-hidden
+
+                        ${
+                          modoOscuro
+                            ? "bg-zinc-900"
+                            : "bg-gray-100"
+                        }
+                      `}
                     >
 
                       {proyecto.imagen ? (
+
                         <img
                           src={
                             proyecto.imagen
@@ -1181,19 +1644,24 @@ function Home() {
                           loading="lazy"
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
+
                       ) : (
+
                         <div className="w-full h-full flex items-center justify-center">
 
-                          <FaBuilding className="text-zinc-700 text-5xl" />
+                          <FaBuilding className="text-gray-400 text-5xl" />
 
                         </div>
+
                       )}
+
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
 
+
                       <div className="absolute top-3 left-3 flex gap-2">
 
-                        <span className="bg-black/80 border border-white/10 px-2.5 py-1 rounded-full text-[11px]">
+                        <span className="bg-black/80 text-white border border-white/10 px-2.5 py-1 rounded-full text-[11px]">
 
                           {
                             proyecto.categoria ||
@@ -1202,21 +1670,25 @@ function Home() {
 
                         </span>
 
+
                         {proyecto.destacado && (
+
                           <span className="bg-[#c89b3c] text-black px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1">
 
-                            <FaStar size={10} />
+                            <FaStar
+                              size={10}
+                            />
 
                             Destacado
 
                           </span>
+
                         )}
 
                       </div>
 
                     </button>
 
-                    {/* INFO */}
 
                     <div className="p-5">
 
@@ -1228,7 +1700,21 @@ function Home() {
 
                       </h3>
 
-                      <p className="text-zinc-400 text-sm mt-2 line-clamp-2 min-h-[40px]">
+
+                      <p
+                        className={`
+                          text-sm
+                          mt-2
+                          line-clamp-2
+                          min-h-[40px]
+
+                          ${
+                            modoOscuro
+                              ? "text-zinc-400"
+                              : "text-gray-600"
+                          }
+                        `}
+                      >
 
                         {
                           proyecto.descripcion
@@ -1236,7 +1722,22 @@ function Home() {
 
                       </p>
 
-                      <div className="flex items-center gap-2 text-zinc-500 text-xs mt-4">
+
+                      <div
+                        className={`
+                          flex
+                          items-center
+                          gap-2
+                          text-xs
+                          mt-4
+
+                          ${
+                            modoOscuro
+                              ? "text-zinc-500"
+                              : "text-gray-500"
+                          }
+                        `}
+                      >
 
                         <FaMapMarkerAlt className="text-[#d6ab4c]" />
 
@@ -1251,6 +1752,7 @@ function Home() {
 
                       </div>
 
+
                       <div className="grid grid-cols-2 gap-2.5 mt-5">
 
                         <button
@@ -1261,17 +1763,33 @@ function Home() {
                             )
                           }
                           className={`
-                            ${botonCompacto}
-                            border-zinc-600
-                            text-zinc-300
-                            hover:text-blue-400
+                            ${botonCompacto(
+                              modoOscuro
+                            )}
+
+                            ${
+                              modoOscuro
+                                ? `
+                                  border-zinc-600
+                                  text-zinc-300
+                                `
+                                : `
+                                  border-gray-300
+                                  text-gray-700
+                                `
+                            }
+
+                            hover:text-blue-500
                             hover:border-blue-500/50
                           `}
                         >
+
                           Ver
 
                           <FaArrowRight />
+
                         </button>
+
 
                         <button
                           type="button"
@@ -1281,17 +1799,23 @@ function Home() {
                             )
                           }
                           className={`
-                            ${botonCompacto}
+                            ${botonCompacto(
+                              modoOscuro
+                            )}
+
                             border-[#c89b3c]/60
                             text-[#d6ab4c]
+
                             hover:bg-[#c89b3c]/10
                           `}
                         >
+
                           <FaFileInvoiceDollar />
 
                           {user
                             ? "Cotizar"
                             : "Iniciar sesión"}
+
                         </button>
 
                       </div>
@@ -1299,31 +1823,83 @@ function Home() {
                     </div>
 
                   </article>
+
                 )
               )}
 
             </div>
+
           ) : (
-            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl py-10 text-center">
 
-              <FaBuilding className="text-zinc-700 text-4xl mx-auto" />
+            <div
+              className={`
+                border
+                rounded-2xl
+                py-10
+                text-center
 
-              <p className="text-zinc-500 mt-4">
-                Próximamente nuevos proyectos.
+                ${
+                  modoOscuro
+                    ? `
+                      bg-zinc-950
+                      border-zinc-800
+                    `
+                    : `
+                      bg-white
+                      border-gray-200
+                      shadow-sm
+                    `
+                }
+              `}
+            >
+
+              <FaBuilding className="text-gray-400 text-4xl mx-auto" />
+
+
+              <p
+                className={`
+                  mt-4
+
+                  ${
+                    modoOscuro
+                      ? "text-zinc-500"
+                      : "text-gray-600"
+                  }
+                `}
+              >
+
+                Próximamente
+                nuevos proyectos.
+
               </p>
 
             </div>
+
           )}
 
         </section>
 
-        <div className="border-t border-zinc-900" />
+
+        <div
+          className={`
+            border-t
+
+            ${
+              modoOscuro
+                ? "border-zinc-900"
+                : "border-gray-200"
+            }
+          `}
+        />
+
 
         {/* ================================================= */}
-        {/* GALERÍA HOME */}
+        {/* GALERÍA */}
         {/* ================================================= */}
 
-        {fotosGaleria.length > 0 && (
+        {fotosGaleria.length >
+          0 && (
+
           <section className="py-8">
 
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
@@ -1336,39 +1912,55 @@ function Home() {
 
                 </p>
 
+
                 <h2 className="text-3xl md:text-4xl font-bold mt-2">
 
                   Ideas y diseños
 
                 </h2>
 
-                <p className="text-zinc-500 mt-2">
 
-                  Explora trabajos y referencias para tu próximo proyecto.
+                <p
+                  className={`
+                    mt-2
+
+                    ${
+                      modoOscuro
+                        ? "text-zinc-500"
+                        : "text-gray-600"
+                    }
+                  `}
+                >
+
+                  Explora trabajos y
+                  referencias para tu
+                  próximo proyecto.
 
                 </p>
 
               </div>
 
-              <div className="flex items-center gap-2">
 
-                {/* FLECHAS GALERÍA */}
+              <div className="flex items-center gap-2">
 
                 {fotosGaleria.length >
                   FOTOS_VISIBLES && (
                   <>
+
                     <button
                       type="button"
                       onClick={
                         galeriaAnterior
                       }
                       className={
-                        botonCuadrado
+                        botonCuadrado(
+                          modoOscuro
+                        )
                       }
-                      aria-label="Fotos anteriores"
                     >
                       <FaChevronLeft />
                     </button>
+
 
                     <button
                       type="button"
@@ -1376,39 +1968,54 @@ function Home() {
                         galeriaSiguiente
                       }
                       className={
-                        botonCuadrado
+                        botonCuadrado(
+                          modoOscuro
+                        )
                       }
-                      aria-label="Fotos siguientes"
                     >
                       <FaChevronRight />
                     </button>
+
                   </>
                 )}
+
 
                 <Link
                   to="/galeria"
                   className={`
-                    ${botonBase}
-                    border-zinc-600
-                    text-zinc-300
+                    ${botonBase(
+                      modoOscuro
+                    )}
+
+                    ${
+                      modoOscuro
+                        ? `
+                          border-zinc-600
+                          text-zinc-300
+                        `
+                        : `
+                          border-gray-300
+                          text-gray-700
+                        `
+                    }
+
                     hover:text-[#d6ab4c]
                     hover:border-[#c89b3c]/60
                   `}
                 >
+
                   <FaImages />
 
                   Ver galería
 
                   <FaArrowRight />
+
                 </Link>
 
               </div>
 
             </div>
 
-            {/* ================================================= */}
-            {/* FOTOS */}
-            {/* ================================================= */}
 
             <div
               key={
@@ -1424,26 +2031,44 @@ function Home() {
             >
 
               {fotosVisibles.map(
-                (foto) => (
+                (
+                  foto
+                ) => (
+
                   <Link
                     key={
                       foto.id
                     }
                     to="/galeria"
-                    className="
+                    className={`
                       group
                       relative
                       aspect-square
                       overflow-hidden
                       rounded-2xl
+
                       border
-                      border-zinc-800
+
                       hover:border-[#c89b3c]/60
-                      bg-zinc-900
+
                       transition-all
                       duration-300
+
                       hover:-translate-y-[2px]
-                    "
+
+                      ${
+                        modoOscuro
+                          ? `
+                            border-zinc-800
+                            bg-zinc-900
+                          `
+                          : `
+                            border-gray-200
+                            bg-gray-100
+                            shadow-sm
+                          `
+                      }
+                    `}
                   >
 
                     <img
@@ -1459,30 +2084,33 @@ function Home() {
                         w-full
                         h-full
                         object-cover
+
                         transition-transform
                         duration-500
+
                         group-hover:scale-105
                       "
                     />
 
-                    {/* OVERLAY */}
 
                     <div
                       className="
                         absolute
                         inset-0
+
                         bg-gradient-to-t
                         from-black/85
                         via-black/10
                         to-transparent
+
                         opacity-0
                         group-hover:opacity-100
+
                         transition-opacity
                         duration-300
                       "
                     />
 
-                    {/* INFORMACIÓN */}
 
                     <div
                       className="
@@ -1493,6 +2121,8 @@ function Home() {
 
                         translate-y-2
                         opacity-0
+
+                        text-white
 
                         group-hover:translate-y-0
                         group-hover:opacity-100
@@ -1510,6 +2140,7 @@ function Home() {
 
                       </p>
 
+
                       <p className="text-sm font-semibold line-clamp-1 mt-0.5">
 
                         {
@@ -1521,16 +2152,26 @@ function Home() {
                     </div>
 
                   </Link>
+
                 )
               )}
 
             </div>
 
-            {/* CONTADOR */}
 
             <div className="flex items-center justify-between mt-4">
 
-              <p className="text-xs text-zinc-600">
+              <p
+                className={`
+                  text-xs
+
+                  ${
+                    modoOscuro
+                      ? "text-zinc-600"
+                      : "text-gray-500"
+                  }
+                `}
+              >
 
                 {
                   fotosGaleria.length
@@ -1542,6 +2183,7 @@ function Home() {
                   : "imágenes disponibles"}
 
               </p>
+
 
               <Link
                 to="/galeria"
@@ -1557,28 +2199,9 @@ function Home() {
             </div>
 
           </section>
+
         )}
 
-        {/* ================================================= */}
-        {/* DEBUG TEMPORAL SI NO HAY FOTOS */}
-        {/* ================================================= */}
-
-        {fotosGaleria.length ===
-          0 && (
-          <section className="py-4">
-
-            <div className="border border-zinc-900 rounded-xl px-4 py-3">
-
-              <p className="text-zinc-700 text-xs">
-
-                Galería cargando o sin imágenes disponibles.
-
-              </p>
-
-            </div>
-
-          </section>
-        )}
 
         {/* ================================================= */}
         {/* CTA FINAL */}
@@ -1587,20 +2210,35 @@ function Home() {
         <section className="pb-10">
 
           <div
-            className="
-              bg-zinc-950
+            className={`
               border
-              border-zinc-800
               rounded-2xl
+
               p-6
               md:p-7
+
               flex
               flex-col
+
               lg:flex-row
               lg:items-center
               lg:justify-between
+
               gap-5
-            "
+
+              ${
+                modoOscuro
+                  ? `
+                    bg-zinc-950
+                    border-zinc-800
+                  `
+                  : `
+                    bg-white
+                    border-gray-200
+                    shadow-sm
+                  `
+              }
+            `}
           >
 
             <div>
@@ -1611,19 +2249,37 @@ function Home() {
 
               </p>
 
+
               <h2 className="text-2xl md:text-3xl font-bold mt-2">
 
-                ¿Tienes un proyecto en mente?
+                ¿Tienes un proyecto
+                en mente?
 
               </h2>
 
-              <p className="text-zinc-500 mt-2">
 
-                Cuéntanos qué necesitas y prepararemos una propuesta para ayudarte a desarrollarlo.
+              <p
+                className={`
+                  mt-2
+
+                  ${
+                    modoOscuro
+                      ? "text-zinc-500"
+                      : "text-gray-600"
+                  }
+                `}
+              >
+
+                Cuéntanos qué
+                necesitas y
+                prepararemos una
+                propuesta para ayudarte
+                a desarrollarlo.
 
               </p>
 
             </div>
+
 
             <div className="flex flex-col sm:flex-row gap-3">
 
@@ -1636,14 +2292,20 @@ function Home() {
                   !authReady
                 }
                 className={`
-                  ${botonBase}
+                  ${botonBase(
+                    modoOscuro
+                  )}
+
                   border-[#c89b3c]/60
                   text-[#d6ab4c]
+
                   hover:bg-[#c89b3c]/10
+
                   disabled:opacity-50
                   disabled:cursor-wait
                 `}
               >
+
                 <FaFileInvoiceDollar />
 
                 {user
@@ -1651,23 +2313,40 @@ function Home() {
                   : "Inicia sesión para cotizar"}
 
                 <FaArrowRight />
+
               </button>
+
 
               <a
                 href="https://wa.me/529811574778"
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`
-                  ${botonBase}
-                  border-zinc-600
-                  text-zinc-300
-                  hover:text-green-400
+                  ${botonBase(
+                    modoOscuro
+                  )}
+
+                  ${
+                    modoOscuro
+                      ? `
+                        border-zinc-600
+                        text-zinc-300
+                      `
+                      : `
+                        border-gray-300
+                        text-gray-700
+                      `
+                  }
+
+                  hover:text-green-500
                   hover:border-green-500/50
                 `}
               >
+
                 <FaPhoneAlt />
 
                 WhatsApp
+
               </a>
 
             </div>
@@ -1682,6 +2361,7 @@ function Home() {
   );
 }
 
+
 // ======================================================
 // BENEFICIO
 // ======================================================
@@ -1690,9 +2370,30 @@ function MiniBeneficio({
   icon,
   titulo,
   texto,
+  modoOscuro,
 }) {
+
   return (
-    <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+    <div
+      className={`
+        border
+        rounded-xl
+        p-4
+
+        ${
+          modoOscuro
+            ? `
+              bg-zinc-950
+              border-zinc-800
+            `
+            : `
+              bg-white
+              border-gray-200
+              shadow-sm
+            `
+        }
+      `}
+    >
 
       <div className="flex items-start gap-3">
 
@@ -1702,6 +2403,7 @@ function MiniBeneficio({
 
         </div>
 
+
         <div>
 
           <p className="font-semibold text-sm">
@@ -1710,7 +2412,19 @@ function MiniBeneficio({
 
           </p>
 
-          <p className="text-zinc-600 text-xs mt-1">
+
+          <p
+            className={`
+              text-xs
+              mt-1
+
+              ${
+                modoOscuro
+                  ? "text-zinc-600"
+                  : "text-gray-500"
+              }
+            `}
+          >
 
             {texto}
 
@@ -1724,60 +2438,113 @@ function MiniBeneficio({
   );
 }
 
+
 // ======================================================
 // BOTONES
 // ======================================================
 
-const botonBase = `
-  bg-black
-  border
-  px-4
-  py-2.5
-  rounded-xl
-  font-medium
-  flex
-  items-center
-  justify-center
-  gap-2
-  transition-all
-  duration-200
-  hover:-translate-y-[1px]
-  active:translate-y-0
-`;
+const botonBase =
+  (
+    modoOscuro
+  ) => `
+    ${
+      modoOscuro
+        ? "bg-black"
+        : "bg-white"
+    }
 
-const botonCompacto = `
-  bg-black
-  border
-  px-3
-  py-2.5
-  rounded-xl
-  text-sm
-  font-medium
-  flex
-  items-center
-  justify-center
-  gap-2
-  transition-all
-  duration-200
-  hover:-translate-y-[1px]
-  active:translate-y-0
-`;
+    border
 
-const botonCuadrado = `
-  w-10
-  h-10
-  bg-black
-  border
-  border-zinc-700
-  text-zinc-400
-  hover:text-[#d6ab4c]
-  hover:border-[#c89b3c]/60
-  rounded-xl
-  flex
-  items-center
-  justify-center
-  transition-all
-  duration-200
-`;
+    px-4
+    py-2.5
+
+    rounded-xl
+
+    font-medium
+
+    flex
+    items-center
+    justify-center
+    gap-2
+
+    transition-all
+    duration-200
+
+    hover:-translate-y-[1px]
+
+    active:translate-y-0
+  `;
+
+
+const botonCompacto =
+  (
+    modoOscuro
+  ) => `
+    ${
+      modoOscuro
+        ? "bg-black"
+        : "bg-white"
+    }
+
+    border
+
+    px-3
+    py-2.5
+
+    rounded-xl
+
+    text-sm
+    font-medium
+
+    flex
+    items-center
+    justify-center
+    gap-2
+
+    transition-all
+    duration-200
+
+    hover:-translate-y-[1px]
+
+    active:translate-y-0
+  `;
+
+
+const botonCuadrado =
+  (
+    modoOscuro
+  ) => `
+    w-10
+    h-10
+
+    ${
+      modoOscuro
+        ? `
+          bg-black
+          border-zinc-700
+          text-zinc-400
+        `
+        : `
+          bg-white
+          border-gray-300
+          text-gray-600
+        `
+    }
+
+    border
+
+    hover:text-[#d6ab4c]
+    hover:border-[#c89b3c]/60
+
+    rounded-xl
+
+    flex
+    items-center
+    justify-center
+
+    transition-all
+    duration-200
+  `;
+
 
 export default Home;

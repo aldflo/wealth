@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import { db } from "../firebase.config";
 
@@ -104,6 +104,8 @@ const normalizarCategoria = (categoria) => {
 
 function SubirGaleria() {
   const navigate = useNavigate();
+
+  const { modoOscuro } = useOutletContext() || {};
 
   // ====================================================
   // FORMULARIO
@@ -768,7 +770,13 @@ function SubirGaleria() {
     imagenes.length;
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 sm:px-6 py-8 md:py-12">
+    <div
+      className={`min-h-screen px-4 sm:px-6 py-8 md:py-12 transition-colors duration-300 ${
+        modoOscuro
+          ? "bg-black text-white"
+          : "bg-gray-50 text-gray-900"
+      }`}
+    >
 
       <div className="max-w-7xl mx-auto">
 
@@ -809,7 +817,7 @@ function SubirGaleria() {
             onClick={() =>
               navigate("/galeria")
             }
-            className={`${botonBase} border-zinc-600 text-zinc-300 hover:border-yellow-500/60 hover:text-yellow-400`}
+            className={`${botonBase(modoOscuro)} ${modoOscuro ? "border-zinc-600 text-zinc-300" : "border-gray-300 text-gray-700"} hover:border-yellow-500/60 hover:text-yellow-500`}
           >
             <FaImages />
 
@@ -861,7 +869,7 @@ function SubirGaleria() {
                   Editando galería
                 </p>
 
-                <p className="text-sm text-zinc-400">
+                <p className={modoOscuro ? "text-sm text-zinc-400" : "text-sm text-gray-600"}>
                   {categoria} →{" "}
                   {subcategoria}
                 </p>
@@ -882,7 +890,7 @@ function SubirGaleria() {
               onClick={
                 cancelarEdicion
               }
-              className={`${botonBase} border-zinc-600 text-zinc-300 hover:border-red-500/60 hover:text-red-400`}
+              className={`${botonBase(modoOscuro)} border-zinc-600 text-zinc-300 hover:border-red-500/60 hover:text-red-400`}
             >
               <FaTimes />
               Cancelar edición
@@ -895,9 +903,15 @@ function SubirGaleria() {
         {/* FORMULARIO */}
         {/* ================================================= */}
 
-        <div className="bg-zinc-950 border border-zinc-700 rounded-[30px] overflow-hidden">
+        <div className={`border rounded-[30px] overflow-hidden ${
+          modoOscuro
+            ? "bg-zinc-950 border-zinc-700"
+            : "bg-white border-gray-200 shadow-sm"
+        }`}>
 
-          <div className="p-6 md:p-8 border-b border-zinc-800">
+          <div className={`p-6 md:p-8 border-b ${
+            modoOscuro ? "border-zinc-800" : "border-gray-200"
+          }`}>
 
             <div className="flex items-center gap-3">
 
@@ -917,7 +931,7 @@ function SubirGaleria() {
                     : "Nueva galería"}
                 </h2>
 
-                <p className="text-sm text-zinc-500 mt-1">
+                <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
                   Clasifica las imágenes antes de publicarlas.
                 </p>
 
@@ -962,7 +976,7 @@ function SubirGaleria() {
                         ""
                       );
                     }}
-                    className={inputClass}
+                    className={inputClass(modoOscuro)}
                   >
 
                     {categorias.map(
@@ -992,7 +1006,7 @@ function SubirGaleria() {
                         e.target.value
                       )
                     }
-                    className={inputClass}
+                    className={inputClass(modoOscuro)}
                   >
 
                     <option value="">
@@ -1022,7 +1036,9 @@ function SubirGaleria() {
             {/* 02 IMÁGENES */}
             {/* ============================================= */}
 
-            <section className="border-t border-zinc-800 pt-9">
+            <section className={`border-t pt-9 ${
+              modoOscuro ? "border-zinc-800" : "border-gray-200"
+            }`}>
 
               <TituloSeccion
                 numero="02"
@@ -1032,11 +1048,15 @@ function SubirGaleria() {
 
               <div className="flex justify-between items-center mt-6 mb-3">
 
-                <p className="text-sm text-zinc-400">
+                <p className={modoOscuro ? "text-sm text-zinc-400" : "text-sm text-gray-600"}>
                   Fotografías de la galería
                 </p>
 
-                <span className="bg-black border border-zinc-700 text-zinc-400 text-xs px-3 py-1.5 rounded-full">
+                <span className={`border text-xs px-3 py-1.5 rounded-full ${
+                  modoOscuro
+                    ? "bg-black border-zinc-700 text-zinc-400"
+                    : "bg-gray-50 border-gray-300 text-gray-600"
+                }`}>
                   {totalImagenesActual}/
                   {MAX_IMAGENES}
                 </span>
@@ -1156,7 +1176,7 @@ function SubirGaleria() {
                     onClick={
                       cancelarEdicion
                     }
-                    className={`${botonBase} border-zinc-600 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500`}
+                    className={`${botonBase(modoOscuro)} border-zinc-600 text-zinc-300 hover:bg-zinc-800 hover:border-zinc-500`}
                   >
                     <FaTimes />
                     Cancelar
@@ -1166,7 +1186,7 @@ function SubirGaleria() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={`${botonBase} flex-1 border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500 disabled:opacity-50`}
+                  className={`${botonBase(modoOscuro)} flex-1 border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 hover:border-yellow-500 disabled:opacity-50`}
                 >
 
                   {editId ? (
@@ -1232,7 +1252,7 @@ function SubirGaleria() {
                   )
                 }
                 placeholder="Buscar categoría o subcategoría..."
-                className={`${inputClass} pl-12 pr-11`}
+                className={`${inputClass(modoOscuro)} pl-12 pr-11`}
               />
 
               {busqueda && (
@@ -1256,7 +1276,7 @@ function SubirGaleria() {
                   e.target.value
                 )
               }
-              className={`${inputClass} md:w-[260px]`}
+              className={`${inputClass(modoOscuro)} md:w-[260px]`}
             >
 
               <option value="Todos">
@@ -1282,7 +1302,11 @@ function SubirGaleria() {
 
           {galeriasFiltradas.length ===
             0 && (
-            <div className="border border-zinc-700 bg-zinc-950 rounded-3xl p-12 text-center">
+            <div className={`border rounded-3xl p-12 text-center ${
+              modoOscuro
+                ? "border-zinc-700 bg-zinc-950"
+                : "border-gray-200 bg-white shadow-sm"
+            }`}>
 
               <FaImages className="text-zinc-700 text-4xl mx-auto" />
 
@@ -1305,6 +1329,7 @@ function SubirGaleria() {
               (g) => (
                 <GaleriaAdminCard
                   key={g.id}
+                  modoOscuro={modoOscuro}
                   galeria={g}
                   editar={() =>
                     handleEdit(g)
@@ -1332,24 +1357,24 @@ function SubirGaleria() {
 // ESTILOS
 // ======================================================
 
-const inputClass = `
+const inputClass = (modoOscuro) => `
   w-full
-  bg-zinc-900
   border
-  border-zinc-700
   rounded-2xl
   p-4
-  text-white
-  placeholder:text-zinc-600
   outline-none
   focus:border-yellow-500/70
   focus:ring-2
   focus:ring-yellow-500/10
   transition
+  ${
+    modoOscuro
+      ? "bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-600"
+      : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+  }
 `;
 
-const botonBase = `
-  bg-black
+const botonBase = (modoOscuro) => `
   border
   px-5
   py-3.5
@@ -1362,6 +1387,11 @@ const botonBase = `
   transition-all
   duration-200
   hover:-translate-y-[1px]
+  ${
+    modoOscuro
+      ? "bg-black"
+      : "bg-white"
+  }
 `;
 
 // ======================================================
@@ -1373,6 +1403,7 @@ function TituloSeccion({
   titulo,
   descripcion,
 }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
     <div className="flex gap-4">
 
@@ -1386,7 +1417,7 @@ function TituloSeccion({
           {titulo}
         </h3>
 
-        <p className="text-sm text-zinc-500 mt-1">
+        <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
           {descripcion}
         </p>
 
@@ -1401,10 +1432,11 @@ function Campo({
   icon,
   children,
 }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
     <div>
 
-      <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
+      <label className={`text-sm flex items-center gap-2 mb-2 ${modoOscuro ? "text-zinc-400" : "text-gray-600"}`}>
 
         <span className="text-yellow-500">
           {icon}
@@ -1456,6 +1488,7 @@ function GaleriaAdminCard({
   galeria,
   editar,
   eliminar,
+  modoOscuro,
 }) {
   const imagenes =
     Array.isArray(
@@ -1471,7 +1504,13 @@ function GaleriaAdminCard({
     );
 
   return (
-    <article className="bg-zinc-950 border border-zinc-700 hover:border-yellow-500/40 rounded-3xl overflow-hidden transition">
+    <article
+      className={`border hover:border-yellow-500/40 rounded-3xl overflow-hidden transition ${
+        modoOscuro
+          ? "bg-zinc-950 border-zinc-700"
+          : "bg-white border-gray-200 shadow-sm"
+      }`}
+    >
 
       {/* MOSAICO */}
 
@@ -1541,7 +1580,7 @@ function GaleriaAdminCard({
           <button
             type="button"
             onClick={editar}
-            className={`${botonBase} border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500`}
+            className={`${botonBase(modoOscuro)} border-blue-500/40 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500`}
           >
             <FaEdit />
             Editar
@@ -1550,7 +1589,7 @@ function GaleriaAdminCard({
           <button
             type="button"
             onClick={eliminar}
-            className={`${botonBase} border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500`}
+            className={`${botonBase(modoOscuro)} border-red-500/40 text-red-400 hover:bg-red-500/10 hover:border-red-500`}
           >
             <FaTrash />
             Eliminar

@@ -34,7 +34,7 @@ import {
   FaShieldAlt,
   FaSun,
   FaUser,
-  FaUserCircle,
+  FaUserShield,
 } from "react-icons/fa";
 
 import {
@@ -43,7 +43,7 @@ import {
 } from "../firebase.config";
 
 
-function Perfil() {
+function PerfilAdmin() {
 
   const navigate =
     useNavigate();
@@ -82,6 +82,12 @@ function Perfil() {
   const [
     telefono,
     setTelefono,
+  ] = useState("");
+
+
+  const [
+    rol,
+    setRol,
   ] = useState("");
 
 
@@ -243,11 +249,39 @@ function Perfil() {
                 ""
               );
 
+
+              setRol(
+                data.role ||
+                ""
+              );
+
+
+              if (
+                data.role !==
+                "admin"
+              ) {
+
+                setError(
+                  "Esta cuenta no tiene permisos de administrador."
+                );
+
+              }
+
             } else {
 
               setCorreo(
                 user.email ||
                 ""
+              );
+
+
+              setRol(
+                ""
+              );
+
+
+              setError(
+                "No encontramos el perfil administrativo de esta cuenta."
               );
 
             }
@@ -293,6 +327,20 @@ function Perfil() {
         !usuarioAuth
       ) {
         return;
+      }
+
+
+      if (
+        rol !==
+        "admin"
+      ) {
+
+        setError(
+          "Esta cuenta no tiene permisos para editar un perfil administrativo."
+        );
+
+        return;
+
       }
 
 
@@ -437,6 +485,20 @@ function Perfil() {
 
 
       if (
+        rol !==
+        "admin"
+      ) {
+
+        setError(
+          "Esta cuenta no tiene permisos de administrador."
+        );
+
+        return;
+
+      }
+
+
+      if (
         nuevoTema !==
           "claro" &&
         nuevoTema !==
@@ -550,6 +612,20 @@ function Perfil() {
         !usuarioAuth
       ) {
         return;
+      }
+
+
+      if (
+        rol !==
+        "admin"
+      ) {
+
+        setError(
+          "Esta cuenta no tiene permisos de administrador."
+        );
+
+        return;
+
       }
 
 
@@ -811,7 +887,7 @@ function Perfil() {
               }
             `}
           >
-            Cargando perfil...
+            Cargando perfil administrativo...
           </p>
 
         </div>
@@ -923,7 +999,7 @@ function Perfil() {
               }
             `}
           >
-            Debes iniciar sesión para consultar y configurar tu perfil.
+            Debes iniciar sesión con una cuenta administrativa para consultar y configurar este perfil.
           </p>
 
 
@@ -961,6 +1037,86 @@ function Perfil() {
 
         </div>
 
+      </div>
+    );
+
+  }
+
+
+  /* ======================================================
+     SIN PERMISOS ADMIN
+  ====================================================== */
+
+  if (
+    usuarioAuth &&
+    rol &&
+    rol !==
+    "admin"
+  ) {
+
+    return (
+      <div
+        className={`
+          min-h-screen
+          flex
+          items-center
+          justify-center
+          px-5
+          ${
+            modoOscuro
+              ? "bg-black text-white"
+              : "bg-gray-50 text-gray-900"
+          }
+        `}
+      >
+        <div
+          className={`
+            max-w-md
+            w-full
+            border
+            rounded-[30px]
+            p-8
+            text-center
+            ${
+              modoOscuro
+                ? "bg-zinc-950 border-zinc-800"
+                : "bg-white border-gray-200 shadow-xl"
+            }
+          `}
+        >
+          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto">
+            <FaShieldAlt className="text-red-500 text-2xl" />
+          </div>
+
+          <h1 className="text-2xl font-bold mt-5">
+            Acceso restringido
+          </h1>
+
+          <p
+            className={`
+              mt-2
+              ${
+                modoOscuro
+                  ? "text-zinc-500"
+                  : "text-gray-500"
+              }
+            `}
+          >
+            Esta pantalla es exclusiva para cuentas con rol de administrador.
+          </p>
+
+          <button
+            type="button"
+            onClick={() =>
+              navigate(
+                "/cliente"
+              )
+            }
+            className="mt-6 w-full bg-yellow-500 hover:bg-yellow-400 text-black px-6 py-3.5 rounded-2xl font-bold transition"
+          >
+            Ir al área de cliente
+          </button>
+        </div>
       </div>
     );
 
@@ -1011,7 +1167,7 @@ function Perfil() {
 
           onClick={() =>
             navigate(
-              -1
+              "/admin"
             )
           }
 
@@ -1179,7 +1335,7 @@ function Perfil() {
                     font-bold
                   "
                 >
-                  Cuenta Wealth
+                  Administración Wealth
                 </p>
 
 
@@ -1196,7 +1352,7 @@ function Perfil() {
                   "
                 >
                   {nombre ||
-                    "Mi perfil"}
+                    "Perfil administrador"}
                 </h1>
 
 
@@ -1243,6 +1399,40 @@ function Perfil() {
 
                 </div>
 
+              </div>
+
+
+              {/* ROL */}
+
+              <div
+                className={`
+                  self-start
+                  inline-flex
+                  items-center
+                  gap-2
+                  px-4
+                  py-2.5
+                  rounded-full
+                  border
+                  text-sm
+                  font-semibold
+                  ${
+                    modoOscuro
+                      ? `
+                        bg-blue-500/10
+                        border-blue-500/20
+                        text-blue-400
+                      `
+                      : `
+                        bg-blue-50
+                        border-blue-200
+                        text-blue-700
+                      `
+                  }
+                `}
+              >
+                <FaUserShield />
+                Administrador
               </div>
 
 
@@ -1293,7 +1483,7 @@ function Perfil() {
                   "
                 />
 
-                Cuenta activa
+                Administrador activo
 
               </div>
 
@@ -1422,9 +1612,9 @@ function Perfil() {
 
               color="yellow"
 
-              titulo="Datos personales"
+              titulo="Datos del administrador"
 
-              descripcion="Información asociada a tus cotizaciones, proyectos y contacto."
+              descripcion="Información de contacto y datos visibles de esta cuenta administrativa."
             />
 
 
@@ -1671,9 +1861,9 @@ function Perfil() {
 
               color="yellow"
 
-              titulo="Apariencia"
+              titulo="Apariencia del panel"
 
-              descripcion="Elige cómo quieres ver Wealth en este dispositivo."
+              descripcion="Elige cómo quieres ver el panel administrativo en este dispositivo."
             />
 
 
@@ -2037,9 +2227,9 @@ function Perfil() {
 
             color="blue"
 
-            titulo="Seguridad"
+            titulo="Seguridad administrativa"
 
-            descripcion="Actualiza tu contraseña para mantener protegida tu cuenta."
+            descripcion="Actualiza tu contraseña para mantener protegida esta cuenta administrativa."
           />
 
 
@@ -2279,7 +2469,7 @@ function Perfil() {
 
           <FaShieldAlt />
 
-          Tu información está asociada a tu cuenta Wealth.
+          Configuración exclusiva de tu cuenta administrativa Wealth.
 
         </div>
 
@@ -2471,4 +2661,4 @@ const inputClass =
   `;
 
 
-export default Perfil;
+export default PerfilAdmin;

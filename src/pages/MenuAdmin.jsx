@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import { db } from "../firebase.config";
 
@@ -22,9 +22,12 @@ import {
   FaBriefcase,
   FaEye,
   FaArchive,
+  FaUserShield,
 } from "react-icons/fa";
 
 function MenuAdmin() {
+  const { modoOscuro = false } = useOutletContext() || {};
+
   const navigate = useNavigate();
 
   const [cotizaciones, setCotizaciones] = useState([]);
@@ -193,6 +196,16 @@ function MenuAdmin() {
     },
 
     {
+      titulo: "Mi perfil",
+      descripcion:
+        "Configura tus datos, seguridad y apariencia del panel.",
+      icono: <FaUserShield size={28} />,
+      color: "text-blue-400",
+      ruta: "/admin/perfil",
+      badge: 0,
+    },
+
+    {
       titulo: "Proyectos",
       descripcion:
         "Consulta los proyectos publicados en el catálogo.",
@@ -229,7 +242,7 @@ function MenuAdmin() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${modoOscuro ? "bg-black text-white" : "wealth-light bg-gray-50 text-gray-900"}`}>
         <div className="text-center">
           <div className="w-11 h-11 border-4 border-zinc-800 border-t-yellow-500 rounded-full animate-spin mx-auto" />
 
@@ -242,7 +255,8 @@ function MenuAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white flex">
+    <div className={`min-h-screen flex transition-colors duration-300 ${modoOscuro ? "bg-black text-white" : "wealth-light bg-gray-50 text-gray-900"}`}>
+      <style>{temaClaroCss}</style>
 
       {/* ================================================= */}
       {/* SIDEBAR ESCRITORIO */}
@@ -265,6 +279,12 @@ function MenuAdmin() {
             activo
             icon={<FaHome />}
             texto="Dashboard"
+          />
+
+          <BotonMenu
+            icon={<FaUserShield />}
+            texto="Mi perfil"
+            onClick={() => navigate("/admin/perfil")}
           />
 
           <BotonMenu
@@ -580,7 +600,17 @@ function MenuAdmin() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-4 gap-5">
+          <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-5">
+            <AccesoRapido
+              icon={<FaUserShield />}
+              titulo="Mi perfil"
+              descripcion="Datos, seguridad y apariencia."
+              color="blue"
+              onClick={() =>
+                navigate("/admin/perfil")
+              }
+            />
+
             <AccesoRapido
               icon={<FaArchive />}
               titulo="Terminados"
@@ -865,6 +895,8 @@ function AccesoRapido({
       "text-pink-400 border-pink-500/20 bg-pink-500/10",
     emerald:
       "text-emerald-400 border-emerald-500/20 bg-emerald-500/10",
+    blue:
+      "text-blue-400 border-blue-500/20 bg-blue-500/10",
   };
 
   return (
@@ -894,5 +926,68 @@ function AccesoRapido({
     </button>
   );
 }
+
+
+const temaClaroCss = `
+  .wealth-light .bg-black { background-color: #ffffff !important; }
+  .wealth-light .bg-zinc-950 { background-color: #ffffff !important; }
+  .wealth-light .bg-zinc-900 { background-color: #f9fafb !important; }
+  .wealth-light .bg-zinc-800 { background-color: #f3f4f6 !important; }
+  .wealth-light .bg-zinc-700 { background-color: #e5e7eb !important; }
+
+  .wealth-light .bg-zinc-950\\/95 { background-color: rgba(255,255,255,.95) !important; }
+  .wealth-light .bg-zinc-950\\/70 { background-color: rgba(255,255,255,.92) !important; }
+  .wealth-light .bg-zinc-950\\/60 { background-color: rgba(255,255,255,.88) !important; }
+  .wealth-light .bg-zinc-900\\/90 { background-color: rgba(249,250,251,.95) !important; }
+  .wealth-light .bg-zinc-900\\/70 { background-color: rgba(249,250,251,.90) !important; }
+  .wealth-light .bg-zinc-900\\/60 { background-color: rgba(249,250,251,.88) !important; }
+  .wealth-light .bg-zinc-800\\/70 { background-color: rgba(243,244,246,.90) !important; }
+  .wealth-light .bg-zinc-800\\/40 { background-color: rgba(243,244,246,.75) !important; }
+
+  .wealth-light .text-white { color: #111827 !important; }
+  .wealth-light .text-zinc-100 { color: #111827 !important; }
+  .wealth-light .text-zinc-200 { color: #1f2937 !important; }
+  .wealth-light .text-zinc-300 { color: #374151 !important; }
+  .wealth-light .text-zinc-400 { color: #4b5563 !important; }
+  .wealth-light .text-zinc-500 { color: #6b7280 !important; }
+  .wealth-light .text-zinc-600 { color: #9ca3af !important; }
+  .wealth-light .text-zinc-700 { color: #9ca3af !important; }
+  .wealth-light .text-zinc-800 { color: #6b7280 !important; }
+
+  .wealth-light .border-zinc-900 { border-color: #e5e7eb !important; }
+  .wealth-light .border-zinc-800 { border-color: #e5e7eb !important; }
+  .wealth-light .border-zinc-700 { border-color: #d1d5db !important; }
+  .wealth-light .border-zinc-600 { border-color: #d1d5db !important; }
+  .wealth-light .border-white\\/10 { border-color: rgba(17,24,39,.10) !important; }
+  .wealth-light .border-white\\/20 { border-color: rgba(17,24,39,.15) !important; }
+  .wealth-light .border-white\\/30 { border-color: rgba(17,24,39,.20) !important; }
+
+  .wealth-light .hover\\:bg-zinc-900:hover { background-color: #f3f4f6 !important; }
+  .wealth-light .hover\\:bg-zinc-800:hover { background-color: #e5e7eb !important; }
+  .wealth-light .hover\\:bg-zinc-700:hover { background-color: #d1d5db !important; }
+  .wealth-light .hover\\:text-white:hover { color: #111827 !important; }
+  .wealth-light .hover\\:border-zinc-500:hover { border-color: #9ca3af !important; }
+  .wealth-light .hover\\:border-zinc-600:hover { border-color: #9ca3af !important; }
+
+  .wealth-light input,
+  .wealth-light textarea,
+  .wealth-light select {
+    color: #111827;
+    color-scheme: light;
+  }
+
+  .wealth-light input::placeholder,
+  .wealth-light textarea::placeholder {
+    color: #9ca3af !important;
+  }
+
+  .wealth-light option {
+    background-color: #ffffff;
+    color: #111827;
+  }
+
+  /* Los visores de imágenes y overlays con transparencia se mantienen oscuros
+     intencionalmente para conservar contraste sobre fotografías. */
+`;
 
 export default MenuAdmin;

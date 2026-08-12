@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import { db } from "../firebase.config";
 
@@ -43,6 +43,8 @@ import {
 
 function ProyectosTerminadosAdmin() {
   const navigate = useNavigate();
+
+  const { modoOscuro } = useOutletContext() || {};
 
   const [proyectos, setProyectos] = useState([]);
   const [cotizaciones, setCotizaciones] = useState([]);
@@ -543,7 +545,9 @@ function ProyectosTerminadosAdmin() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${
+        modoOscuro ? "bg-black text-white" : "bg-gray-50 text-gray-900"
+      }`}>
         <div className="text-center">
           <div className="w-11 h-11 border-4 border-zinc-800 border-t-yellow-500 rounded-full animate-spin mx-auto" />
           <p className="text-zinc-500 mt-4">
@@ -555,7 +559,9 @@ function ProyectosTerminadosAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 md:px-7 py-7">
+    <div className={`min-h-screen px-4 md:px-7 py-7 transition-colors duration-300 ${
+      modoOscuro ? "bg-black text-white" : "bg-gray-50 text-gray-900"
+    }`}>
       <div className="max-w-7xl mx-auto">
 
         {/* HEADER */}
@@ -696,14 +702,22 @@ function ProyectosTerminadosAdmin() {
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar cliente, teléfono, correo, proyecto, ubicación o ID..."
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-4 pl-12 pr-5 outline-none focus:border-yellow-500/60 text-white placeholder:text-zinc-600 transition"
+            className={`w-full border rounded-2xl py-4 pl-12 pr-5 outline-none focus:border-yellow-500/60 transition ${
+            modoOscuro
+              ? "bg-zinc-900 border-zinc-700 text-white placeholder:text-zinc-600"
+              : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+          }`}
           />
         </div>
 
         {/* SIN RESULTADOS */}
 
         {!errorCarga && expedientesFiltrados.length === 0 && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-12 text-center">
+          <div className={`border rounded-3xl p-12 text-center ${
+            modoOscuro
+              ? "bg-zinc-900 border-zinc-800"
+              : "bg-white border-gray-200 shadow-sm"
+          }`}>
             <FaBuilding className="text-zinc-700 text-5xl mx-auto" />
             <h2 className="text-xl font-bold mt-5">
               No encontramos trabajos terminados
@@ -730,7 +744,12 @@ function ProyectosTerminadosAdmin() {
                   }
                 }}
                 className={`
-                  relative bg-zinc-900 border rounded-3xl overflow-hidden transition
+                  relative border rounded-3xl overflow-hidden transition
+                  ${
+                    modoOscuro
+                      ? "bg-zinc-900"
+                      : "bg-white shadow-sm"
+                  }
                   ${
                     seleccionados.includes(proyecto.id)
                       ? "border-yellow-500 ring-2 ring-yellow-500/20"
@@ -814,7 +833,11 @@ function ProyectosTerminadosAdmin() {
                     />
                   </div>
 
-                  <div className="mt-5 bg-black border border-zinc-800 rounded-2xl p-4">
+                  <div className={`mt-5 border rounded-2xl p-4 ${
+                    modoOscuro
+                      ? "bg-black border-zinc-800"
+                      : "bg-gray-50 border-gray-200"
+                  }`}>
                     <p className="text-xs text-zinc-500">
                       Importe del trabajo
                     </p>
@@ -870,12 +893,20 @@ function ProyectosTerminadosAdmin() {
           onClick={cerrarProyecto}
         >
           <div
-            className="max-w-5xl mx-auto bg-zinc-950 border border-zinc-700 rounded-3xl overflow-hidden shadow-2xl"
+            className={`max-w-5xl mx-auto border rounded-3xl overflow-hidden shadow-2xl ${
+              modoOscuro
+                ? "bg-zinc-950 border-zinc-700 text-white"
+                : "bg-white border-gray-200 text-gray-900"
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* HEADER */}
 
-            <header className="sticky top-0 z-20 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800 p-6 md:p-8">
+            <header className={`sticky top-0 z-20 backdrop-blur-md border-b p-6 md:p-8 ${
+              modoOscuro
+                ? "bg-zinc-950/95 border-zinc-800"
+                : "bg-white/95 border-gray-200"
+            }`}>
               <div className="flex justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-[0.22em] text-green-400 font-bold flex items-center gap-2">
@@ -906,8 +937,12 @@ function ProyectosTerminadosAdmin() {
 
               {/* CLIENTE */}
 
-              <Seccion titulo="Datos del cliente" icon={<FaUser />}>
-                <div className="bg-black border border-zinc-800 rounded-2xl p-5 space-y-4">
+              <Seccion titulo="Datos del cliente" icon={<FaUser />} modoOscuro={modoOscuro}>
+                <div className={`border rounded-2xl p-5 space-y-4 ${
+                  modoOscuro
+                    ? "bg-black border-zinc-800"
+                    : "bg-gray-50 border-gray-200"
+                }`}>
                   <Detalle
                     titulo="Nombre"
                     valor={proyectoActivo.nombreCliente || "No registrado"}
@@ -936,8 +971,13 @@ function ProyectosTerminadosAdmin() {
               <Seccion
                 titulo="Solicitud y datos del trabajo"
                 icon={<FaFileInvoiceDollar />}
+                modoOscuro={modoOscuro}
               >
-                <div className="bg-black border border-zinc-800 rounded-2xl p-5 space-y-4">
+                <div className={`border rounded-2xl p-5 space-y-4 ${
+                  modoOscuro
+                    ? "bg-black border-zinc-800"
+                    : "bg-gray-50 border-gray-200"
+                }`}>
                   <Detalle
                     titulo="Tipo"
                     valor={proyectoActivo.tipo || "No especificado"}
@@ -971,6 +1011,7 @@ function ProyectosTerminadosAdmin() {
               <Seccion
                 titulo="Información económica y condiciones"
                 icon={<FaMoneyBillWave />}
+                modoOscuro={modoOscuro}
               >
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <CajaInfo
@@ -1026,7 +1067,7 @@ function ProyectosTerminadosAdmin() {
 
               {/* CRONOLOGÍA */}
 
-              <Seccion titulo="Cronología del trabajo" icon={<FaClock />}>
+              <Seccion titulo="Cronología del trabajo" icon={<FaClock />} modoOscuro={modoOscuro}>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   <CajaFecha
                     titulo="Solicitud"
@@ -1063,6 +1104,7 @@ function ProyectosTerminadosAdmin() {
                 <Seccion
                   titulo="Fotografías del trabajo realizado"
                   icon={<FaImages />}
+                  modoOscuro={modoOscuro}
                 >
                   <p className="text-sm text-zinc-500 mb-4">
                     Evidencia final cargada por Wealth al cerrar el trabajo.
@@ -1093,6 +1135,7 @@ function ProyectosTerminadosAdmin() {
                 <Seccion
                   titulo="Imágenes originales y referencias"
                   icon={<FaImages />}
+                  modoOscuro={modoOscuro}
                 >
                   <p className="text-sm text-zinc-500 mb-4">
                     Fotografías y referencias que formaron parte de la
@@ -1124,6 +1167,7 @@ function ProyectosTerminadosAdmin() {
                 <Seccion
                   titulo="Historial de propuestas"
                   icon={<FaHistory />}
+                  modoOscuro={modoOscuro}
                 >
                   <div className="space-y-3">
                     {proyectoActivo.historialPropuestas.map(
@@ -1160,8 +1204,13 @@ function ProyectosTerminadosAdmin() {
               <Seccion
                 titulo="Postventa, garantía y reclamos"
                 icon={<FaShieldAlt />}
+                modoOscuro={modoOscuro}
               >
-                <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5">
+                <div className={`border rounded-2xl p-5 ${
+                  modoOscuro
+                    ? "bg-zinc-900 border-zinc-700"
+                    : "bg-gray-50 border-gray-200"
+                }`}>
                   <p className="text-sm text-zinc-400">
                     Registra cualquier llamada, reclamo, visita,
                     reparación, ajuste o seguimiento posterior. Estas
@@ -1324,15 +1373,18 @@ function ProyectosTerminadosAdmin() {
 // ======================================================
 
 function DatoCard({ icon, texto }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
-    <div className="flex items-center gap-2 text-zinc-400">
+    <div className={`flex items-center gap-2 ${
+      modoOscuro ? "text-zinc-400" : "text-gray-600"
+    }`}>
       <span className="text-yellow-500">{icon}</span>
       <span className="break-all">{texto}</span>
     </div>
   );
 }
 
-function Seccion({ titulo, icon, children }) {
+function Seccion({ titulo, icon, children, modoOscuro }) {
   return (
     <section>
       <div className="flex items-center gap-3 mb-4">
@@ -1348,14 +1400,15 @@ function Seccion({ titulo, icon, children }) {
 }
 
 function Detalle({ titulo, valor, icon }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
     <div className="grid md:grid-cols-[230px_1fr] gap-2 md:gap-5">
-      <div className="text-zinc-500 text-sm flex items-center gap-2">
+      <div className={`${modoOscuro ? "text-zinc-500" : "text-gray-500"} text-sm flex items-center gap-2`}>
         <span className="text-yellow-500">{icon}</span>
         {titulo}
       </div>
 
-      <div className="text-zinc-200 text-sm break-words whitespace-pre-wrap">
+      <div className={`${modoOscuro ? "text-zinc-200" : "text-gray-800"} text-sm break-words whitespace-pre-wrap`}>
         {valor}
       </div>
     </div>
@@ -1363,18 +1416,24 @@ function Detalle({ titulo, valor, icon }) {
 }
 
 function CajaInfo({ titulo, valor }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
-    <div className="bg-black border border-zinc-800 rounded-2xl p-4">
-      <p className="text-xs text-zinc-500">{titulo}</p>
+    <div className={`border rounded-2xl p-4 ${
+      modoOscuro ? "bg-black border-zinc-800" : "bg-gray-50 border-gray-200"
+    }`}>
+      <p className={`text-xs ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>{titulo}</p>
       <p className="font-bold mt-1 break-words">{valor}</p>
     </div>
   );
 }
 
 function CajaFecha({ titulo, fecha }) {
+  const { modoOscuro } = useOutletContext() || {};
   return (
-    <div className="bg-black border border-zinc-800 rounded-2xl p-4">
-      <p className="text-xs text-zinc-500">{titulo}</p>
+    <div className={`border rounded-2xl p-4 ${
+      modoOscuro ? "bg-black border-zinc-800" : "bg-gray-50 border-gray-200"
+    }`}>
+      <p className={`text-xs ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>{titulo}</p>
       <p className="text-sm font-semibold mt-1">{fecha}</p>
     </div>
   );

@@ -5,6 +5,10 @@ import {
 } from "react";
 
 import {
+  useOutletContext,
+} from "react-router-dom";
+
+import {
   collection,
   deleteDoc,
   doc,
@@ -1938,6 +1942,9 @@ const describirConsulta = (
 ========================================= */
 
 export default function ChatIA() {
+  const { modoOscuro } =
+    useOutletContext();
+
   const [
     messages,
     setMessages,
@@ -3606,25 +3613,53 @@ export default function ChatIA() {
   ========================================= */
 
   return (
-    <div className="w-full min-h-[calc(100vh-95px)] bg-[#050505]">
+    <div
+      className={`
+        w-full
+        min-h-[calc(100vh-95px)]
+        transition-colors
+        duration-300
+
+        ${
+          modoOscuro
+            ? "bg-[#050505]"
+            : "bg-gray-50"
+        }
+      `}
+    >
 
       <div className="max-w-[1500px] mx-auto px-3 sm:px-6 py-5">
 
         <div
-          className="
+          className={`
             flex
             h-[calc(100vh-135px)]
             min-h-[650px]
             overflow-hidden
-            bg-gradient-to-b
-            from-[#0b0b0b]
-            via-[#070707]
-            to-[#050505]
             border
             border-[#c89b3c]/20
             rounded-[28px]
-            shadow-[0_30px_80px_rgba(0,0,0,0.45)]
-          "
+            transition-colors
+            duration-300
+
+            ${
+              modoOscuro
+                ? `
+                  bg-gradient-to-b
+                  from-[#0b0b0b]
+                  via-[#070707]
+                  to-[#050505]
+                  shadow-[0_30px_80px_rgba(0,0,0,0.45)]
+                `
+                : `
+                  bg-gradient-to-b
+                  from-white
+                  via-[#fdfdfc]
+                  to-[#f7f7f5]
+                  shadow-[0_24px_60px_rgba(0,0,0,0.10)]
+                `
+            }
+          `}
         >
 
           {/* HISTORIAL */}
@@ -3651,6 +3686,10 @@ export default function ChatIA() {
                 onDelete={
                   eliminarConversacion
                 }
+
+                modoOscuro={
+                  modoOscuro
+                }
               />
             )}
 
@@ -3658,11 +3697,30 @@ export default function ChatIA() {
 
           <div className="flex-1 min-w-0 flex flex-col">
 
-            <ChatHeader />
+            <ChatHeader
+              modoOscuro={
+                modoOscuro
+              }
+            />
 
             {/* MENSAJES */}
 
-            <div className="relative flex-1 overflow-y-auto scroll-smooth">
+            <div
+              className={`
+                relative
+                flex-1
+                overflow-y-auto
+                scroll-smooth
+                transition-colors
+                duration-300
+
+                ${
+                  modoOscuro
+                    ? "bg-transparent"
+                    : "bg-white/40"
+                }
+              `}
+            >
 
               <div className="relative z-10 h-full">
 
@@ -3672,6 +3730,10 @@ export default function ChatIA() {
                   <EmptyState
                     onSelect={
                       sendMessage
+                    }
+
+                    modoOscuro={
+                      modoOscuro
                     }
                   />
 
@@ -3691,10 +3753,18 @@ export default function ChatIA() {
                       memoriaProyecto={
                         memoriaProyecto
                       }
+
+                      modoOscuro={
+                        modoOscuro
+                      }
                     />
 
                     {loading && (
-                      <TypingIndicator />
+                      <TypingIndicator
+                        modoOscuro={
+                          modoOscuro
+                        }
+                      />
                     )}
 
                     <div
@@ -3714,16 +3784,35 @@ export default function ChatIA() {
             {/* INPUT */}
 
             <div
-              className="
+              className={`
                 border-t
                 border-[#c89b3c]/15
-                bg-black/80
                 backdrop-blur-xl
-              "
+                transition-colors
+                duration-300
+
+                ${
+                  modoOscuro
+                    ? "bg-black/80"
+                    : "bg-white/85"
+                }
+              `}
             >
 
               {!user && (
-                <p className="text-[11px] text-zinc-600 text-center pt-3">
+                <p
+                  className={`
+                    text-[11px]
+                    text-center
+                    pt-3
+
+                    ${
+                      modoOscuro
+                        ? "text-zinc-600"
+                        : "text-gray-500"
+                    }
+                  `}
+                >
                   Inicia sesión para guardar tu historial de conversaciones.
                 </p>
               )}
@@ -3738,6 +3827,10 @@ export default function ChatIA() {
                   loading={
                     loading ||
                     !catalogoReady
+                  }
+
+                  modoOscuro={
+                    modoOscuro
                   }
                 />
 
@@ -3764,6 +3857,10 @@ export default function ChatIA() {
 
                   onCancel={
                     cancelarRespuesta
+                  }
+
+                  modoOscuro={
+                    modoOscuro
                   }
                 />
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import {
   FaBuilding,
@@ -29,6 +29,8 @@ import {
 
 function WealthVyA() {
   const navigate = useNavigate();
+
+  const { modoOscuro } = useOutletContext() || {};
 
   // ======================================================
   // PROYECTOS
@@ -291,7 +293,13 @@ function WealthVyA() {
   // ======================================================
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div
+      className={`min-h-screen transition-colors duration-300 ${
+        modoOscuro
+          ? "bg-black text-white"
+          : "bg-gray-50 text-gray-900"
+      }`}
+    >
 
       {/* ================================================= */}
       {/* HERO */}
@@ -355,7 +363,7 @@ function WealthVyA() {
                   navigate("/crear-cotizacion")
                 }
                 className={`
-                  ${botonBase}
+                  ${botonBase(modoOscuro)}
                   border-yellow-500/50
                   text-yellow-400
                   hover:border-yellow-500
@@ -375,9 +383,8 @@ function WealthVyA() {
                   navigate("/proyectos")
                 }
                 className={`
-                  ${botonBase}
-                  border-zinc-600
-                  text-zinc-300
+                  ${botonBase(modoOscuro)}
+                  ${modoOscuro ? "border-zinc-600 text-zinc-300" : "border-gray-300 text-gray-700"}
                   hover:border-yellow-500/60
                   hover:text-yellow-400
                 `}
@@ -417,7 +424,7 @@ function WealthVyA() {
               Servicios de Vidrio y Aluminio
             </h2>
 
-            <p className="text-zinc-500 mt-2 max-w-2xl">
+            <p className={`mt-2 max-w-2xl ${modoOscuro ? "text-zinc-500" : "text-gray-600"}`}>
               Fabricación, instalación y diseño de soluciones en
               vidrio, aluminio y cancelería para espacios modernos.
             </p>
@@ -431,18 +438,21 @@ function WealthVyA() {
             {servicios.map((servicio, index) => (
               <article
                 key={index}
-                className="
+                className={`
                   group
-                  bg-zinc-950
                   border
-                  border-zinc-800
                   hover:border-yellow-500/50
                   rounded-2xl
                   p-5
                   transition-all
                   duration-300
                   hover:-translate-y-[2px]
-                "
+                  ${
+                    modoOscuro
+                      ? "bg-zinc-950 border-zinc-800"
+                      : "bg-white border-gray-200 shadow-sm"
+                  }
+                `}
               >
 
                 <div className="flex items-start gap-4">
@@ -480,7 +490,7 @@ function WealthVyA() {
                   {servicio.descripcion.map((item, i) => (
                     <div
                       key={i}
-                      className="flex items-start gap-2.5 text-zinc-400 text-sm"
+                      className={`flex items-start gap-2.5 text-sm ${modoOscuro ? "text-zinc-400" : "text-gray-600"}`}
                     >
 
                       <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-2 shrink-0" />
@@ -505,7 +515,7 @@ function WealthVyA() {
         {/* DIVISIÓN */}
         {/* ================================================= */}
 
-        <div className="border-t border-zinc-900" />
+        <div className={`border-t ${modoOscuro ? "border-zinc-900" : "border-gray-200"}`} />
 
         {/* ================================================= */}
         {/* PROYECTOS */}
@@ -527,7 +537,7 @@ function WealthVyA() {
                 Proyectos de Vidrio y Aluminio
               </h2>
 
-              <p className="text-zinc-500 mt-2">
+              <p className={modoOscuro ? "text-zinc-500 mt-2" : "text-gray-600 mt-2"}>
                 Conoce algunos trabajos realizados en vidrio,
                 aluminio, cancelería y estructuras a diseño.
               </p>
@@ -538,9 +548,13 @@ function WealthVyA() {
 
               {/* CONTADOR */}
 
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-400">
+              <div className={`border rounded-xl px-4 py-2.5 text-sm ${
+                modoOscuro
+                  ? "bg-zinc-950 border-zinc-800 text-zinc-400"
+                  : "bg-white border-gray-200 text-gray-600 shadow-sm"
+              }`}>
 
-                <strong className="text-white">
+                <strong className={modoOscuro ? "text-white" : "text-gray-900"}>
                   {proyectos.length}
                 </strong>{" "}
 
@@ -558,7 +572,7 @@ function WealthVyA() {
                     type="button"
                     onClick={proyectosAnteriores}
                     aria-label="Proyectos anteriores"
-                    className={botonCuadrado}
+                    className={botonCuadrado(modoOscuro)}
                   >
                     <FaChevronLeft />
                   </button>
@@ -567,7 +581,7 @@ function WealthVyA() {
                     type="button"
                     onClick={proyectosSiguientes}
                     aria-label="Siguientes proyectos"
-                    className={botonCuadrado}
+                    className={botonCuadrado(modoOscuro)}
                   >
                     <FaChevronRight />
                   </button>
@@ -580,9 +594,8 @@ function WealthVyA() {
                   navigate("/proyectos")
                 }
                 className={`
-                  ${botonBase}
-                  border-zinc-600
-                  text-zinc-300
+                  ${botonBase(modoOscuro)}
+                  ${modoOscuro ? "border-zinc-600 text-zinc-300" : "border-gray-300 text-gray-700"}
                   hover:border-yellow-500/60
                   hover:text-yellow-400
                 `}
@@ -601,7 +614,11 @@ function WealthVyA() {
           {/* ================================================= */}
 
           {proyectos.length === 0 ? (
-            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl py-10 text-center">
+            <div className={`border rounded-2xl py-10 text-center ${
+              modoOscuro
+                ? "bg-zinc-950 border-zinc-800"
+                : "bg-white border-gray-200 shadow-sm"
+            }`}>
 
               <FaBuilding className="text-zinc-700 text-4xl mx-auto" />
 
@@ -609,7 +626,7 @@ function WealthVyA() {
                 Próximamente nuevos proyectos
               </h3>
 
-              <p className="text-zinc-500 text-sm mt-1">
+              <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
                 Estamos preparando más trabajos para mostrarte.
               </p>
 
@@ -630,18 +647,21 @@ function WealthVyA() {
               {proyectosVisibles.map((proyecto) => (
                 <article
                   key={proyecto.id}
-                  className="
+                  className={`
                     group
-                    bg-zinc-950
                     border
-                    border-zinc-800
                     hover:border-yellow-500/50
                     rounded-2xl
                     overflow-hidden
                     transition-all
                     duration-300
                     hover:-translate-y-[2px]
-                  "
+                    ${
+                      modoOscuro
+                        ? "bg-zinc-950 border-zinc-800"
+                        : "bg-white border-gray-200 shadow-sm"
+                    }
+                  `}
                 >
 
                   {/* IMAGEN */}
@@ -721,11 +741,11 @@ function WealthVyA() {
                       {proyecto.nombre}
                     </h3>
 
-                    <p className="text-zinc-400 text-sm mt-2 line-clamp-2 min-h-[40px]">
+                    <p className={`text-sm mt-2 line-clamp-2 min-h-[40px] ${modoOscuro ? "text-zinc-400" : "text-gray-600"}`}>
                       {proyecto.descripcion}
                     </p>
 
-                    <div className="flex items-center gap-2 text-zinc-500 text-xs mt-4">
+                    <div className={`flex items-center gap-2 text-xs mt-4 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
 
                       <FaMapMarkerAlt className="text-yellow-500 shrink-0" />
 
@@ -747,7 +767,7 @@ function WealthVyA() {
                           )
                         }
                         className={`
-                          ${botonBaseCompacto}
+                          ${botonBaseCompacto(modoOscuro)}
                           border-zinc-600
                           text-zinc-300
                           hover:border-blue-500/60
@@ -765,7 +785,7 @@ function WealthVyA() {
                           solicitarCotizacion(proyecto)
                         }
                         className={`
-                          ${botonBaseCompacto}
+                          ${botonBaseCompacto(modoOscuro)}
                           border-yellow-500/50
                           text-yellow-400
                           hover:border-yellow-500
@@ -833,10 +853,8 @@ function WealthVyA() {
         <section className="pb-10">
 
           <div
-            className="
+            className={`
               border
-              border-zinc-800
-              bg-zinc-950
               rounded-2xl
               p-5
               md:p-6
@@ -846,7 +864,12 @@ function WealthVyA() {
               md:items-center
               md:justify-between
               gap-4
-            "
+              ${
+                modoOscuro
+                  ? "border-zinc-800 bg-zinc-950"
+                  : "border-gray-200 bg-white shadow-sm"
+              }
+            `}
           >
 
             <div>
@@ -855,7 +878,7 @@ function WealthVyA() {
                 ¿Tienes un diseño en mente?
               </h2>
 
-              <p className="text-zinc-500 text-sm mt-1">
+              <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
                 Cuéntanos qué necesitas y prepararemos una propuesta
                 en vidrio, aluminio o cancelería.
               </p>
@@ -868,7 +891,7 @@ function WealthVyA() {
                 navigate("/crear-cotizacion")
               }
               className={`
-                ${botonBase}
+                ${botonBase(modoOscuro)}
                 border-yellow-500/50
                 text-yellow-400
                 hover:border-yellow-500
@@ -897,8 +920,7 @@ function WealthVyA() {
 // BOTONES MODERNOS
 // ======================================================
 
-const botonBase = `
-  bg-black
+const botonBase = (modoOscuro) => `
   border
   px-4
   py-2.5
@@ -912,10 +934,12 @@ const botonBase = `
   duration-200
   hover:-translate-y-[1px]
   active:translate-y-0
+  ${
+    modoOscuro ? "bg-black" : "bg-white"
+  }
 `;
 
-const botonBaseCompacto = `
-  bg-black
+const botonBaseCompacto = (modoOscuro) => `
   border
   px-3
   py-2.5
@@ -930,15 +954,15 @@ const botonBaseCompacto = `
   duration-200
   hover:-translate-y-[1px]
   active:translate-y-0
+  ${
+    modoOscuro ? "bg-black" : "bg-white"
+  }
 `;
 
-const botonCuadrado = `
+const botonCuadrado = (modoOscuro) => `
   w-10
   h-10
-  bg-black
   border
-  border-zinc-700
-  text-zinc-400
   hover:text-yellow-400
   hover:border-yellow-500/60
   rounded-xl
@@ -947,6 +971,11 @@ const botonCuadrado = `
   justify-center
   transition-all
   duration-200
+  ${
+    modoOscuro
+      ? "bg-black border-zinc-700 text-zinc-400"
+      : "bg-white border-gray-300 text-gray-600"
+  }
 `;
 
 export default WealthVyA;

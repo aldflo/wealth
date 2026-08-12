@@ -4,12 +4,15 @@ export default function ChatInput({
   onSend,
   loading,
   onCancel,
+  modoOscuro,
 }) {
   /* =========================================
      ENTER PARA ENVIAR
   ========================================= */
 
-  const handleKeyDown = (event) => {
+  const handleKeyDown = (
+    event
+  ) => {
     if (
       event.key === "Enter" &&
       !event.shiftKey
@@ -54,21 +57,17 @@ export default function ChatInput({
 
   return (
     <div className="px-3 pb-3 sm:px-4 sm:pb-4">
-
       {/* =========================================
           INPUT
       ========================================= */}
 
       <div
-        className="
+        className={`
           flex
           items-end
           gap-2
 
-          bg-[#151517]
-
           border
-          border-zinc-800
 
           rounded-2xl
 
@@ -81,42 +80,42 @@ export default function ChatInput({
           shadow-[0_10px_40px_rgba(0,0,0,0.25)]
 
           transition
-        "
-      >
 
+          ${
+            modoOscuro
+              ? "bg-[#151517] border-zinc-800"
+              : "bg-white border-gray-300 shadow-sm"
+          }
+        `}
+      >
         <textarea
           rows={1}
-
-          value={value}
-
-          onChange={(event) =>
+          value={
+            value
+          }
+          onChange={(
+            event
+          ) =>
             setValue(
               event.target.value
             )
           }
-
           onKeyDown={
             handleKeyDown
           }
-
           placeholder={
             loading
               ? "WEALTH IA está preparando una respuesta..."
               : "Pregúntame sobre proyectos, canceles, vidrio, aluminio..."
           }
-
-          disabled={loading}
-
-          className="
+          disabled={
+            loading
+          }
+          className={`
             flex-1
 
             resize-none
-
             bg-transparent
-
-            text-zinc-100
-
-            placeholder:text-zinc-600
 
             text-sm
             sm:text-[15px]
@@ -130,7 +129,13 @@ export default function ChatInput({
             outline-none
 
             disabled:opacity-50
-          "
+
+            ${
+              modoOscuro
+                ? "text-zinc-100 placeholder:text-zinc-600"
+                : "text-gray-900 placeholder:text-gray-400"
+            }
+          `}
         />
 
         {/* =========================================
@@ -138,14 +143,11 @@ export default function ChatInput({
         ========================================= */}
 
         {loading ? (
-
           <button
             type="button"
-
             onClick={
               handleCancel
             }
-
             className="
               shrink-0
 
@@ -177,9 +179,6 @@ export default function ChatInput({
               duration-200
             "
           >
-
-            {/* CUADRADO STOP */}
-
             <span
               className="
                 w-3
@@ -194,22 +193,16 @@ export default function ChatInput({
             <span>
               Cancelar
             </span>
-
           </button>
-
         ) : (
-
           <button
             type="button"
-
             onClick={
               handleSend
             }
-
             disabled={
               !value.trim()
             }
-
             className="
               shrink-0
 
@@ -244,7 +237,6 @@ export default function ChatInput({
               shadow-lg
             "
           >
-
             <span>
               Enviar
             </span>
@@ -252,40 +244,33 @@ export default function ChatInput({
             <span className="text-base">
               ↑
             </span>
-
           </button>
-
         )}
-
       </div>
 
       {/* =========================================
           AVISO
       ========================================= */}
 
-      <div
-        className="
-          flex
-          justify-center
-
-          mt-2
-        "
-      >
+      <div className="flex justify-center mt-2">
         <p
-          className="
+          className={`
             text-[10px]
             sm:text-[11px]
 
-            text-zinc-700
-
             text-center
-          "
+
+            ${
+              modoOscuro
+                ? "text-zinc-700"
+                : "text-gray-400"
+            }
+          `}
         >
           WEALTH IA puede cometer errores. Confirma precios y
           especificaciones con un asesor.
         </p>
       </div>
-
     </div>
   );
 }

@@ -6,6 +6,10 @@ import {
 } from "react";
 
 import {
+  useOutletContext,
+} from "react-router-dom";
+
+import {
   db,
   auth,
 } from "../firebase.config";
@@ -269,7 +273,138 @@ function SelectorUbicacionEditar({
    COMPONENTE PRINCIPAL
 ====================================================== */
 
+
+const ESTILOS_TEMA_CLARO = `
+  .wealth-light-page {
+    background-color: #f9fafb !important;
+    color: #111827 !important;
+  }
+
+  .wealth-light-page .bg-black {
+    background-color: #ffffff !important;
+  }
+
+  .wealth-light-page .bg-zinc-950 {
+    background-color: #ffffff !important;
+  }
+
+  .wealth-light-page .bg-zinc-900 {
+    background-color: #f9fafb !important;
+  }
+
+  .wealth-light-page .bg-zinc-800 {
+    background-color: #f3f4f6 !important;
+  }
+
+  .wealth-light-page .bg-zinc-700 {
+    background-color: #e5e7eb !important;
+  }
+
+  .wealth-light-page [class~="bg-zinc-950/70"],
+  .wealth-light-page [class~="bg-zinc-950/60"] {
+    background-color: rgba(255, 255, 255, 0.92) !important;
+  }
+
+  .wealth-light-page [class~="bg-zinc-900/80"],
+  .wealth-light-page [class~="bg-zinc-900/60"] {
+    background-color: rgba(249, 250, 251, 0.94) !important;
+  }
+
+  .wealth-light-page [class~="bg-zinc-800/70"],
+  .wealth-light-page [class~="bg-zinc-800/60"],
+  .wealth-light-page [class~="bg-zinc-800/40"] {
+    background-color: rgba(243, 244, 246, 0.9) !important;
+  }
+
+  .wealth-light-page .border-zinc-900,
+  .wealth-light-page .border-zinc-800 {
+    border-color: #e5e7eb !important;
+  }
+
+  .wealth-light-page .border-zinc-700,
+  .wealth-light-page .border-zinc-600 {
+    border-color: #d1d5db !important;
+  }
+
+  .wealth-light-page .text-white {
+    color: #111827 !important;
+  }
+
+  .wealth-light-page .text-zinc-100,
+  .wealth-light-page .text-zinc-200 {
+    color: #1f2937 !important;
+  }
+
+  .wealth-light-page .text-zinc-300 {
+    color: #374151 !important;
+  }
+
+  .wealth-light-page .text-zinc-400 {
+    color: #4b5563 !important;
+  }
+
+  .wealth-light-page .text-zinc-500,
+  .wealth-light-page .text-zinc-600 {
+    color: #6b7280 !important;
+  }
+
+  .wealth-light-page .text-zinc-700 {
+    color: #9ca3af !important;
+  }
+
+  .wealth-light-page input,
+  .wealth-light-page textarea,
+  .wealth-light-page select {
+    color: #111827;
+  }
+
+  .wealth-light-page input::placeholder,
+  .wealth-light-page textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  .wealth-light-page option {
+    background: #ffffff;
+    color: #111827;
+  }
+
+  .wealth-light-page .inputAdmin {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
+    color: #111827 !important;
+  }
+
+  .wealth-light-page .hover\\:bg-zinc-900:hover {
+    background-color: #f3f4f6 !important;
+  }
+
+  .wealth-light-page .hover\\:bg-zinc-800:hover {
+    background-color: #e5e7eb !important;
+  }
+
+  .wealth-light-page .hover\\:bg-zinc-700:hover {
+    background-color: #d1d5db !important;
+  }
+
+  /* Mantener texto blanco en botones/estados de color intenso */
+  .wealth-light-page [class*="bg-red-"][class~="text-white"],
+  .wealth-light-page [class*="bg-green-"][class~="text-white"],
+  .wealth-light-page [class*="bg-emerald-"][class~="text-white"],
+  .wealth-light-page [class*="bg-blue-"][class~="text-white"],
+  .wealth-light-page [class*="bg-purple-"][class~="text-white"],
+  .wealth-light-page [class*="bg-cyan-"][class~="text-white"] {
+    color: #ffffff !important;
+  }
+
+  /* Overlays fotográficos siguen oscuros */
+  .wealth-light-page [class*="bg-black/"][class~="text-white"],
+  .wealth-light-page [class*="from-black"][class~="text-white"] {
+    color: #ffffff !important;
+  }
+`;
+
 function Cotizaciones() {
+  const { modoOscuro } = useOutletContext();
   // ======================================================
   // CONTROL DE NOTIFICACIONES
   // ======================================================
@@ -3010,7 +3145,8 @@ function Cotizaciones() {
 
   if (cargando) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className={`wealth-theme-page ${!modoOscuro ? "wealth-light-page" : ""} min-h-screen bg-black text-white flex items-center justify-center`}>
+        {!modoOscuro && <style>{ESTILOS_TEMA_CLARO}</style>}
 
         <div className="text-center">
 
@@ -3031,7 +3167,8 @@ function Cotizaciones() {
   ====================================================== */
 
   return (
-    <div className="min-h-screen bg-black text-white px-4 md:px-6 py-6">
+    <div className={`wealth-theme-page ${!modoOscuro ? "wealth-light-page" : ""} min-h-screen bg-black text-white px-4 md:px-6 py-6`}>
+      {!modoOscuro && <style>{ESTILOS_TEMA_CLARO}</style>}
 
       {/* =================================================
           BARRA SUPERIOR

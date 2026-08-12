@@ -1,5 +1,6 @@
 export default function EmptyState({
   onSelect,
+  modoOscuro,
 }) {
   const options = [
     {
@@ -7,19 +8,16 @@ export default function EmptyState({
       title: "Canceles modernos",
       text: "Quiero un cancel moderno para baño",
     },
-
     {
       icon: "✨",
       title: "Vidrio templado",
       text: "Muéstrame opciones de vidrio templado",
     },
-
     {
       icon: "🏗️",
       title: "Construcción",
       text: "Quiero información sobre construcción",
     },
-
     {
       icon: "📍",
       title: "Ubicación",
@@ -29,7 +27,7 @@ export default function EmptyState({
 
   return (
     <div
-      className="
+      className={`
         h-full
         min-h-[500px]
 
@@ -40,9 +38,17 @@ export default function EmptyState({
 
         px-5
         py-12
-      "
-    >
 
+        transition-colors
+        duration-300
+
+        ${
+          modoOscuro
+            ? "text-white"
+            : "text-gray-900"
+        }
+      `}
+    >
       {/* LOGO */}
 
       <div
@@ -75,26 +81,31 @@ export default function EmptyState({
       {/* TITULO */}
 
       <h2
-        className="
+        className={`
           text-3xl
           sm:text-4xl
 
           font-bold
 
-          text-white
-
           tracking-tight
 
           text-center
-        "
+
+          transition-colors
+          duration-300
+
+          ${
+            modoOscuro
+              ? "text-white"
+              : "text-gray-900"
+          }
+        `}
       >
         ¿En qué podemos ayudarte?
       </h2>
 
       <p
-        className="
-          text-zinc-500
-
+        className={`
           text-sm
           sm:text-base
 
@@ -103,7 +114,16 @@ export default function EmptyState({
           max-w-xl
 
           mt-3
-        "
+
+          transition-colors
+          duration-300
+
+          ${
+            modoOscuro
+              ? "text-zinc-500"
+              : "text-gray-500"
+          }
+        `}
       >
         Consulta nuestros servicios, proyectos, canceles,
         aluminio, vidrio templado, construcción y opciones
@@ -126,17 +146,17 @@ export default function EmptyState({
           mt-8
         "
       >
-
         {options.map(
           (item, index) => (
             <button
               key={index}
+              type="button"
               onClick={() =>
                 onSelect(
                   item.text
                 )
               }
-              className="
+              className={`
                 group
 
                 flex
@@ -149,21 +169,30 @@ export default function EmptyState({
 
                 rounded-2xl
 
-                bg-zinc-900/60
-
                 border
-                border-zinc-800
 
                 hover:border-[#c89b3c]/60
                 hover:bg-[#c89b3c]/5
 
                 transition-all
                 duration-200
-              "
-            >
 
+                ${
+                  modoOscuro
+                    ? `
+                      bg-zinc-900/60
+                      border-zinc-800
+                    `
+                    : `
+                      bg-white
+                      border-gray-200
+                      shadow-sm
+                    `
+                }
+              `}
+            >
               <div
-                className="
+                className={`
                   w-11
                   h-11
 
@@ -173,69 +202,88 @@ export default function EmptyState({
                   items-center
                   justify-center
 
-                  bg-black
-
                   border
-                  border-zinc-800
 
                   text-xl
 
                   group-hover:border-[#c89b3c]/50
 
                   transition
-                "
+
+                  ${
+                    modoOscuro
+                      ? `
+                        bg-black
+                        border-zinc-800
+                      `
+                      : `
+                        bg-gray-50
+                        border-gray-200
+                      `
+                  }
+                `}
               >
                 {item.icon}
               </div>
 
               <div>
-
                 <p
-                  className="
+                  className={`
                     text-sm
                     font-semibold
-                    text-zinc-200
 
                     group-hover:text-[#d7ae50]
 
                     transition
-                  "
+
+                    ${
+                      modoOscuro
+                        ? "text-zinc-200"
+                        : "text-gray-800"
+                    }
+                  `}
                 >
                   {item.title}
                 </p>
 
                 <p
-                  className="
+                  className={`
                     text-xs
-                    text-zinc-500
                     mt-1
-                  "
+
+                    ${
+                      modoOscuro
+                        ? "text-zinc-500"
+                        : "text-gray-500"
+                    }
+                  `}
                 >
                   Preguntar a WEALTH IA
                 </p>
-
               </div>
-
             </button>
           )
         )}
-
       </div>
 
       {/* AVISO */}
 
       <p
-        className="
+        className={`
           mt-8
           text-[11px]
-          text-zinc-600
           text-center
-        "
+
+          ${
+            modoOscuro
+              ? "text-zinc-600"
+              : "text-gray-400"
+          }
+        `}
       >
         WEALTH IA puede ayudarte a explorar opciones antes de
         solicitar una cotización.
       </p>
-
     </div>
   );
 }

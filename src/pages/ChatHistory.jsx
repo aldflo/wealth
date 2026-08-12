@@ -4,32 +4,53 @@ export default function ChatHistory({
   onSelect,
   onNew,
   onDelete,
+  modoOscuro,
 }) {
   return (
     <aside
-      className="
+      className={`
         hidden
         lg:flex
+
         w-64
         xl:w-72
+
         shrink-0
         flex-col
 
-        bg-[#070707]
-
         border-r
         border-[#c89b3c]/15
-      "
+
+        transition-colors
+        duration-300
+
+        ${
+          modoOscuro
+            ? "bg-[#070707]"
+            : "bg-gray-50"
+        }
+      `}
     >
       {/* NUEVA CONVERSACIÓN */}
 
-      <div className="p-4 border-b border-zinc-900">
+      <div
+        className={`
+          p-4
+          border-b
 
+          ${
+            modoOscuro
+              ? "border-zinc-900"
+              : "border-gray-200"
+          }
+        `}
+      >
         <button
           type="button"
           onClick={onNew}
           className="
             w-full
+
             px-4
             py-3
 
@@ -47,15 +68,13 @@ export default function ChatHistory({
         >
           + Nueva conversación
         </button>
-
       </div>
 
       {/* HISTORIAL */}
 
       <div className="flex-1 overflow-y-auto p-3">
-
         <p
-          className="
+          className={`
             px-2
             mb-3
 
@@ -63,151 +82,197 @@ export default function ChatHistory({
             uppercase
             tracking-[0.2em]
 
-            text-zinc-600
             font-semibold
-          "
+
+            ${
+              modoOscuro
+                ? "text-zinc-600"
+                : "text-gray-500"
+            }
+          `}
         >
           Historial
         </p>
 
         {conversations.length === 0 ? (
-
           <div className="px-2 py-6 text-center">
+            <p
+              className={`
+                text-sm
 
-            <p className="text-sm text-zinc-600">
+                ${
+                  modoOscuro
+                    ? "text-zinc-600"
+                    : "text-gray-500"
+                }
+              `}
+            >
               Aún no tienes conversaciones guardadas.
             </p>
-
           </div>
-
         ) : (
-
           <div className="space-y-1">
-
-            {conversations.map((conversation) => (
-
-              <div
-                key={conversation.id}
-                className={`
-                  group
-                  flex
-                  items-center
-
-                  rounded-xl
-
-                  border
-
-                  ${
-                    currentId === conversation.id
-                      ? "bg-[#c89b3c]/10 border-[#c89b3c]/30"
-                      : "border-transparent hover:bg-zinc-900"
+            {conversations.map(
+              (conversation) => (
+                <div
+                  key={
+                    conversation.id
                   }
+                  className={`
+                    group
 
-                  transition
-                `}
-              >
+                    flex
+                    items-center
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    onSelect(conversation)
-                  }
-                  className="
-                    flex-1
-                    min-w-0
+                    rounded-xl
 
-                    text-left
-
-                    px-3
-                    py-3
-                  "
-                >
-
-                  <p
-                    className={`
-                      text-sm
-                      truncate
-
-                      ${
-                        currentId === conversation.id
-                          ? "text-[#d6ab4c]"
-                          : "text-zinc-400"
-                      }
-                    `}
-                  >
-                    {conversation.titulo ||
-                      "Conversación"}
-                  </p>
-
-                  {conversation.updatedAt && (
-                    <p className="text-[10px] text-zinc-700 mt-1">
-
-                      {new Date(
-                        conversation.updatedAt
-                      ).toLocaleDateString(
-                        "es-MX",
-                        {
-                          day: "2-digit",
-                          month: "short",
-                        }
-                      )}
-
-                    </p>
-                  )}
-
-                </button>
-
-                {/* ELIMINAR */}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    onDelete(
-                      conversation.id
-                    )
-                  }
-                  className="
-                    opacity-0
-                    group-hover:opacity-100
-
-                    mr-2
-
-                    w-8
-                    h-8
-
-                    rounded-lg
-
-                    text-zinc-600
-                    hover:text-red-400
-                    hover:bg-red-500/10
+                    border
 
                     transition
-                  "
-                  title="Eliminar conversación"
+
+                    ${
+                      currentId ===
+                      conversation.id
+                        ? "bg-[#c89b3c]/10 border-[#c89b3c]/30"
+                        : modoOscuro
+                        ? "border-transparent hover:bg-zinc-900"
+                        : "border-transparent hover:bg-gray-100"
+                    }
+                  `}
                 >
-                  ×
-                </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSelect(
+                        conversation
+                      )
+                    }
+                    className="
+                      flex-1
+                      min-w-0
 
-              </div>
+                      text-left
 
-            ))}
+                      px-3
+                      py-3
+                    "
+                  >
+                    <p
+                      className={`
+                        text-sm
+                        truncate
 
+                        ${
+                          currentId ===
+                          conversation.id
+                            ? "text-[#d6ab4c]"
+                            : modoOscuro
+                            ? "text-zinc-400"
+                            : "text-gray-700"
+                        }
+                      `}
+                    >
+                      {conversation.titulo ||
+                        "Conversación"}
+                    </p>
+
+                    {conversation.updatedAt && (
+                      <p
+                        className={`
+                          text-[10px]
+                          mt-1
+
+                          ${
+                            modoOscuro
+                              ? "text-zinc-700"
+                              : "text-gray-400"
+                          }
+                        `}
+                      >
+                        {new Date(
+                          conversation.updatedAt
+                        ).toLocaleDateString(
+                          "es-MX",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                          }
+                        )}
+                      </p>
+                    )}
+                  </button>
+
+                  {/* ELIMINAR */}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onDelete(
+                        conversation.id
+                      )
+                    }
+                    className={`
+                      opacity-0
+                      group-hover:opacity-100
+
+                      mr-2
+
+                      w-8
+                      h-8
+
+                      rounded-lg
+
+                      hover:text-red-400
+                      hover:bg-red-500/10
+
+                      transition
+
+                      ${
+                        modoOscuro
+                          ? "text-zinc-600"
+                          : "text-gray-400"
+                      }
+                    `}
+                    title="Eliminar conversación"
+                  >
+                    ×
+                  </button>
+                </div>
+              )
+            )}
           </div>
-
         )}
-
       </div>
 
       {/* FOOTER */}
 
-      <div className="p-4 border-t border-zinc-900">
+      <div
+        className={`
+          p-4
+          border-t
 
-        <p className="text-[10px] leading-relaxed text-zinc-700">
+          ${
+            modoOscuro
+              ? "border-zinc-900"
+              : "border-gray-200"
+          }
+        `}
+      >
+        <p
+          className={`
+            text-[10px]
+            leading-relaxed
+
+            ${
+              modoOscuro
+                ? "text-zinc-700"
+                : "text-gray-400"
+            }
+          `}
+        >
           Tus conversaciones están asociadas a tu cuenta.
         </p>
-
       </div>
-
     </aside>
   );
 }

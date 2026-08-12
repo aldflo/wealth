@@ -8,6 +8,7 @@ import {
 import {
   Link,
   useNavigate,
+  useOutletContext,
 } from "react-router-dom";
 
 import {
@@ -54,7 +55,7 @@ import {
 
 /* ======================================================
    CONFIGURACIÓN
-====================================================== */
+\====================================================== */
 
 const DOMINIO_INTERNO =
   "wealth.local";
@@ -64,7 +65,7 @@ const SEGUNDOS_REENVIO =
 
 /* ======================================================
    HELPERS TELÉFONO
-====================================================== */
+\====================================================== */
 
 const normalizarTelefonoMexico =
   (valor) => {
@@ -141,29 +142,31 @@ const telefonoAEmailInterno =
 
 /* ======================================================
    COMPONENTE
-====================================================== */
+\====================================================== */
 
 function Register() {
   const navigate =
     useNavigate();
 
+  const { modoOscuro } = useOutletContext() || {};
+
   /* ======================================================
      MODO DE REGISTRO
-  ====================================================== */
+  \====================================================== */
 
   const [modo, setModo] =
     useState("opciones");
 
   /* ======================================================
      DATOS GENERALES
-  ====================================================== */
+  \====================================================== */
 
   const [nombre, setNombre] =
     useState("");
 
   /* ======================================================
      CORREO
-  ====================================================== */
+  \====================================================== */
 
   const [correo, setCorreo] =
     useState("");
@@ -190,7 +193,7 @@ function Register() {
 
   /* ======================================================
      TELÉFONO
-  ====================================================== */
+  \====================================================== */
 
   const [
     pasoTelefono,
@@ -238,7 +241,7 @@ function Register() {
 
   /* ======================================================
      ESTADOS
-  ====================================================== */
+  \====================================================== */
 
   const [loading, setLoading] =
     useState(false);
@@ -251,7 +254,7 @@ function Register() {
 
   /* ======================================================
      RECAPTCHA
-  ====================================================== */
+  \====================================================== */
 
   const recaptchaRef =
     useRef(null);
@@ -261,7 +264,7 @@ function Register() {
 
   /* ======================================================
      SEGURIDAD CONTRASEÑA
-  ====================================================== */
+  \====================================================== */
 
   const calcularSeguridad =
     (password) => {
@@ -360,7 +363,7 @@ function Register() {
 
   /* ======================================================
      TEMPORIZADOR
-  ====================================================== */
+  \====================================================== */
 
   useEffect(() => {
     if (contador <= 0) {
@@ -386,7 +389,7 @@ function Register() {
 
   /* ======================================================
      RECAPTCHA
-  ====================================================== */
+  \====================================================== */
 
   const resetearRecaptcha =
     () => {
@@ -475,7 +478,7 @@ function Register() {
 
   /* ======================================================
      ERRORES SMS
-  ====================================================== */
+  \====================================================== */
 
   const mensajeErrorSMS =
     (firebaseError) => {
@@ -526,7 +529,7 @@ function Register() {
 
   /* ======================================================
      GOOGLE
-  ====================================================== */
+  \====================================================== */
 
   const registrarGoogle =
     async () => {
@@ -575,6 +578,9 @@ function Register() {
 
               role:
                 "cliente",
+
+              temaPreferido:
+                "claro",
 
               proveedor:
                 "google",
@@ -660,7 +666,7 @@ function Register() {
 
   /* ======================================================
      CORREO + CONTRASEÑA
-  ====================================================== */
+  \====================================================== */
 
   const registrarCorreo =
     async (e) => {
@@ -756,6 +762,9 @@ function Register() {
 
             role:
               "cliente",
+
+            temaPreferido:
+              "claro",
 
             proveedor:
               "password",
@@ -855,7 +864,7 @@ function Register() {
 
   /* ======================================================
      TELÉFONO - PASO 1
-  ====================================================== */
+  \====================================================== */
 
   const enviarCodigo =
     async () => {
@@ -935,7 +944,7 @@ function Register() {
 
   /* ======================================================
      TELÉFONO - PASO 2
-  ====================================================== */
+  \====================================================== */
 
   const verificarCodigo =
     async () => {
@@ -1100,7 +1109,7 @@ function Register() {
 
   /* ======================================================
      TELÉFONO - PASO 3
-  ====================================================== */
+  \====================================================== */
 
   const crearCuentaTelefono =
     async () => {
@@ -1203,6 +1212,9 @@ function Register() {
             role:
               "cliente",
 
+            temaPreferido:
+              "claro",
+
             proveedor:
               "telefono_password",
 
@@ -1284,7 +1296,7 @@ function Register() {
 
   /* ======================================================
      VOLVER
-  ====================================================== */
+  \====================================================== */
 
   const volverOpciones =
     async () => {
@@ -1321,22 +1333,34 @@ function Register() {
 
   /* ======================================================
      RENDER
-  ====================================================== */
+  \====================================================== */
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      modoOscuro ? "bg-black text-white" : "bg-gray-50 text-gray-900"
+    }`}>
 
       {/* ESPACIO HEADER GLOBAL */}
 
       <div className="h-24 md:h-28" />
 
       <main className="max-w-7xl mx-auto px-4 md:px-6 pb-14">
-        <div className="overflow-hidden rounded-[32px] border border-zinc-800 bg-zinc-950 shadow-2xl grid lg:grid-cols-[0.95fr_1.05fr]">
+        <div className={`overflow-hidden rounded-[32px] border shadow-2xl grid lg:grid-cols-[0.95fr_1.05fr] ${
+          modoOscuro
+            ? "border-zinc-800 bg-zinc-950"
+            : "border-gray-200 bg-white"
+        }`}>
 
           {/* BRANDING */}
 
-          <section className="relative hidden lg:flex min-h-[720px] flex-col justify-between p-10 xl:p-12 overflow-hidden border-r border-zinc-800">
-            <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 via-zinc-950 to-black" />
+          <section className={`relative hidden lg:flex min-h-[720px] flex-col justify-between p-10 xl:p-12 overflow-hidden border-r ${
+              modoOscuro ? "border-zinc-800" : "border-gray-200"
+            }`}>
+            <div className={`absolute inset-0 bg-gradient-to-br ${
+              modoOscuro
+                ? "from-yellow-500/10 via-zinc-950 to-black"
+                : "from-yellow-50 via-white to-gray-50"
+            }`} />
 
             <div className="absolute -top-32 -left-24 w-80 h-80 rounded-full bg-yellow-500/10 blur-3xl" />
 
@@ -1354,7 +1378,9 @@ function Register() {
                 </span>
               </h2>
 
-              <p className="text-zinc-400 text-lg leading-relaxed mt-6 max-w-lg">
+              <p className={`text-lg leading-relaxed mt-6 max-w-lg ${
+                modoOscuro ? "text-zinc-400" : "text-gray-600"
+              }`}>
                 Puedes registrarte con Google, con correo y contraseña, o verificar tu teléfono por SMS y después usar teléfono + contraseña.
               </p>
             </div>
@@ -1379,7 +1405,9 @@ function Register() {
               />
             </div>
 
-            <div className="relative z-10 pt-8 border-t border-white/10">
+            <div className={`relative z-10 pt-8 border-t ${
+              modoOscuro ? "border-white/10" : "border-gray-200"
+            }`}>
               <div className="flex items-center gap-3 text-zinc-500 text-sm">
                 <FaShieldAlt className="text-yellow-500" />
                 Registro seguro · Wealth Grupo Empresarial
@@ -1531,7 +1559,7 @@ function Register() {
                         )
                       }
                       placeholder="Nombre y apellidos"
-                      className={inputClass}
+                      className={inputClass(modoOscuro)}
                     />
                   </Campo>
 
@@ -1551,7 +1579,7 @@ function Register() {
                         )
                       }
                       placeholder="correo@ejemplo.com"
-                      className={inputClass}
+                      className={inputClass(modoOscuro)}
                     />
                   </Campo>
 
@@ -1576,7 +1604,7 @@ function Register() {
                           )
                         }
                         placeholder="Mínimo 8 caracteres"
-                        className={`${inputClass} pr-12`}
+                        className={`${inputClass(modoOscuro)} pr-12`}
                       />
 
                       <button
@@ -1627,7 +1655,7 @@ function Register() {
                           )
                         }
                         placeholder="Repite la contraseña"
-                        className={`${inputClass} pr-12`}
+                        className={`${inputClass(modoOscuro)} pr-12`}
                       />
 
                       <button
@@ -1725,7 +1753,7 @@ function Register() {
                             )
                           }
                           placeholder="Nombre y apellidos"
-                          className={inputClass}
+                          className={inputClass(modoOscuro)}
                         />
                       </Campo>
 
@@ -1736,7 +1764,11 @@ function Register() {
                         }
                       >
                         <div className="flex gap-2">
-                          <div className="bg-black border border-zinc-700 rounded-2xl px-4 flex items-center text-zinc-400 font-semibold">
+                          <div className={`border rounded-2xl px-4 flex items-center font-semibold ${
+                            modoOscuro
+                              ? "bg-black border-zinc-700 text-zinc-400"
+                              : "bg-gray-50 border-gray-300 text-gray-600"
+                          }`}>
                             +52
                           </div>
 
@@ -1751,7 +1783,7 @@ function Register() {
                               )
                             }
                             placeholder="981 123 4567"
-                            className={inputClass}
+                            className={inputClass(modoOscuro)}
                           />
                         </div>
 
@@ -1922,7 +1954,7 @@ function Register() {
                               )
                             }
                             placeholder="Mínimo 8 caracteres"
-                            className={`${inputClass} pr-12`}
+                            className={`${inputClass(modoOscuro)} pr-12`}
                           />
 
                           <button
@@ -1973,7 +2005,7 @@ function Register() {
                               )
                             }
                             placeholder="Repite la contraseña"
-                            className={`${inputClass} pr-12`}
+                            className={`${inputClass(modoOscuro)} pr-12`}
                           />
 
                           <button
@@ -2042,7 +2074,9 @@ function Register() {
 
               {/* LOGIN */}
 
-              <div className="mt-7 pt-6 border-t border-zinc-800 text-center">
+              <div className={`mt-7 pt-6 border-t text-center ${
+                modoOscuro ? "border-zinc-800" : "border-gray-200"
+              }`}>
                 <p className="text-sm text-zinc-500">
                   ¿Ya tienes una cuenta?
 
@@ -2055,7 +2089,11 @@ function Register() {
                 </p>
               </div>
 
-              <div className="mt-5 bg-zinc-900 border border-zinc-800 rounded-2xl p-4">
+              <div className={`mt-5 border rounded-2xl p-4 ${
+                modoOscuro
+                  ? "bg-zinc-900 border-zinc-800"
+                  : "bg-gray-50 border-gray-200"
+              }`}>
                 <div className="flex items-start gap-3">
                   <FaShieldAlt className="text-yellow-500 mt-0.5 shrink-0" />
 
@@ -2074,16 +2112,20 @@ function Register() {
 
 /* ======================================================
    COMPONENTES
-====================================================== */
+\====================================================== */
 
 function Campo({
   label,
   icon,
   children,
 }) {
+  const { modoOscuro } = useOutletContext() || {};
+
   return (
     <div>
-      <label className="text-sm text-zinc-400 flex items-center gap-2 mb-2">
+      <label className={`text-sm flex items-center gap-2 mb-2 ${
+        modoOscuro ? "text-zinc-400" : "text-gray-600"
+      }`}>
         <span className="text-yellow-500">
           {icon}
         </span>
@@ -2101,6 +2143,8 @@ function Beneficio({
   titulo,
   texto,
 }) {
+  const { modoOscuro } = useOutletContext() || {};
+
   return (
     <div className="flex gap-4">
       <div className="text-yellow-500/60 text-sm font-bold pt-1">
@@ -2112,7 +2156,7 @@ function Beneficio({
           {titulo}
         </p>
 
-        <p className="text-zinc-500 text-sm mt-1 leading-relaxed">
+        <p className={`${modoOscuro ? "text-zinc-500" : "text-gray-500"} text-sm mt-1 leading-relaxed`}>
           {texto}
         </p>
       </div>
@@ -2123,6 +2167,8 @@ function Beneficio({
 function SeguridadPassword({
   seguridad,
 }) {
+  const { modoOscuro } = useOutletContext() || {};
+
   if (!seguridad?.nivel) {
     return null;
   }
@@ -2156,7 +2202,7 @@ function SeguridadPassword({
       </div>
 
       <div className="flex items-center justify-between mt-2">
-        <p className="text-xs text-zinc-600">
+        <p className={`text-xs ${modoOscuro ? "text-zinc-600" : "text-gray-500"}`}>
           Mínimo 8 caracteres
         </p>
 
@@ -2211,23 +2257,24 @@ function Alerta({
 
 /* ======================================================
    ESTILOS
-====================================================== */
+\====================================================== */
 
-const inputClass = `
+const inputClass = (modoOscuro) => `
   w-full
-  bg-black
   border
-  border-zinc-700
   rounded-2xl
   px-4
   py-3.5
-  text-white
-  placeholder:text-zinc-600
   outline-none
   focus:border-yellow-500/70
   focus:ring-2
   focus:ring-yellow-500/10
   transition
+  ${
+    modoOscuro
+      ? "bg-black border-zinc-700 text-white placeholder:text-zinc-600"
+      : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+  }
 `;
 
 const botonPrincipal = `

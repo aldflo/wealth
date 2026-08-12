@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 
 import {
   FaHardHat,
@@ -27,6 +27,8 @@ import {
 
 function WealthConstrucciones() {
   const navigate = useNavigate();
+
+  const { modoOscuro } = useOutletContext() || {};
 
   // ======================================================
   // PROYECTOS
@@ -333,7 +335,13 @@ function WealthConstrucciones() {
   // ======================================================
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div
+      className={`min-h-screen transition-colors duration-300 ${
+        modoOscuro
+          ? "bg-black text-white"
+          : "bg-gray-50 text-gray-900"
+      }`}
+    >
 
       {/* ================================================= */}
       {/* HERO */}
@@ -403,7 +411,7 @@ function WealthConstrucciones() {
                   navigate("/crear-cotizacion")
                 }
                 className={`
-                  ${botonBase}
+                  ${botonBase(modoOscuro)}
                   border-yellow-500/50
                   text-yellow-400
                   hover:border-yellow-500
@@ -423,9 +431,8 @@ function WealthConstrucciones() {
                   navigate("/proyectos")
                 }
                 className={`
-                  ${botonBase}
-                  border-zinc-600
-                  text-zinc-300
+                  ${botonBase(modoOscuro)}
+                  ${modoOscuro ? "border-zinc-600 text-zinc-300" : "border-gray-300 text-gray-700"}
                   hover:border-yellow-500/60
                   hover:text-yellow-400
                 `}
@@ -465,7 +472,7 @@ function WealthConstrucciones() {
               Servicios de Construcción
             </h2>
 
-            <p className="text-zinc-500 mt-2 max-w-2xl">
+            <p className={`mt-2 max-w-2xl ${modoOscuro ? "text-zinc-500" : "text-gray-600"}`}>
               Soluciones integrales para proyectos residenciales,
               comerciales, industriales y de infraestructura.
             </p>
@@ -479,18 +486,21 @@ function WealthConstrucciones() {
             {servicios.map((servicio, index) => (
               <article
                 key={index}
-                className="
+                className={`
                   group
-                  bg-zinc-950
                   border
-                  border-zinc-800
                   hover:border-yellow-500/50
                   rounded-2xl
                   p-5
                   transition-all
                   duration-300
                   hover:-translate-y-[2px]
-                "
+                  ${
+                    modoOscuro
+                      ? "bg-zinc-950 border-zinc-800"
+                      : "bg-white border-gray-200 shadow-sm"
+                  }
+                `}
               >
 
                 <div className="flex items-start gap-4">
@@ -534,7 +544,7 @@ function WealthConstrucciones() {
                   {servicio.descripcion.map((item, i) => (
                     <div
                       key={i}
-                      className="flex items-start gap-2.5 text-zinc-400 text-sm"
+                      className={`flex items-start gap-2.5 text-sm ${modoOscuro ? "text-zinc-400" : "text-gray-600"}`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-2 shrink-0" />
 
@@ -557,7 +567,7 @@ function WealthConstrucciones() {
         {/* DIVISIÓN DISCRETA */}
         {/* ================================================= */}
 
-        <div className="border-t border-zinc-900" />
+        <div className={`border-t ${modoOscuro ? "border-zinc-900" : "border-gray-200"}`} />
 
         {/* ================================================= */}
         {/* PROYECTOS */}
@@ -579,7 +589,7 @@ function WealthConstrucciones() {
                 Conoce nuestros proyectos
               </h2>
 
-              <p className="text-zinc-500 mt-2">
+              <p className={modoOscuro ? "text-zinc-500 mt-2" : "text-gray-600 mt-2"}>
                 Algunos trabajos realizados por Wealth Construcciones.
               </p>
 
@@ -589,8 +599,12 @@ function WealthConstrucciones() {
 
               {/* CONTADOR */}
 
-              <div className="bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-400">
-                <strong className="text-white">
+              <div className={`border rounded-xl px-4 py-2.5 text-sm ${
+                modoOscuro
+                  ? "bg-zinc-950 border-zinc-800 text-zinc-400"
+                  : "bg-white border-gray-200 text-gray-600 shadow-sm"
+              }`}>
+                <strong className={modoOscuro ? "text-white" : "text-gray-900"}>
                   {proyectos.length}
                 </strong>{" "}
                 {proyectos.length === 1
@@ -606,7 +620,7 @@ function WealthConstrucciones() {
                     type="button"
                     onClick={proyectosAnteriores}
                     aria-label="Proyectos anteriores"
-                    className={botonCuadrado}
+                    className={botonCuadrado(modoOscuro)}
                   >
                     <FaChevronLeft />
                   </button>
@@ -615,7 +629,7 @@ function WealthConstrucciones() {
                     type="button"
                     onClick={proyectosSiguientes}
                     aria-label="Siguientes proyectos"
-                    className={botonCuadrado}
+                    className={botonCuadrado(modoOscuro)}
                   >
                     <FaChevronRight />
                   </button>
@@ -628,9 +642,8 @@ function WealthConstrucciones() {
                   navigate("/proyectos")
                 }
                 className={`
-                  ${botonBase}
-                  border-zinc-600
-                  text-zinc-300
+                  ${botonBase(modoOscuro)}
+                  ${modoOscuro ? "border-zinc-600 text-zinc-300" : "border-gray-300 text-gray-700"}
                   hover:border-yellow-500/60
                   hover:text-yellow-400
                 `}
@@ -647,7 +660,11 @@ function WealthConstrucciones() {
           {/* SIN PROYECTOS */}
 
           {proyectos.length === 0 ? (
-            <div className="bg-zinc-950 border border-zinc-800 rounded-2xl py-10 text-center">
+            <div className={`border rounded-2xl py-10 text-center ${
+              modoOscuro
+                ? "bg-zinc-950 border-zinc-800"
+                : "bg-white border-gray-200 shadow-sm"
+            }`}>
 
               <FaBuilding className="text-zinc-700 text-4xl mx-auto" />
 
@@ -655,7 +672,7 @@ function WealthConstrucciones() {
                 Próximamente nuevos proyectos
               </h3>
 
-              <p className="text-zinc-500 text-sm mt-1">
+              <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
                 Estamos preparando más trabajos para mostrarte.
               </p>
 
@@ -676,18 +693,21 @@ function WealthConstrucciones() {
               {proyectosVisibles.map((proyecto) => (
                 <article
                   key={proyecto.id}
-                  className="
+                  className={`
                     group
-                    bg-zinc-950
                     border
-                    border-zinc-800
                     hover:border-yellow-500/50
                     rounded-2xl
                     overflow-hidden
                     transition-all
                     duration-300
                     hover:-translate-y-[2px]
-                  "
+                    ${
+                      modoOscuro
+                        ? "bg-zinc-950 border-zinc-800"
+                        : "bg-white border-gray-200 shadow-sm"
+                    }
+                  `}
                 >
 
                   {/* IMAGEN */}
@@ -769,7 +789,7 @@ function WealthConstrucciones() {
 
                     </h3>
 
-                    <p className="text-zinc-400 text-sm mt-2 line-clamp-2 min-h-[40px]">
+                    <p className={`text-sm mt-2 line-clamp-2 min-h-[40px] ${modoOscuro ? "text-zinc-400" : "text-gray-600"}`}>
 
                       {proyecto.descripcion}
 
@@ -777,7 +797,7 @@ function WealthConstrucciones() {
 
                     {/* UBICACIÓN */}
 
-                    <div className="flex items-center gap-2 text-zinc-500 text-xs mt-4">
+                    <div className={`flex items-center gap-2 text-xs mt-4 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
 
                       <FaMapMarkerAlt className="text-yellow-500 shrink-0" />
 
@@ -800,7 +820,7 @@ function WealthConstrucciones() {
                           )
                         }
                         className={`
-                          ${botonBaseCompacto}
+                          ${botonBaseCompacto(modoOscuro)}
                           border-zinc-600
                           text-zinc-300
                           hover:border-blue-500/60
@@ -818,7 +838,7 @@ function WealthConstrucciones() {
                           solicitarCotizacion(proyecto)
                         }
                         className={`
-                          ${botonBaseCompacto}
+                          ${botonBaseCompacto(modoOscuro)}
                           border-yellow-500/50
                           text-yellow-400
                           hover:border-yellow-500
@@ -886,10 +906,8 @@ function WealthConstrucciones() {
         <section className="pb-10">
 
           <div
-            className="
+            className={`
               border
-              border-zinc-800
-              bg-zinc-950
               rounded-2xl
               p-5
               md:p-6
@@ -899,7 +917,12 @@ function WealthConstrucciones() {
               md:items-center
               md:justify-between
               gap-4
-            "
+              ${
+                modoOscuro
+                  ? "border-zinc-800 bg-zinc-950"
+                  : "border-gray-200 bg-white shadow-sm"
+              }
+            `}
           >
 
             <div>
@@ -908,7 +931,7 @@ function WealthConstrucciones() {
                 ¿Tienes una obra en mente?
               </h2>
 
-              <p className="text-zinc-500 text-sm mt-1">
+              <p className={`text-sm mt-1 ${modoOscuro ? "text-zinc-500" : "text-gray-500"}`}>
                 Cuéntanos qué necesitas y prepararemos una propuesta para tu proyecto.
               </p>
 
@@ -920,7 +943,7 @@ function WealthConstrucciones() {
                 navigate("/crear-cotizacion")
               }
               className={`
-                ${botonBase}
+                ${botonBase(modoOscuro)}
                 border-yellow-500/50
                 text-yellow-400
                 hover:border-yellow-500
@@ -949,8 +972,7 @@ function WealthConstrucciones() {
 // BOTÓN PRINCIPAL MODERNO
 // ======================================================
 
-const botonBase = `
-  bg-black
+const botonBase = (modoOscuro) => `
   border
   px-4
   py-2.5
@@ -964,14 +986,16 @@ const botonBase = `
   duration-200
   hover:-translate-y-[1px]
   active:translate-y-0
+  ${
+    modoOscuro ? "bg-black" : "bg-white"
+  }
 `;
 
 // ======================================================
 // BOTÓN COMPACTO PARA TARJETAS
 // ======================================================
 
-const botonBaseCompacto = `
-  bg-black
+const botonBaseCompacto = (modoOscuro) => `
   border
   px-3
   py-2.5
@@ -986,19 +1010,19 @@ const botonBaseCompacto = `
   duration-200
   hover:-translate-y-[1px]
   active:translate-y-0
+  ${
+    modoOscuro ? "bg-black" : "bg-white"
+  }
 `;
 
 // ======================================================
 // FLECHAS DE ROTACIÓN
 // ======================================================
 
-const botonCuadrado = `
+const botonCuadrado = (modoOscuro) => `
   w-10
   h-10
-  bg-black
   border
-  border-zinc-700
-  text-zinc-400
   hover:text-yellow-400
   hover:border-yellow-500/60
   rounded-xl
@@ -1007,6 +1031,11 @@ const botonCuadrado = `
   justify-center
   transition-all
   duration-200
+  ${
+    modoOscuro
+      ? "bg-black border-zinc-700 text-zinc-400"
+      : "bg-white border-gray-300 text-gray-600"
+  }
 `;
 
 export default WealthConstrucciones;

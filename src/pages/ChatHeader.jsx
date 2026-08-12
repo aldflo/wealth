@@ -1,26 +1,35 @@
-export default function ChatHeader() {
+export default function ChatHeader({
+  modoOscuro,
+}) {
   return (
     <div
-      className="
+      className={`
         flex
         items-center
         justify-between
+
         px-5
         sm:px-7
         py-4
 
-        bg-black/80
         backdrop-blur-xl
 
         border-b
         border-[#c89b3c]/20
-      "
-    >
 
+        transition-colors
+        duration-300
+
+        ${
+          modoOscuro
+            ? "bg-black/80"
+            : "bg-white/90"
+        }
+      `}
+    >
       {/* IZQUIERDA */}
 
       <div className="flex items-center gap-3">
-
         {/* ICONO */}
 
         <div
@@ -28,6 +37,7 @@ export default function ChatHeader() {
             w-11
             h-11
             rounded-2xl
+
             flex
             items-center
             justify-center
@@ -49,9 +59,7 @@ export default function ChatHeader() {
         {/* TEXTO */}
 
         <div>
-
           <div className="flex items-center gap-2">
-
             <h1
               className="
                 text-lg
@@ -68,9 +76,12 @@ export default function ChatHeader() {
               className="
                 hidden
                 sm:inline-flex
+
                 text-[10px]
+
                 px-2
                 py-0.5
+
                 rounded-full
 
                 border
@@ -82,46 +93,51 @@ export default function ChatHeader() {
             >
               ASISTENTE
             </span>
-
           </div>
 
           <p
-            className="
+            className={`
               text-xs
               sm:text-sm
-              text-zinc-500
               mt-0.5
-            "
+
+              ${
+                modoOscuro
+                  ? "text-zinc-500"
+                  : "text-gray-500"
+              }
+            `}
           >
             Construcción · Vidrio · Aluminio · Inmobiliaria
           </p>
-
         </div>
-
       </div>
 
       {/* ESTADO */}
 
       <div
-        className="
+        className={`
           flex
           items-center
           gap-2
 
-          bg-zinc-900/80
-
           border
-          border-zinc-800
-
           rounded-full
 
           px-3
           py-2
-        "
+
+          transition-colors
+          duration-300
+
+          ${
+            modoOscuro
+              ? "bg-zinc-900/80 border-zinc-800"
+              : "bg-gray-100 border-gray-200"
+          }
+        `}
       >
-
         <span className="relative flex h-2.5 w-2.5">
-
           <span
             className="
               absolute
@@ -145,21 +161,23 @@ export default function ChatHeader() {
               bg-emerald-500
             "
           />
-
         </span>
 
         <span
-          className="
+          className={`
             text-xs
             sm:text-sm
-            text-zinc-300
-          "
+
+            ${
+              modoOscuro
+                ? "text-zinc-300"
+                : "text-gray-700"
+            }
+          `}
         >
           En línea
         </span>
-
       </div>
-
     </div>
   );
 }
