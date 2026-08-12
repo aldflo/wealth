@@ -133,6 +133,20 @@ function SubirProyecto() {
   const MAX_IMAGENES = 8;
   const MAX_GALERIA = 12;
 
+  // Cloudinary Free acepta imágenes de hasta 10 MB.
+  // Dejamos margen para evitar rechazos por tamaño.
+  const LIMITE_CLOUDINARY_BYTES =
+    9 * 1024 * 1024;
+
+  const MAX_DIMENSION_OPTIMIZADA =
+    3000;
+
+  const CALIDAD_INICIAL =
+    0.88;
+
+  const CALIDAD_MINIMA =
+    0.58;
+
   const categorias = [
     "Construcciones",
     "Remodelaciones",
@@ -210,6 +224,407 @@ function SubirProyecto() {
   }, []);
 
   // ======================================================
+  // OPTIMIZAR IMÁGENES GRANDES
+  // ======================================================
+
+  const esFormatoRawNoCompatible =
+    (file) => {
+      const nombre =
+        String(
+          file?.name ||
+          ""
+        ).toLowerCase();
+
+      return (
+        nombre.endsWith(
+          ".dng"
+        ) ||
+        nombre.endsWith(
+          ".raw"
+        ) ||
+        nombre.endsWith(
+          ".cr2"
+        ) ||
+        nombre.endsWith(
+          ".cr3"
+        ) ||
+        nombre.endsWith(
+          ".nef"
+        ) ||
+        nombre.endsWith(
+          ".arw"
+        )
+      );
+    };
+
+
+  const cargarImagenEnNavegador =
+    (file) =>
+      new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+
+          const url =
+            URL.createObjectURL(
+              file
+            );
+
+          const img =
+            new Image();
+
+
+          img.onload =
+            () => {
+
+              URL.revokeObjectURL(
+                url
+              );
+
+              resolve(
+                img
+              );
+
+            };
+
+
+          img.onerror =
+            () => {
+
+              URL.revokeObjectURL(
+                url
+              );
+
+              reject(
+                new Error(
+                  `El navegador no puede procesar "${file.name}".`
+                )
+              );
+
+            };
+
+
+          img.src =
+            url;
+
+        }
+      );
+
+
+  const canvasABlob =
+    (
+      canvas,
+      tipo,
+      calidad
+    ) =>
+      new Promise(
+        (
+          resolve,
+          reject
+        ) => {
+
+          canvas.toBlob(
+            (blob) => {
+
+              if (!blob) {
+
+                reject(
+                  new Error(
+                    "No se pudo optimizar la imagen."
+                  )
+                );
+
+                return;
+
+              }
+
+
+              resolve(
+                blob
+              );
+
+            },
+
+            tipo,
+
+            calidad
+          );
+
+        }
+      );
+
+
+  const optimizarImagen =
+    async (
+      file
+    ) => {
+
+      /*
+        Si ya está debajo del límite seguro,
+        no tocamos el archivo.
+      */
+
+      if (
+        file.size <=
+        LIMITE_CLOUDINARY_BYTES
+      ) {
+        return file;
+      }
+
+
+      /*
+        DNG / RAW no puede convertirse de forma
+        confiable con Canvas del navegador.
+
+        En estos casos mostramos un mensaje claro.
+      */
+
+      if (
+        esFormatoRawNoCompatible(
+          file
+        )
+      ) {
+
+        throw new Error(
+          `"${file.name}" es una fotografía RAW/DNG de ${(file.size / 1024 / 1024).toFixed(
+            1
+          )} MB. El navegador no puede convertir automáticamente este formato. En tu celular expórtala o compártela como JPG/HEIC y vuelve a seleccionarla.`
+        );
+
+      }
+
+
+      let imagen;
+
+      try {
+
+        imagen =
+          await cargarImagenEnNavegador(
+            file
+          );
+
+      } catch {
+
+        throw new Error(
+          `"${file.name}" pesa ${(file.size / 1024 / 1024).toFixed(
+            1
+          )} MB y su formato no puede optimizarse automáticamente en este navegador.`
+        );
+
+      }
+
+
+      const anchoOriginal =
+        imagen.naturalWidth ||
+        imagen.width;
+
+      const altoOriginal =
+        imagen.naturalHeight ||
+        imagen.height;
+
+
+      const escala =
+        Math.min(
+          1,
+          MAX_DIMENSION_OPTIMIZADA /
+            Math.max(
+              anchoOriginal,
+              altoOriginal
+            )
+        );
+
+
+      const ancho =
+        Math.max(
+          1,
+          Math.round(
+            anchoOriginal *
+              escala
+          )
+        );
+
+      const alto =
+        Math.max(
+          1,
+          Math.round(
+            altoOriginal *
+              escala
+          )
+        );
+
+
+      const canvas =
+        document.createElement(
+          "canvas"
+        );
+
+      canvas.width =
+        ancho;
+
+      canvas.height =
+        alto;
+
+
+      const ctx =
+        canvas.getContext(
+          "2d"
+        );
+
+
+      if (!ctx) {
+
+        throw new Error(
+          `No se pudo preparar "${file.name}" para subirla.`
+        );
+
+      }
+
+
+      ctx.imageSmoothingEnabled =
+        true;
+
+      ctx.imageSmoothingQuality =
+        "high";
+
+
+      /*
+        Fondo blanco para evitar transparencia
+        negra al convertir PNG a JPEG.
+      */
+
+      ctx.fillStyle =
+        "#ffffff";
+
+      ctx.fillRect(
+        0,
+        0,
+        ancho,
+        alto
+      );
+
+
+      ctx.drawImage(
+        imagen,
+        0,
+        0,
+        ancho,
+        alto
+      );
+
+
+      let calidad =
+        CALIDAD_INICIAL;
+
+      let blob =
+        await canvasABlob(
+          canvas,
+          "image/jpeg",
+          calidad
+        );
+
+
+      while (
+        blob.size >
+          LIMITE_CLOUDINARY_BYTES &&
+        calidad >
+          CALIDAD_MINIMA
+      ) {
+
+        calidad =
+          Math.max(
+            CALIDAD_MINIMA,
+            calidad -
+              0.08
+          );
+
+
+        blob =
+          await canvasABlob(
+            canvas,
+            "image/jpeg",
+            calidad
+          );
+
+      }
+
+
+      if (
+        blob.size >
+        LIMITE_CLOUDINARY_BYTES
+      ) {
+
+        throw new Error(
+          `"${file.name}" sigue siendo demasiado pesada después de optimizarla. Prueba exportándola como JPG desde tu celular.`
+        );
+
+      }
+
+
+      const nombreSinExtension =
+        file.name.replace(
+          /\.[^/.]+$/,
+          ""
+        );
+
+
+      return new File(
+        [
+          blob,
+        ],
+
+        `${nombreSinExtension}-optimizada.jpg`,
+
+        {
+          type:
+            "image/jpeg",
+
+          lastModified:
+            Date.now(),
+        }
+      );
+
+    };
+
+
+  const optimizarArchivos =
+    async (
+      files
+    ) => {
+
+      const lista =
+        Array.from(
+          files ||
+          []
+        );
+
+
+      const resultado =
+        [];
+
+
+      for (
+        const file of lista
+      ) {
+
+        const optimizado =
+          await optimizarImagen(
+            file
+          );
+
+        resultado.push(
+          optimizado
+        );
+
+      }
+
+
+      return resultado;
+
+    };
+
+
+  // ======================================================
   // VALIDAR ARCHIVO
   // ======================================================
 
@@ -225,15 +640,45 @@ function SubirProyecto() {
   // AGREGAR IMÁGENES PRINCIPALES
   // ======================================================
 
-  const handlePreviewImagenes = (files) => {
+  const handlePreviewImagenes = async (files) => {
     setError("");
     setMensaje("");
 
-    const nuevos =
+    const originales =
       Array.from(files || []);
 
-    if (nuevos.length === 0) {
+    if (originales.length === 0) {
       return;
+    }
+
+    let nuevos;
+
+    try {
+
+      setLoading(
+        true
+      );
+
+      nuevos =
+        await optimizarArchivos(
+          originales
+        );
+
+    } catch (error) {
+
+      setError(
+        error.message ||
+          "No se pudieron preparar las imágenes."
+      );
+
+      return;
+
+    } finally {
+
+      setLoading(
+        false
+      );
+
     }
 
     const total =
@@ -280,15 +725,45 @@ function SubirProyecto() {
   // AGREGAR GALERÍA
   // ======================================================
 
-  const handlePreviewGaleria = (files) => {
+  const handlePreviewGaleria = async (files) => {
     setError("");
     setMensaje("");
 
-    const nuevos =
+    const originales =
       Array.from(files || []);
 
-    if (nuevos.length === 0) {
+    if (originales.length === 0) {
       return;
+    }
+
+    let nuevos;
+
+    try {
+
+      setLoading(
+        true
+      );
+
+      nuevos =
+        await optimizarArchivos(
+          originales
+        );
+
+    } catch (error) {
+
+      setError(
+        error.message ||
+          "No se pudieron preparar las imágenes."
+      );
+
+      return;
+
+    } finally {
+
+      setLoading(
+        false
+      );
+
     }
 
     const total =
@@ -419,14 +894,16 @@ function SubirProyecto() {
       let detalle = "";
 
       try {
+
         const errorData =
           await res.json();
 
         detalle =
           errorData?.error?.message ||
           "";
+
       } catch {
-        // Si Cloudinary no devuelve JSON, conservamos el mensaje general.
+        // Cloudinary no devolvió JSON.
       }
 
       throw new Error(
@@ -1302,11 +1779,11 @@ function SubirProyecto() {
                   </p>
 
                   <p className="text-sm text-zinc-500 mt-2">
-                    JPG, PNG o WEBP · Se permiten fotografías de alta resolución
+                    JPG, PNG o WEBP · Las fotos grandes se optimizan automáticamente
                   </p>
 
                   <p className="text-xs text-zinc-600 mt-1">
-                    Hasta {MAX_IMAGENES} imágenes
+                    Hasta {MAX_IMAGENES} imágenes · Máx. 3000 px al optimizar
                   </p>
 
                   <input
@@ -1314,9 +1791,12 @@ function SubirProyecto() {
                     multiple
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => {
-                      handlePreviewImagenes(
-                        e.target.files
+                    onChange={async (e) => {
+                      const files =
+                        e.target.files;
+
+                      await handlePreviewImagenes(
+                        files
                       );
 
                       e.target.value =
@@ -1461,11 +1941,11 @@ function SubirProyecto() {
                   </p>
 
                   <p className="text-sm text-zinc-500 mt-2">
-                    JPG, PNG o WEBP · Se permiten fotografías de alta resolución
+                    JPG, PNG o WEBP · Las fotos grandes se optimizan automáticamente
                   </p>
 
                   <p className="text-xs text-zinc-600 mt-1">
-                    Hasta {MAX_GALERIA} imágenes
+                    Hasta {MAX_GALERIA} imágenes · Máx. 3000 px al optimizar
                   </p>
 
                   <input
@@ -1473,9 +1953,12 @@ function SubirProyecto() {
                     multiple
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => {
-                      handlePreviewGaleria(
-                        e.target.files
+                    onChange={async (e) => {
+                      const files =
+                        e.target.files;
+
+                      await handlePreviewGaleria(
+                        files
                       );
 
                       e.target.value =
