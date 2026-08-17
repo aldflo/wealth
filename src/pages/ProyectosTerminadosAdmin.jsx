@@ -66,7 +66,7 @@ function ProyectosTerminadosAdmin() {
   const [errorGeneral, setErrorGeneral] = useState("");
 
   // ======================================================
-  // MODAL PROYECTO
+  // PROYECTO ACTIVO
   // ======================================================
 
   const [proyectoActivo, setProyectoActivo] = useState(null);
@@ -79,9 +79,13 @@ function ProyectosTerminadosAdmin() {
   const [editandoFotos, setEditandoFotos] = useState(false);
 
   const [fotosFinalesEdit, setFotosFinalesEdit] = useState([]);
+
   const [referenciasEdit, setReferenciasEdit] = useState([]);
 
+  const [fotosEliminadas, setFotosEliminadas] = useState([]);
+
   const [guardandoFotos, setGuardandoFotos] = useState(false);
+
   const [mensajeFotos, setMensajeFotos] = useState("");
   const [errorFotos, setErrorFotos] = useState("");
 
@@ -90,7 +94,9 @@ function ProyectosTerminadosAdmin() {
   // ======================================================
 
   const [galeriaOpen, setGaleriaOpen] = useState(false);
+
   const [imagenesGaleria, setImagenesGaleria] = useState([]);
+
   const [imagenActual, setImagenActual] = useState(0);
 
   // ======================================================
@@ -98,11 +104,14 @@ function ProyectosTerminadosAdmin() {
   // ======================================================
 
   const [notaPostventa, setNotaPostventa] = useState("");
+
   const [tipoSeguimiento, setTipoSeguimiento] =
     useState("Seguimiento");
 
   const [guardandoNota, setGuardandoNota] = useState(false);
+
   const [mensajeNota, setMensajeNota] = useState("");
+
   const [errorNota, setErrorNota] = useState("");
 
   // ======================================================
@@ -136,6 +145,7 @@ function ProyectosTerminadosAdmin() {
         setProyectos(data);
 
         setCargando(false);
+
         setErrorCarga("");
 
         setProyectoActivo((actual) => {
@@ -145,7 +155,9 @@ function ProyectosTerminadosAdmin() {
             (proyecto) => proyecto.id === actual.id
           );
 
-          if (!actualizado) return actual;
+          if (!actualizado) {
+            return actual;
+          }
 
           return {
             ...actual,
@@ -213,6 +225,7 @@ function ProyectosTerminadosAdmin() {
 
       return {
         ...(cotizacion || {}),
+
         ...proyecto,
 
         id: proyecto.id,
@@ -277,6 +290,11 @@ function ProyectosTerminadosAdmin() {
             ? proyecto.imagenesReferenciasAdmin
             : [],
 
+        imagenesOcultasAdmin:
+          Array.isArray(proyecto.imagenesOcultasAdmin)
+            ? proyecto.imagenesOcultasAdmin
+            : [],
+
         historialPropuestas:
           Array.isArray(proyecto.historialPropuestas)
             ? proyecto.historialPropuestas
@@ -293,7 +311,7 @@ function ProyectosTerminadosAdmin() {
   }, [proyectos, cotizaciones]);
 
   // ======================================================
-  // FILTRO BUSCADOR
+  // BUSCADOR
   // ======================================================
 
   const expedientesFiltrados = useMemo(() => {
@@ -346,10 +364,7 @@ function ProyectosTerminadosAdmin() {
     });
   };
 
-  const formatearFecha = (
-    fecha,
-    incluirHora = false
-  ) => {
+  const formatearFecha = (fecha, incluirHora = false) => {
     if (!fecha) return "Sin fecha";
 
     try {
@@ -372,15 +387,33 @@ function ProyectosTerminadosAdmin() {
     }
   };
 
+  // ======================================================
+  // FOTOS FINALES
+  // ======================================================
+
   const fotosFinales = (proyecto) => {
+    if (!proyecto) return [];
+
     const lista = Array.isArray(
-      proyecto?.imagenesTrabajoFinal
+      proyecto.imagenesTrabajoFinal
     )
       ? proyecto.imagenesTrabajoFinal
       : [];
 
-    return [...new Set(lista.filter(Boolean))];
+    const ocultas = new Set(
+      Array.isArray(proyecto.imagenesOcultasAdmin)
+        ? proyecto.imagenesOcultasAdmin
+        : []
+    );
+
+    return [...new Set(lista.filter(Boolean))].filter(
+      (url) => !ocultas.has(url)
+    );
   };
+
+  // ======================================================
+  // REFERENCIAS
+  // ======================================================
 
   const referencias = (proyecto) => {
     if (!proyecto) return [];
@@ -399,10 +432,22 @@ function ProyectosTerminadosAdmin() {
       fotosFinales(proyecto)
     );
 
+    const ocultas = new Set(
+      Array.isArray(proyecto.imagenesOcultasAdmin)
+        ? proyecto.imagenesOcultasAdmin
+        : []
+    );
+
     return [...new Set(lista)].filter(
-      (url) => !finales.has(url)
+      (url) =>
+        !finales.has(url) &&
+        !ocultas.has(url)
     );
   };
+
+  // ======================================================
+  // PORTADA
+  // ======================================================
 
   const portada = (proyecto) =>
     fotosFinales(proyecto)[0] ||
@@ -412,7 +457,7 @@ function ProyectosTerminadosAdmin() {
     null;
 
   // ======================================================
-  // SELECCIÓN / ELIMINACIÓN
+  // SELECCIÓN
   // ======================================================
 
   const alternarModoSeleccion = () => {
@@ -421,6 +466,7 @@ function ProyectosTerminadosAdmin() {
     setSeleccionados([]);
 
     setMensajeGeneral("");
+
     setErrorGeneral("");
   };
 
@@ -470,6 +516,10 @@ function ProyectosTerminadosAdmin() {
     ]);
   };
 
+  // ======================================================
+  // ELIMINAR EXPEDIENTES
+  // ======================================================
+
   const eliminarSeleccionados = async () => {
     if (seleccionados.length === 0) return;
 
@@ -487,6 +537,7 @@ function ProyectosTerminadosAdmin() {
       setEliminando(true);
 
       setMensajeGeneral("");
+
       setErrorGeneral("");
 
       const batch = writeBatch(db);
@@ -525,7 +576,7 @@ function ProyectosTerminadosAdmin() {
   };
 
   // ======================================================
-  // MODAL
+  // ABRIR PROYECTO
   // ======================================================
 
   const abrirProyecto = (proyecto) => {
@@ -536,6 +587,7 @@ function ProyectosTerminadosAdmin() {
     setTipoSeguimiento("Seguimiento");
 
     setMensajeNota("");
+
     setErrorNota("");
 
     setEditandoFotos(false);
@@ -548,11 +600,22 @@ function ProyectosTerminadosAdmin() {
       referencias(proyecto)
     );
 
+    setFotosEliminadas(
+      Array.isArray(proyecto.imagenesOcultasAdmin)
+        ? proyecto.imagenesOcultasAdmin
+        : []
+    );
+
     setMensajeFotos("");
+
     setErrorFotos("");
 
     setModalProyecto(true);
   };
+
+  // ======================================================
+  // CERRAR PROYECTO
+  // ======================================================
 
   const cerrarProyecto = () => {
     setModalProyecto(false);
@@ -562,19 +625,24 @@ function ProyectosTerminadosAdmin() {
     setNotaPostventa("");
 
     setMensajeNota("");
+
     setErrorNota("");
 
     setEditandoFotos(false);
 
     setFotosFinalesEdit([]);
+
     setReferenciasEdit([]);
 
+    setFotosEliminadas([]);
+
     setMensajeFotos("");
+
     setErrorFotos("");
   };
 
   // ======================================================
-  // EDICIÓN FOTOGRAFÍAS
+  // INICIAR EDICIÓN DE FOTOS
   // ======================================================
 
   const iniciarEdicionFotos = () => {
@@ -588,11 +656,22 @@ function ProyectosTerminadosAdmin() {
       referencias(proyectoActivo)
     );
 
+    setFotosEliminadas(
+      Array.isArray(proyectoActivo.imagenesOcultasAdmin)
+        ? proyectoActivo.imagenesOcultasAdmin
+        : []
+    );
+
     setMensajeFotos("");
+
     setErrorFotos("");
 
     setEditandoFotos(true);
   };
+
+  // ======================================================
+  // CANCELAR EDICIÓN
+  // ======================================================
 
   const cancelarEdicionFotos = () => {
     if (!proyectoActivo) return;
@@ -605,14 +684,21 @@ function ProyectosTerminadosAdmin() {
       referencias(proyectoActivo)
     );
 
+    setFotosEliminadas(
+      Array.isArray(proyectoActivo.imagenesOcultasAdmin)
+        ? proyectoActivo.imagenesOcultasAdmin
+        : []
+    );
+
     setEditandoFotos(false);
 
     setMensajeFotos("");
+
     setErrorFotos("");
   };
 
   // ======================================================
-  // MOVER FINAL → REFERENCIA
+  // MOVER FINAL A REFERENCIA
   // ======================================================
 
   const moverFinalAReferencia = (imagen) => {
@@ -630,11 +716,12 @@ function ProyectosTerminadosAdmin() {
     ]);
 
     setMensajeFotos("");
+
     setErrorFotos("");
   };
 
   // ======================================================
-  // MOVER REFERENCIA → FINAL
+  // MOVER REFERENCIA A FINAL
   // ======================================================
 
   const moverReferenciaAFinal = (imagen) => {
@@ -652,11 +739,47 @@ function ProyectosTerminadosAdmin() {
     ]);
 
     setMensajeFotos("");
+
     setErrorFotos("");
   };
 
   // ======================================================
-  // GUARDAR FOTOGRAFÍAS
+  // ELIMINAR FOTO DEL EXPEDIENTE
+  // ======================================================
+
+  const eliminarFotoExpediente = (imagen) => {
+    const confirmar = window.confirm(
+      "¿Eliminar esta fotografía del expediente?\n\nLa imagen dejará de mostrarse en este proyecto."
+    );
+
+    if (!confirmar) return;
+
+    setFotosFinalesEdit((actuales) =>
+      actuales.filter(
+        (url) => url !== imagen
+      )
+    );
+
+    setReferenciasEdit((actuales) =>
+      actuales.filter(
+        (url) => url !== imagen
+      )
+    );
+
+    setFotosEliminadas((actuales) => [
+      ...new Set([
+        ...actuales,
+        imagen,
+      ]),
+    ]);
+
+    setMensajeFotos("");
+
+    setErrorFotos("");
+  };
+
+  // ======================================================
+  // GUARDAR CAMBIOS DE FOTOGRAFÍAS
   // ======================================================
 
   const guardarCambiosFotos = async () => {
@@ -674,11 +797,23 @@ function ProyectosTerminadosAdmin() {
       setGuardandoFotos(true);
 
       setMensajeFotos("");
+
       setErrorFotos("");
+
+      const eliminadasLimpias = [
+        ...new Set(
+          fotosEliminadas.filter(Boolean)
+        ),
+      ];
 
       const finalesLimpios = [
         ...new Set(
-          fotosFinalesEdit.filter(Boolean)
+          fotosFinalesEdit
+            .filter(Boolean)
+            .filter(
+              (url) =>
+                !eliminadasLimpias.includes(url)
+            )
         ),
       ];
 
@@ -688,7 +823,8 @@ function ProyectosTerminadosAdmin() {
             .filter(Boolean)
             .filter(
               (url) =>
-                !finalesLimpios.includes(url)
+                !finalesLimpios.includes(url) &&
+                !eliminadasLimpias.includes(url)
             )
         ),
       ];
@@ -699,12 +835,16 @@ function ProyectosTerminadosAdmin() {
           "proyectosClientes",
           proyectoActivo.id
         ),
+
         {
           imagenesTrabajoFinal:
             finalesLimpios,
 
           imagenesReferenciasAdmin:
             referenciasLimpias,
+
+          imagenesOcultasAdmin:
+            eliminadasLimpias,
 
           fechaActualizacionFotos:
             Timestamp.now(),
@@ -719,6 +859,9 @@ function ProyectosTerminadosAdmin() {
 
         imagenesReferenciasAdmin:
           referenciasLimpias,
+
+        imagenesOcultasAdmin:
+          eliminadasLimpias,
       };
 
       setProyectoActivo(actualizado);
@@ -729,6 +872,10 @@ function ProyectosTerminadosAdmin() {
 
       setReferenciasEdit(
         referenciasLimpias
+      );
+
+      setFotosEliminadas(
+        eliminadasLimpias
       );
 
       setEditandoFotos(false);
@@ -773,8 +920,7 @@ function ProyectosTerminadosAdmin() {
 
   const siguiente = () => {
     setImagenActual((actual) =>
-      actual + 1 >=
-      imagenesGaleria.length
+      actual + 1 >= imagenesGaleria.length
         ? 0
         : actual + 1
     );
@@ -789,7 +935,7 @@ function ProyectosTerminadosAdmin() {
   };
 
   // ======================================================
-  // POSTVENTA / GARANTÍA
+  // POSTVENTA
   // ======================================================
 
   const guardarSeguimiento = async () => {
@@ -809,6 +955,7 @@ function ProyectosTerminadosAdmin() {
       setGuardandoNota(true);
 
       setErrorNota("");
+
       setMensajeNota("");
 
       const nuevoRegistro = {
@@ -845,8 +992,7 @@ function ProyectosTerminadosAdmin() {
         ...actual,
 
         seguimientosPostventa: [
-          ...(actual?.seguimientosPostventa ||
-            []),
+          ...(actual?.seguimientosPostventa || []),
 
           nuevoRegistro,
         ],
@@ -866,7 +1012,7 @@ function ProyectosTerminadosAdmin() {
   };
 
   // ======================================================
-  // LOADING
+  // CARGANDO
   // ======================================================
 
   if (cargando) {
@@ -904,6 +1050,7 @@ function ProyectosTerminadosAdmin() {
         {/* ================================================= */}
 
         <header className="mb-8">
+
           <button
             type="button"
             onClick={() =>
@@ -917,10 +1064,11 @@ function ProyectosTerminadosAdmin() {
           </button>
 
           <div className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5 mt-5">
+
             <div>
+
               <p className="text-xs uppercase tracking-[0.25em] text-green-400 font-semibold">
-                Administración · Archivo de
-                trabajos
+                Administración · Archivo de trabajos
               </p>
 
               <h1 className="text-3xl md:text-4xl font-bold mt-2">
@@ -928,23 +1076,23 @@ function ProyectosTerminadosAdmin() {
               </h1>
 
               <p className="text-zinc-400 mt-2 max-w-3xl">
-                Expedientes administrativos de
-                los trabajos entregados.
-                Conserva aquí la información
-                necesaria para garantías,
-                aclaraciones, reclamos y
-                servicios posteriores.
+                Expedientes administrativos de los trabajos entregados.
+                Conserva aquí la información necesaria para garantías,
+                aclaraciones, reclamos y servicios posteriores.
               </p>
+
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 xl:items-center">
 
               <div className="bg-zinc-900 border border-green-500/20 rounded-2xl px-5 py-4 flex items-center gap-4">
+
                 <div className="w-11 h-11 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
                   <FaCheckCircle />
                 </div>
 
                 <div>
+
                   <p className="text-2xl font-bold">
                     {expedientes.length}
                   </p>
@@ -952,14 +1100,14 @@ function ProyectosTerminadosAdmin() {
                   <p className="text-xs text-zinc-500">
                     trabajos archivados
                   </p>
+
                 </div>
+
               </div>
 
               <button
                 type="button"
-                onClick={
-                  alternarModoSeleccion
-                }
+                onClick={alternarModoSeleccion}
                 className={`
                   px-5 py-4 rounded-2xl border font-semibold
                   flex items-center justify-center gap-2 transition
@@ -981,8 +1129,11 @@ function ProyectosTerminadosAdmin() {
                   ? "Terminar selección"
                   : "Seleccionar"}
               </button>
+
             </div>
+
           </div>
+
         </header>
 
         {/* ================================================= */}
@@ -1013,36 +1164,31 @@ function ProyectosTerminadosAdmin() {
 
         {modoSeleccion && (
           <div className="mb-5 bg-zinc-900 border border-yellow-500/20 rounded-2xl p-4">
+
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+
               <div>
+
                 <p className="font-bold">
                   Modo selección
                 </p>
 
                 <p className="text-sm text-zinc-500 mt-1">
-                  {seleccionados.length}{" "}
-                  expediente
-                  {seleccionados.length ===
-                  1
-                    ? ""
-                    : "s"}{" "}
-                  seleccionado
-                  {seleccionados.length ===
-                  1
-                    ? ""
-                    : "s"}
-                  .
+                  {seleccionados.length} expediente
+                  {seleccionados.length === 1 ? "" : "s"} seleccionado
+                  {seleccionados.length === 1 ? "" : "s"}.
                 </p>
+
               </div>
 
               <div className="flex flex-wrap gap-3">
+
                 <button
                   type="button"
-                  onClick={
-                    seleccionarTodos
-                  }
+                  onClick={seleccionarTodos}
                   className="px-4 py-3 bg-black border border-zinc-700 hover:border-yellow-500/50 rounded-xl flex items-center gap-2 font-semibold text-sm transition"
                 >
+
                   {todosSeleccionados ? (
                     <FaCheckSquare className="text-yellow-500" />
                   ) : (
@@ -1052,16 +1198,14 @@ function ProyectosTerminadosAdmin() {
                   {todosSeleccionados
                     ? "Quitar visibles"
                     : "Seleccionar visibles"}
+
                 </button>
 
-                {seleccionados.length >
-                  0 && (
+                {seleccionados.length > 0 && (
                   <button
                     type="button"
                     disabled={eliminando}
-                    onClick={
-                      eliminarSeleccionados
-                    }
+                    onClick={eliminarSeleccionados}
                     className="px-4 py-3 bg-red-600 hover:bg-red-500 rounded-xl flex items-center gap-2 font-bold text-sm disabled:opacity-50 transition"
                   >
                     <FaTrashAlt />
@@ -1071,8 +1215,11 @@ function ProyectosTerminadosAdmin() {
                       : `Eliminar ${seleccionados.length}`}
                   </button>
                 )}
+
               </div>
+
             </div>
+
           </div>
         )}
 
@@ -1088,9 +1235,7 @@ function ProyectosTerminadosAdmin() {
             type="text"
             value={busqueda}
             onChange={(e) =>
-              setBusqueda(
-                e.target.value
-              )
+              setBusqueda(e.target.value)
             }
             placeholder="Buscar cliente, teléfono, correo, proyecto, ubicación o ID..."
             className={`w-full border rounded-2xl py-4 pl-12 pr-5 outline-none focus:border-yellow-500/60 transition ${
@@ -1099,6 +1244,7 @@ function ProyectosTerminadosAdmin() {
                 : "bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
             }`}
           />
+
         </div>
 
         {/* ================================================= */}
@@ -1106,8 +1252,7 @@ function ProyectosTerminadosAdmin() {
         {/* ================================================= */}
 
         {!errorCarga &&
-          expedientesFiltrados.length ===
-            0 && (
+          expedientesFiltrados.length === 0 && (
             <div
               className={`border rounded-3xl p-12 text-center ${
                 modoOscuro
@@ -1115,17 +1260,17 @@ function ProyectosTerminadosAdmin() {
                   : "bg-white border-gray-200 shadow-sm"
               }`}
             >
+
               <FaBuilding className="text-zinc-700 text-5xl mx-auto" />
 
               <h2 className="text-xl font-bold mt-5">
-                No encontramos trabajos
-                terminados
+                No encontramos trabajos terminados
               </h2>
 
               <p className="text-zinc-500 mt-2">
-                Prueba con otro nombre,
-                teléfono o proyecto.
+                Prueba con otro nombre, teléfono o proyecto.
               </p>
+
             </div>
           )}
 
@@ -1135,1175 +1280,1096 @@ function ProyectosTerminadosAdmin() {
 
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-          {expedientesFiltrados.map(
-            (proyecto) => {
-              const imagen =
-                portada(proyecto);
+          {expedientesFiltrados.map((proyecto) => {
+            const imagen = portada(proyecto);
 
-              const totalFotos =
-                fotosFinales(
-                  proyecto
-                ).length;
+            const totalFotos =
+              fotosFinales(proyecto).length;
 
-              return (
-                <article
-                  key={proyecto.id}
+            return (
+              <article
+                key={proyecto.id}
 
-                  onClick={() => {
-                    if (
-                      modoSeleccion
-                    ) {
-                      alternarSeleccion(
-                        proyecto.id
-                      );
-                    }
-                  }}
+                onClick={() => {
+                  if (modoSeleccion) {
+                    alternarSeleccion(proyecto.id);
+                  }
+                }}
 
-                  className={`
-                    relative border rounded-3xl overflow-hidden transition
+                className={`
+                  relative border rounded-3xl overflow-hidden transition
 
-                    ${
-                      modoOscuro
-                        ? "bg-zinc-900"
-                        : "bg-white shadow-sm"
-                    }
+                  ${
+                    modoOscuro
+                      ? "bg-zinc-900"
+                      : "bg-white shadow-sm"
+                  }
 
-                    ${
-                      seleccionados.includes(
-                        proyecto.id
-                      )
-                        ? "border-yellow-500 ring-2 ring-yellow-500/20"
-                        : "border-zinc-800 hover:border-green-500/30"
-                    }
+                  ${
+                    seleccionados.includes(proyecto.id)
+                      ? "border-yellow-500 ring-2 ring-yellow-500/20"
+                      : "border-zinc-800 hover:border-green-500/30"
+                  }
 
-                    ${
-                      modoSeleccion
-                        ? "cursor-pointer"
-                        : ""
-                    }
-                  `}
-                >
+                  ${
+                    modoSeleccion
+                      ? "cursor-pointer"
+                      : ""
+                  }
+                `}
+              >
 
-                  {modoSeleccion && (
-                    <div className="absolute top-4 right-4 z-30">
+                {modoSeleccion && (
+                  <div className="absolute top-4 right-4 z-30">
 
-                      <div
-                        className={`
-                          w-11 h-11 rounded-xl border flex items-center justify-center shadow-xl
+                    <div
+                      className={`
+                        w-11 h-11 rounded-xl border flex items-center justify-center shadow-xl
 
-                          ${
-                            seleccionados.includes(
-                              proyecto.id
-                            )
-                              ? "bg-yellow-500 border-yellow-400 text-black"
-                              : "bg-black/85 border-white/30 text-white"
-                          }
-                        `}
-                      >
-                        {seleccionados.includes(
-                          proyecto.id
-                        ) ? (
-                          <FaCheck />
-                        ) : (
-                          <FaSquare />
-                        )}
-                      </div>
+                        ${
+                          seleccionados.includes(proyecto.id)
+                            ? "bg-yellow-500 border-yellow-400 text-black"
+                            : "bg-black/85 border-white/30 text-white"
+                        }
+                      `}
+                    >
+                      {seleccionados.includes(proyecto.id) ? (
+                        <FaCheck />
+                      ) : (
+                        <FaSquare />
+                      )}
+                    </div>
+
+                  </div>
+                )}
+
+                <div className="relative h-60 bg-black">
+
+                  {imagen ? (
+                    <img
+                      src={imagen}
+                      alt={
+                        proyecto.nombre ||
+                        "Trabajo terminado"
+                      }
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <FaBuilding className="text-zinc-800 text-5xl" />
                     </div>
                   )}
 
-                  <div className="relative h-60 bg-black">
+                  <span className="absolute top-4 left-4 bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2">
+                    <FaCheckCircle />
+                    TERMINADO
+                  </span>
 
-                    {imagen ? (
-                      <img
-                        src={imagen}
-                        alt={
-                          proyecto.nombre ||
-                          "Trabajo terminado"
-                        }
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <FaBuilding className="text-zinc-800 text-5xl" />
-                      </div>
-                    )}
-
-                    <span className="absolute top-4 left-4 bg-green-600 text-white text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-2">
-                      <FaCheckCircle />
-
-                      TERMINADO
+                  {totalFotos > 0 && (
+                    <span className="absolute bottom-4 right-4 bg-black/85 border border-white/10 px-3 py-1.5 rounded-full text-xs flex items-center gap-2">
+                      <FaImages />
+                      {totalFotos} finales
                     </span>
+                  )}
 
-                    {totalFotos > 0 && (
-                      <span className="absolute bottom-4 right-4 bg-black/85 border border-white/10 px-3 py-1.5 rounded-full text-xs flex items-center gap-2">
+                </div>
 
-                        <FaImages />
+                <div className="p-6">
 
-                        {totalFotos} finales
-                      </span>
-                    )}
+                  <p className="text-xs uppercase tracking-widest text-yellow-500">
+                    {proyecto.tipo || "Proyecto Wealth"}
+                  </p>
+
+                  <h2 className="text-xl font-bold mt-2 capitalize">
+                    {proyecto.nombre || "Proyecto terminado"}
+                  </h2>
+
+                  <div className="mt-5 space-y-3 text-sm">
+
+                    <DatoCard
+                      icon={<FaUser />}
+                      texto={
+                        proyecto.nombreCliente ||
+                        "Cliente"
+                      }
+                    />
+
+                    <DatoCard
+                      icon={<FaPhone />}
+                      texto={
+                        proyecto.telefono ||
+                        "Sin teléfono registrado"
+                      }
+                    />
+
+                    <DatoCard
+                      icon={<FaCalendarAlt />}
+                      texto={`Finalizado: ${formatearFecha(
+                        proyecto.fechaFinalizacion
+                      )}`}
+                    />
+
                   </div>
 
-                  <div className="p-6">
+                  <div
+                    className={`mt-5 border rounded-2xl p-4 ${
+                      modoOscuro
+                        ? "bg-black border-zinc-800"
+                        : "bg-gray-50 border-gray-200"
+                    }`}
+                  >
 
-                    <p className="text-xs uppercase tracking-widest text-yellow-500">
-                      {proyecto.tipo ||
-                        "Proyecto Wealth"}
+                    <p className="text-xs text-zinc-500">
+                      Importe del trabajo
                     </p>
 
-                    <h2 className="text-xl font-bold mt-2 capitalize">
-                      {proyecto.nombre ||
-                        "Proyecto terminado"}
-                    </h2>
+                    <p className="text-xl font-bold mt-1">
+                      {moneda(proyecto.precioTotal)}
+                    </p>
 
-                    <div className="mt-5 space-y-3 text-sm">
-
-                      <DatoCard
-                        icon={<FaUser />}
-                        texto={
-                          proyecto.nombreCliente ||
-                          "Cliente"
-                        }
-                      />
-
-                      <DatoCard
-                        icon={<FaPhone />}
-                        texto={
-                          proyecto.telefono ||
-                          "Sin teléfono registrado"
-                        }
-                      />
-
-                      <DatoCard
-                        icon={
-                          <FaCalendarAlt />
-                        }
-                        texto={`Finalizado: ${formatearFecha(
-                          proyecto.fechaFinalizacion
-                        )}`}
-                      />
-                    </div>
-
-                    <div
-                      className={`mt-5 border rounded-2xl p-4 ${
-                        modoOscuro
-                          ? "bg-black border-zinc-800"
-                          : "bg-gray-50 border-gray-200"
-                      }`}
-                    >
-                      <p className="text-xs text-zinc-500">
-                        Importe del trabajo
-                      </p>
-
-                      <p className="text-xl font-bold mt-1">
-                        {moneda(
-                          proyecto.precioTotal
-                        )}
-                      </p>
-                    </div>
-
-                    {!modoSeleccion && (
-                      <button
-                        type="button"
-
-                        onClick={(e) => {
-                          e.stopPropagation();
-
-                          abrirProyecto(
-                            proyecto
-                          );
-                        }}
-
-                        className="w-full mt-5 bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
-                      >
-                        <FaEye />
-
-                        Abrir expediente
-                      </button>
-                    )}
-
-                    {modoSeleccion && (
-                      <div
-                        className={`
-                          w-full mt-5 py-3.5 rounded-2xl border text-center font-semibold
-
-                          ${
-                            seleccionados.includes(
-                              proyecto.id
-                            )
-                              ? "bg-yellow-500/10 border-yellow-500/40 text-yellow-400"
-                              : "bg-black border-zinc-700 text-zinc-500"
-                          }
-                        `}
-                      >
-                        {seleccionados.includes(
-                          proyecto.id
-                        )
-                          ? "✓ Seleccionado"
-                          : "Seleccionar"}
-                      </div>
-                    )}
                   </div>
-                </article>
-              );
-            }
-          )}
+
+                  {!modoSeleccion && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+
+                        abrirProyecto(proyecto);
+                      }}
+                      className="w-full mt-5 bg-yellow-500 hover:bg-yellow-400 text-black py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 transition"
+                    >
+                      <FaEye />
+                      Abrir expediente
+                    </button>
+                  )}
+
+                  {modoSeleccion && (
+                    <div
+                      className={`
+                        w-full mt-5 py-3.5 rounded-2xl border text-center font-semibold
+
+                        ${
+                          seleccionados.includes(proyecto.id)
+                            ? "bg-yellow-500/10 border-yellow-500/40 text-yellow-400"
+                            : "bg-black border-zinc-700 text-zinc-500"
+                        }
+                      `}
+                    >
+                      {seleccionados.includes(proyecto.id)
+                        ? "✓ Seleccionado"
+                        : "Seleccionar"}
+                    </div>
+                  )}
+
+                </div>
+
+              </article>
+            );
+          })}
+
         </div>
+
       </div>
 
       {/* ================================================= */}
       {/* EXPEDIENTE */}
       {/* ================================================= */}
 
-      {modalProyecto &&
-        proyectoActivo && (
-          <div
-            className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm overflow-y-auto p-4 md:p-6"
+      {modalProyecto && proyectoActivo && (
+        <div
+          className="fixed inset-0 z-[80] bg-black/90 backdrop-blur-sm overflow-y-auto p-4 md:p-6"
+          onClick={cerrarProyecto}
+        >
 
-            onClick={
-              cerrarProyecto
+          <div
+            className={`max-w-5xl mx-auto border rounded-3xl overflow-hidden shadow-2xl ${
+              modoOscuro
+                ? "bg-zinc-950 border-zinc-700 text-white"
+                : "bg-white border-gray-200 text-gray-900"
+            }`}
+            onClick={(e) =>
+              e.stopPropagation()
             }
           >
-            <div
-              className={`max-w-5xl mx-auto border rounded-3xl overflow-hidden shadow-2xl ${
-                modoOscuro
-                  ? "bg-zinc-950 border-zinc-700 text-white"
-                  : "bg-white border-gray-200 text-gray-900"
-              }`}
 
-              onClick={(e) =>
-                e.stopPropagation()
-              }
+            {/* ================================================= */}
+            {/* HEADER MODAL */}
+            {/* ================================================= */}
+
+            <header
+              className={`sticky top-0 z-20 backdrop-blur-md border-b p-6 md:p-8 ${
+                modoOscuro
+                  ? "bg-zinc-950/95 border-zinc-800"
+                  : "bg-white/95 border-gray-200"
+              }`}
             >
 
+              <div className="flex justify-between gap-4">
+
+                <div>
+
+                  <p className="text-xs uppercase tracking-[0.22em] text-green-400 font-bold flex items-center gap-2">
+                    <FaCheckCircle />
+                    Expediente de trabajo terminado
+                  </p>
+
+                  <h2 className="text-2xl md:text-3xl font-bold mt-2">
+                    {proyectoActivo.nombre || "Proyecto"}
+                  </h2>
+
+                  <p className="text-zinc-500 text-sm mt-2">
+                    ID:{" "}
+                    {proyectoActivo.cotizacionId ||
+                      proyectoActivo.id}
+                  </p>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={cerrarProyecto}
+                  className="w-11 h-11 rounded-xl bg-black border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 flex items-center justify-center"
+                >
+                  <FaTimes />
+                </button>
+
+              </div>
+
+            </header>
+
+            <div className="p-6 md:p-8 space-y-8">
+
               {/* ================================================= */}
-              {/* HEADER MODAL */}
+              {/* CLIENTE */}
               {/* ================================================= */}
 
-              <header
-                className={`sticky top-0 z-20 backdrop-blur-md border-b p-6 md:p-8 ${
-                  modoOscuro
-                    ? "bg-zinc-950/95 border-zinc-800"
-                    : "bg-white/95 border-gray-200"
-                }`}
+              <Seccion
+                titulo="Datos del cliente"
+                icon={<FaUser />}
+                modoOscuro={modoOscuro}
               >
-                <div className="flex justify-between gap-4">
+
+                <div
+                  className={`border rounded-2xl p-5 space-y-4 ${
+                    modoOscuro
+                      ? "bg-black border-zinc-800"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+
+                  <Detalle
+                    titulo="Nombre"
+                    valor={
+                      proyectoActivo.nombreCliente ||
+                      "No registrado"
+                    }
+                    icon={<FaUser />}
+                  />
+
+                  <Detalle
+                    titulo="Correo"
+                    valor={
+                      proyectoActivo.usuario ||
+                      "No registrado"
+                    }
+                    icon={<FaEnvelope />}
+                  />
+
+                  <Detalle
+                    titulo="Teléfono"
+                    valor={
+                      proyectoActivo.telefono ||
+                      "No registrado"
+                    }
+                    icon={<FaPhone />}
+                  />
+
+                  <Detalle
+                    titulo="Medio de contacto"
+                    valor={
+                      proyectoActivo.metodoContacto ||
+                      "No registrado"
+                    }
+                    icon={<FaWhatsapp />}
+                  />
+
+                </div>
+
+              </Seccion>
+
+              {/* ================================================= */}
+              {/* SOLICITUD */}
+              {/* ================================================= */}
+
+              <Seccion
+                titulo="Solicitud y datos del trabajo"
+                icon={<FaFileInvoiceDollar />}
+                modoOscuro={modoOscuro}
+              >
+
+                <div
+                  className={`border rounded-2xl p-5 space-y-4 ${
+                    modoOscuro
+                      ? "bg-black border-zinc-800"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+
+                  <Detalle
+                    titulo="Tipo"
+                    valor={
+                      proyectoActivo.tipo ||
+                      "No especificado"
+                    }
+                    icon={<FaTools />}
+                  />
+
+                  <Detalle
+                    titulo="Descripción"
+                    valor={
+                      proyectoActivo.descripcion ||
+                      "No especificada"
+                    }
+                    icon={<FaFileInvoiceDollar />}
+                  />
+
+                  <Detalle
+                    titulo="Ubicación"
+                    valor={
+                      proyectoActivo.ubicacion ||
+                      "No especificada"
+                    }
+                    icon={<FaMapMarkerAlt />}
+                  />
+
+                  <Detalle
+                    titulo="Medidas"
+                    valor={
+                      proyectoActivo.medidas ||
+                      "No especificadas"
+                    }
+                    icon={<FaRulerCombined />}
+                  />
+
+                  <Detalle
+                    titulo="Fecha solicitada"
+                    valor={formatearFecha(
+                      proyectoActivo.fechaDeseada
+                    )}
+                    icon={<FaCalendarAlt />}
+                  />
+
+                </div>
+
+              </Seccion>
+
+              {/* ================================================= */}
+              {/* ECONÓMICO */}
+              {/* ================================================= */}
+
+              <Seccion
+                titulo="Información económica y condiciones"
+                icon={<FaMoneyBillWave />}
+                modoOscuro={modoOscuro}
+              >
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                  <CajaInfo
+                    titulo="Precio total"
+                    valor={moneda(
+                      proyectoActivo.precioTotal
+                    )}
+                  />
+
+                  <CajaInfo
+                    titulo="Anticipo"
+                    valor={moneda(
+                      proyectoActivo.anticipo ??
+                        proyectoActivo.montoAnticipo
+                    )}
+                  />
+
+                  <CajaInfo
+                    titulo="Saldo"
+                    valor={moneda(
+                      proyectoActivo.saldo ??
+                        proyectoActivo.saldoPendiente
+                    )}
+                  />
+
+                  <CajaInfo
+                    titulo="Tiempo estimado"
+                    valor={
+                      proyectoActivo.tiempoEstimado ||
+                      "No especificado"
+                    }
+                  />
+
+                  <CajaInfo
+                    titulo="Garantía"
+                    valor={
+                      proyectoActivo.garantia ||
+                      "No especificada"
+                    }
+                  />
+
+                  <CajaInfo
+                    titulo="Versión aceptada"
+                    valor={
+                      proyectoActivo.versionAceptada ||
+                      proyectoActivo.versionPropuesta ||
+                      "1"
+                    }
+                  />
+
+                </div>
+
+                {proyectoActivo.observaciones && (
+                  <div className="mt-4 bg-black border border-zinc-800 rounded-2xl p-5">
+
+                    <p className="text-xs text-zinc-500 uppercase tracking-wider">
+                      Observaciones
+                    </p>
+
+                    <p className="text-zinc-300 mt-2 whitespace-pre-wrap">
+                      {proyectoActivo.observaciones}
+                    </p>
+
+                  </div>
+                )}
+
+              </Seccion>
+
+              {/* ================================================= */}
+              {/* CRONOLOGÍA */}
+              {/* ================================================= */}
+
+              <Seccion
+                titulo="Cronología del trabajo"
+                icon={<FaClock />}
+                modoOscuro={modoOscuro}
+              >
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                  <CajaFecha
+                    titulo="Solicitud"
+                    fecha={formatearFecha(
+                      proyectoActivo.fechaSolicitud
+                    )}
+                  />
+
+                  <CajaFecha
+                    titulo="Confirmación"
+                    fecha={formatearFecha(
+                      proyectoActivo.fechaConfirmacionAdmin
+                    )}
+                  />
+
+                  <CajaFecha
+                    titulo="Inicio"
+                    fecha={formatearFecha(
+                      proyectoActivo.fechaInicioProyecto
+                    )}
+                  />
+
+                  <CajaFecha
+                    titulo="Instalación"
+                    fecha={formatearFecha(
+                      proyectoActivo.fechaInstalacion
+                    )}
+                  />
+
+                  <CajaFecha
+                    titulo="Finalización"
+                    fecha={formatearFecha(
+                      proyectoActivo.fechaFinalizacion
+                    )}
+                  />
+
+                </div>
+
+              </Seccion>
+
+              {/* ================================================= */}
+              {/* ADMINISTRAR FOTOS */}
+              {/* ================================================= */}
+
+              <section>
+
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 
                   <div>
-                    <p className="text-xs uppercase tracking-[0.22em] text-green-400 font-bold flex items-center gap-2">
 
-                      <FaCheckCircle />
+                    <div className="flex items-center gap-3">
 
-                      Expediente de trabajo terminado
-                    </p>
-
-                    <h2 className="text-2xl md:text-3xl font-bold mt-2">
-                      {proyectoActivo.nombre ||
-                        "Proyecto"}
-                    </h2>
-
-                    <p className="text-zinc-500 text-sm mt-2">
-                      ID:{" "}
-                      {proyectoActivo.cotizacionId ||
-                        proyectoActivo.id}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={
-                      cerrarProyecto
-                    }
-                    className="w-11 h-11 rounded-xl bg-black border border-zinc-700 text-zinc-400 hover:text-white hover:border-zinc-500 flex items-center justify-center"
-                  >
-                    <FaTimes />
-                  </button>
-                </div>
-              </header>
-
-              <div className="p-6 md:p-8 space-y-8">
-
-                {/* ================================================= */}
-                {/* CLIENTE */}
-                {/* ================================================= */}
-
-                <Seccion
-                  titulo="Datos del cliente"
-                  icon={<FaUser />}
-                  modoOscuro={
-                    modoOscuro
-                  }
-                >
-                  <div
-                    className={`border rounded-2xl p-5 space-y-4 ${
-                      modoOscuro
-                        ? "bg-black border-zinc-800"
-                        : "bg-gray-50 border-gray-200"
-                    }`}
-                  >
-
-                    <Detalle
-                      titulo="Nombre"
-                      valor={
-                        proyectoActivo.nombreCliente ||
-                        "No registrado"
-                      }
-                      icon={<FaUser />}
-                    />
-
-                    <Detalle
-                      titulo="Correo"
-                      valor={
-                        proyectoActivo.usuario ||
-                        "No registrado"
-                      }
-                      icon={
-                        <FaEnvelope />
-                      }
-                    />
-
-                    <Detalle
-                      titulo="Teléfono"
-                      valor={
-                        proyectoActivo.telefono ||
-                        "No registrado"
-                      }
-                      icon={<FaPhone />}
-                    />
-
-                    <Detalle
-                      titulo="Medio de contacto"
-                      valor={
-                        proyectoActivo.metodoContacto ||
-                        "No registrado"
-                      }
-                      icon={
-                        <FaWhatsapp />
-                      }
-                    />
-                  </div>
-                </Seccion>
-
-                {/* ================================================= */}
-                {/* SOLICITUD ORIGINAL */}
-                {/* ================================================= */}
-
-                <Seccion
-                  titulo="Solicitud y datos del trabajo"
-                  icon={
-                    <FaFileInvoiceDollar />
-                  }
-                  modoOscuro={
-                    modoOscuro
-                  }
-                >
-                  <div
-                    className={`border rounded-2xl p-5 space-y-4 ${
-                      modoOscuro
-                        ? "bg-black border-zinc-800"
-                        : "bg-gray-50 border-gray-200"
-                    }`}
-                  >
-
-                    <Detalle
-                      titulo="Tipo"
-                      valor={
-                        proyectoActivo.tipo ||
-                        "No especificado"
-                      }
-                      icon={<FaTools />}
-                    />
-
-                    <Detalle
-                      titulo="Descripción"
-                      valor={
-                        proyectoActivo.descripcion ||
-                        "No especificada"
-                      }
-                      icon={
-                        <FaFileInvoiceDollar />
-                      }
-                    />
-
-                    <Detalle
-                      titulo="Ubicación"
-                      valor={
-                        proyectoActivo.ubicacion ||
-                        "No especificada"
-                      }
-                      icon={
-                        <FaMapMarkerAlt />
-                      }
-                    />
-
-                    <Detalle
-                      titulo="Medidas"
-                      valor={
-                        proyectoActivo.medidas ||
-                        "No especificadas"
-                      }
-                      icon={
-                        <FaRulerCombined />
-                      }
-                    />
-
-                    <Detalle
-                      titulo="Fecha solicitada"
-                      valor={formatearFecha(
-                        proyectoActivo.fechaDeseada
-                      )}
-                      icon={
-                        <FaCalendarAlt />
-                      }
-                    />
-                  </div>
-                </Seccion>
-
-                {/* ================================================= */}
-                {/* ECONÓMICO */}
-                {/* ================================================= */}
-
-                <Seccion
-                  titulo="Información económica y condiciones"
-                  icon={
-                    <FaMoneyBillWave />
-                  }
-                  modoOscuro={
-                    modoOscuro
-                  }
-                >
-
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                    <CajaInfo
-                      titulo="Precio total"
-                      valor={moneda(
-                        proyectoActivo.precioTotal
-                      )}
-                    />
-
-                    <CajaInfo
-                      titulo="Anticipo"
-                      valor={moneda(
-                        proyectoActivo.anticipo ??
-                          proyectoActivo.montoAnticipo
-                      )}
-                    />
-
-                    <CajaInfo
-                      titulo="Saldo"
-                      valor={moneda(
-                        proyectoActivo.saldo ??
-                          proyectoActivo.saldoPendiente
-                      )}
-                    />
-
-                    <CajaInfo
-                      titulo="Tiempo estimado"
-                      valor={
-                        proyectoActivo.tiempoEstimado ||
-                        "No especificado"
-                      }
-                    />
-
-                    <CajaInfo
-                      titulo="Garantía"
-                      valor={
-                        proyectoActivo.garantia ||
-                        "No especificada"
-                      }
-                    />
-
-                    <CajaInfo
-                      titulo="Versión aceptada"
-                      valor={
-                        proyectoActivo.versionAceptada ||
-                        proyectoActivo.versionPropuesta ||
-                        "1"
-                      }
-                    />
-                  </div>
-
-                  {proyectoActivo.observaciones && (
-                    <div className="mt-4 bg-black border border-zinc-800 rounded-2xl p-5">
-
-                      <p className="text-xs text-zinc-500 uppercase tracking-wider">
-                        Observaciones
-                      </p>
-
-                      <p className="text-zinc-300 mt-2 whitespace-pre-wrap">
-                        {
-                          proyectoActivo.observaciones
-                        }
-                      </p>
-                    </div>
-                  )}
-                </Seccion>
-
-                {/* ================================================= */}
-                {/* CRONOLOGÍA */}
-                {/* ================================================= */}
-
-                <Seccion
-                  titulo="Cronología del trabajo"
-                  icon={<FaClock />}
-                  modoOscuro={
-                    modoOscuro
-                  }
-                >
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                    <CajaFecha
-                      titulo="Solicitud"
-                      fecha={formatearFecha(
-                        proyectoActivo.fechaSolicitud
-                      )}
-                    />
-
-                    <CajaFecha
-                      titulo="Confirmación"
-                      fecha={formatearFecha(
-                        proyectoActivo.fechaConfirmacionAdmin
-                      )}
-                    />
-
-                    <CajaFecha
-                      titulo="Inicio"
-                      fecha={formatearFecha(
-                        proyectoActivo.fechaInicioProyecto
-                      )}
-                    />
-
-                    <CajaFecha
-                      titulo="Instalación"
-                      fecha={formatearFecha(
-                        proyectoActivo.fechaInstalacion
-                      )}
-                    />
-
-                    <CajaFecha
-                      titulo="Finalización"
-                      fecha={formatearFecha(
-                        proyectoActivo.fechaFinalizacion
-                      )}
-                    />
-                  </div>
-                </Seccion>
-
-                {/* ================================================= */}
-                {/* EDITAR FOTOGRAFÍAS */}
-                {/* ================================================= */}
-
-                <section>
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-
-                    <div>
-                      <div className="flex items-center gap-3">
-
-                        <span className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center">
-                          <FaEdit />
-                        </span>
-
-                        <h3 className="text-xl font-bold">
-                          Administración de fotografías
-                        </h3>
-                      </div>
-
-                      <p className="text-sm text-zinc-500 mt-3">
-                        Puedes cambiar qué fotografías aparecen como trabajo terminado y cuáles aparecen como referencias.
-                      </p>
-                    </div>
-
-                    {!editandoFotos ? (
-                      <button
-                        type="button"
-
-                        onClick={
-                          iniciarEdicionFotos
-                        }
-
-                        className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition"
-                      >
+                      <span className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center">
                         <FaEdit />
+                      </span>
 
-                        Editar fotografías
-                      </button>
-                    ) : (
-                      <div className="flex flex-wrap gap-2">
+                      <h3 className="text-xl font-bold">
+                        Administración de fotografías
+                      </h3>
 
-                        <button
-                          type="button"
-                          onClick={
-                            cancelarEdicionFotos
-                          }
-                          disabled={
-                            guardandoFotos
-                          }
-                          className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50"
-                        >
-                          <FaTimes />
+                    </div>
 
-                          Cancelar
-                        </button>
+                    <p className="text-sm text-zinc-500 mt-3">
+                      Puedes mover o eliminar las fotografías del expediente.
+                    </p>
 
-                        <button
-                          type="button"
-                          onClick={
-                            guardarCambiosFotos
-                          }
-                          disabled={
-                            guardandoFotos
-                          }
-                          className="bg-green-600 hover:bg-green-500 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"
-                        >
-                          <FaSave />
-
-                          {guardandoFotos
-                            ? "Guardando..."
-                            : "Guardar cambios"}
-                        </button>
-                      </div>
-                    )}
                   </div>
 
-                  {mensajeFotos && (
-                    <div className="mt-4 bg-green-500/10 border border-green-500/30 text-green-300 rounded-xl p-4 text-sm">
-                      {mensajeFotos}
-                    </div>
-                  )}
-
-                  {errorFotos && (
-                    <div className="mt-4 bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl p-4 text-sm">
-                      {errorFotos}
-                    </div>
-                  )}
-
-                  {editandoFotos && (
-                    <div className="mt-5 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
-
-                      <p className="text-sm text-yellow-400 font-semibold flex items-center gap-2">
-                        <FaExchangeAlt />
-
-                        Modo edición activado
-                      </p>
-
-                      <p className="text-xs text-zinc-500 mt-2">
-                        Usa el botón debajo de cada fotografía para moverla de una sección a otra.
-                      </p>
-                    </div>
-                  )}
-                </section>
-
-                {/* ================================================= */}
-                {/* FOTOS FINALES */}
-                {/* ================================================= */}
-
-                {(editandoFotos
-                  ? fotosFinalesEdit.length > 0
-                  : fotosFinales(
-                      proyectoActivo
-                    ).length > 0) && (
-                  <Seccion
-                    titulo="Fotografías del trabajo realizado"
-                    icon={<FaImages />}
-                    modoOscuro={
-                      modoOscuro
-                    }
-                  >
-
-                    <p className="text-sm text-zinc-500 mb-4">
-                      Evidencia final cargada por Wealth al cerrar el trabajo.
-                    </p>
-
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-
-                      {(editandoFotos
-                        ? fotosFinalesEdit
-                        : fotosFinales(
-                            proyectoActivo
-                          )
-                      ).map(
-                        (
-                          imagen,
-                          index
-                        ) => (
-                          <div
-                            key={imagen}
-                            className="relative"
-                          >
-
-                            <img
-                              src={
-                                imagen
-                              }
-
-                              alt={`Resultado ${
-                                index +
-                                1
-                              }`}
-
-                              onClick={() => {
-                                if (
-                                  !editandoFotos
-                                ) {
-                                  abrirGaleria(
-                                    fotosFinales(
-                                      proyectoActivo
-                                    ),
-                                    index
-                                  );
-                                }
-                              }}
-
-                              className={`w-full aspect-square object-cover rounded-2xl border transition ${
-                                editandoFotos
-                                  ? "border-yellow-500/40"
-                                  : "border-green-500/20 cursor-zoom-in hover:border-green-500/60"
-                              }`}
-                            />
-
-                            {editandoFotos && (
-                              <>
-                                <div className="absolute top-3 left-3 bg-green-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
-                                  FINAL
-                                </div>
-
-                                <button
-                                  type="button"
-
-                                  onClick={() =>
-                                    moverFinalAReferencia(
-                                      imagen
-                                    )
-                                  }
-
-                                  className="w-full mt-2 bg-zinc-800 hover:bg-yellow-500 hover:text-black border border-zinc-700 px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
-                                >
-                                  <FaExchangeAlt />
-
-                                  Pasar a referencias
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </Seccion>
-                )}
-
-                {editandoFotos &&
-                  fotosFinalesEdit.length ===
-                    0 && (
-                    <Seccion
-                      titulo="Fotografías del trabajo realizado"
-                      icon={<FaImages />}
-                      modoOscuro={
-                        modoOscuro
-                      }
+                  {!editandoFotos ? (
+                    <button
+                      type="button"
+                      onClick={iniciarEdicionFotos}
+                      className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition"
                     >
-                      <div className="border border-dashed border-zinc-700 rounded-2xl p-8 text-center">
-
-                        <FaImages className="mx-auto text-zinc-700 text-4xl" />
-
-                        <p className="text-zinc-500 mt-3">
-                          Actualmente no hay fotografías en esta sección.
-                        </p>
-
-                        <p className="text-xs text-zinc-600 mt-1">
-                          Puedes mover fotografías desde referencias.
-                        </p>
-                      </div>
-                    </Seccion>
-                  )}
-
-                {/* ================================================= */}
-                {/* REFERENCIAS */}
-                {/* ================================================= */}
-
-                {(editandoFotos
-                  ? referenciasEdit.length > 0
-                  : referencias(
-                      proyectoActivo
-                    ).length > 0) && (
-                  <Seccion
-                    titulo="Imágenes originales y referencias"
-                    icon={<FaImages />}
-                    modoOscuro={
-                      modoOscuro
-                    }
-                  >
-
-                    <p className="text-sm text-zinc-500 mb-4">
-                      Fotografías y referencias que formaron parte de la solicitud original.
-                    </p>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-
-                      {(editandoFotos
-                        ? referenciasEdit
-                        : referencias(
-                            proyectoActivo
-                          )
-                      ).map(
-                        (
-                          imagen,
-                          index
-                        ) => (
-                          <div
-                            key={imagen}
-                            className="relative"
-                          >
-
-                            <img
-                              src={
-                                imagen
-                              }
-
-                              alt={`Referencia ${
-                                index +
-                                1
-                              }`}
-
-                              onClick={() => {
-                                if (
-                                  !editandoFotos
-                                ) {
-                                  abrirGaleria(
-                                    referencias(
-                                      proyectoActivo
-                                    ),
-                                    index
-                                  );
-                                }
-                              }}
-
-                              className={`w-full aspect-square object-cover rounded-2xl border transition ${
-                                editandoFotos
-                                  ? "border-yellow-500/40"
-                                  : "border-zinc-800 cursor-zoom-in hover:border-yellow-500/50"
-                              }`}
-                            />
-
-                            {editandoFotos && (
-                              <>
-                                <div className="absolute top-3 left-3 bg-yellow-500 text-black text-[11px] font-bold px-2.5 py-1 rounded-full">
-                                  REFERENCIA
-                                </div>
-
-                                <button
-                                  type="button"
-
-                                  onClick={() =>
-                                    moverReferenciaAFinal(
-                                      imagen
-                                    )
-                                  }
-
-                                  className="w-full mt-2 bg-zinc-800 hover:bg-green-600 border border-zinc-700 px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
-                                >
-                                  <FaExchangeAlt />
-
-                                  Pasar a trabajo final
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </Seccion>
-                )}
-
-                {editandoFotos &&
-                  referenciasEdit.length ===
-                    0 && (
-                    <Seccion
-                      titulo="Imágenes originales y referencias"
-                      icon={<FaImages />}
-                      modoOscuro={
-                        modoOscuro
-                      }
-                    >
-                      <div className="border border-dashed border-zinc-700 rounded-2xl p-8 text-center">
-
-                        <FaImages className="mx-auto text-zinc-700 text-4xl" />
-
-                        <p className="text-zinc-500 mt-3">
-                          Actualmente no hay fotografías en esta sección.
-                        </p>
-
-                        <p className="text-xs text-zinc-600 mt-1">
-                          Puedes mover fotografías desde trabajo realizado.
-                        </p>
-                      </div>
-                    </Seccion>
-                  )}
-
-                {/* ================================================= */}
-                {/* HISTORIAL PROPUESTAS */}
-                {/* ================================================= */}
-
-                {proyectoActivo
-                  .historialPropuestas
-                  ?.length > 0 && (
-                  <Seccion
-                    titulo="Historial de propuestas"
-                    icon={<FaHistory />}
-                    modoOscuro={
-                      modoOscuro
-                    }
-                  >
-                    <div className="space-y-3">
-
-                      {proyectoActivo.historialPropuestas.map(
-                        (
-                          propuesta,
-                          index
-                        ) => (
-                          <div
-                            key={index}
-
-                            className="bg-black border border-zinc-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-                          >
-
-                            <div>
-                              <p className="font-bold">
-                                Propuesta #
-                                {propuesta.version ||
-                                  index +
-                                    1}
-                              </p>
-
-                              <p className="text-xs text-zinc-500 mt-1">
-                                {propuesta.estadoAnterior ||
-                                  "Versión anterior"}{" "}
-                                ·{" "}
-                                {formatearFecha(
-                                  propuesta.fecha,
-                                  true
-                                )}
-                              </p>
-                            </div>
-
-                            <p className="text-yellow-500 font-bold">
-                              {moneda(
-                                propuesta.precioTotal
-                              )}
-                            </p>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  </Seccion>
-                )}
-
-                {/* ================================================= */}
-                {/* POSTVENTA */}
-                {/* ================================================= */}
-
-                <Seccion
-                  titulo="Postventa, garantía y reclamos"
-                  icon={
-                    <FaShieldAlt />
-                  }
-                  modoOscuro={
-                    modoOscuro
-                  }
-                >
-
-                  <div
-                    className={`border rounded-2xl p-5 ${
-                      modoOscuro
-                        ? "bg-zinc-900 border-zinc-700"
-                        : "bg-gray-50 border-gray-200"
-                    }`}
-                  >
-
-                    <p className="text-sm text-zinc-400">
-                      Registra cualquier llamada,
-                      reclamo, visita, reparación,
-                      ajuste o seguimiento
-                      posterior. Estas notas son
-                      administrativas y quedan
-                      dentro del expediente del
-                      trabajo.
-                    </p>
-
-                    {errorNota && (
-                      <div className="mt-4 bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl p-3 text-sm">
-                        {errorNota}
-                      </div>
-                    )}
-
-                    {mensajeNota && (
-                      <div className="mt-4 bg-green-500/10 border border-green-500/30 text-green-300 rounded-xl p-3 text-sm">
-                        {mensajeNota}
-                      </div>
-                    )}
-
-                    <div className="grid md:grid-cols-[220px_1fr] gap-4 mt-5">
-
-                      <select
-                        value={
-                          tipoSeguimiento
-                        }
-
-                        onChange={(e) =>
-                          setTipoSeguimiento(
-                            e.target.value
-                          )
-                        }
-
-                        className="bg-black border border-zinc-700 rounded-xl px-4 py-3 outline-none focus:border-yellow-500"
-                      >
-                        <option>
-                          Seguimiento
-                        </option>
-
-                        <option>
-                          Reclamo
-                        </option>
-
-                        <option>
-                          Garantía
-                        </option>
-
-                        <option>
-                          Visita técnica
-                        </option>
-
-                        <option>
-                          Reparación
-                        </option>
-
-                        <option>
-                          Ajuste
-                        </option>
-
-                        <option>
-                          Otro
-                        </option>
-                      </select>
-
-                      <textarea
-                        rows="4"
-
-                        value={
-                          notaPostventa
-                        }
-
-                        onChange={(e) =>
-                          setNotaPostventa(
-                            e.target.value
-                          )
-                        }
-
-                        placeholder="Ej: Cliente reporta que una puerta necesita ajuste. Se agenda visita..."
-
-                        className="bg-black border border-zinc-700 rounded-xl px-4 py-3 outline-none focus:border-yellow-500 resize-y"
-                      />
-                    </div>
-
-                    <div className="flex justify-end mt-4">
+                      <FaEdit />
+                      Editar fotografías
+                    </button>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
 
                       <button
                         type="button"
+                        onClick={cancelarEdicionFotos}
+                        disabled={guardandoFotos}
+                        className="bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-xl font-semibold flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <FaTimes />
+                        Cancelar
+                      </button>
 
-                        disabled={
-                          guardandoNota
-                        }
-
-                        onClick={
-                          guardarSeguimiento
-                        }
-
-                        className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50 transition"
+                      <button
+                        type="button"
+                        onClick={guardarCambiosFotos}
+                        disabled={guardandoFotos}
+                        className="bg-green-600 hover:bg-green-500 text-white px-5 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50"
                       >
                         <FaSave />
 
-                        {guardandoNota
+                        {guardandoFotos
                           ? "Guardando..."
-                          : "Guardar seguimiento"}
+                          : "Guardar cambios"}
                       </button>
-                    </div>
-                  </div>
 
-                  {proyectoActivo
-                    .seguimientosPostventa
-                    ?.length > 0 && (
-                    <div className="mt-5 space-y-3">
-
-                      {[
-                        ...proyectoActivo.seguimientosPostventa,
-                      ]
-
-                        .sort((a, b) => {
-                          const fa =
-                            a.fecha?.toMillis?.() ||
-                            0;
-
-                          const fb =
-                            b.fecha?.toMillis?.() ||
-                            0;
-
-                          return fb - fa;
-                        })
-
-                        .map(
-                          (
-                            registro,
-                            index
-                          ) => (
-                            <div
-                              key={
-                                index
-                              }
-
-                              className="bg-black border border-zinc-800 rounded-2xl p-5"
-                            >
-
-                              <div className="flex flex-wrap justify-between gap-3">
-
-                                <span className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
-                                  {registro.tipo ||
-                                    "Seguimiento"}
-                                </span>
-
-                                <span className="text-xs text-zinc-500">
-                                  {formatearFecha(
-                                    registro.fecha,
-                                    true
-                                  )}
-                                </span>
-                              </div>
-
-                              <p className="text-zinc-300 mt-3 whitespace-pre-wrap">
-                                {
-                                  registro.nota
-                                }
-                              </p>
-                            </div>
-                          )
-                        )}
                     </div>
                   )}
+
+                </div>
+
+                {mensajeFotos && (
+                  <div className="mt-4 bg-green-500/10 border border-green-500/30 text-green-300 rounded-xl p-4 text-sm">
+                    {mensajeFotos}
+                  </div>
+                )}
+
+                {errorFotos && (
+                  <div className="mt-4 bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl p-4 text-sm">
+                    {errorFotos}
+                  </div>
+                )}
+
+                {editandoFotos && (
+                  <div className="mt-5 bg-yellow-500/5 border border-yellow-500/20 rounded-2xl p-4">
+
+                    <p className="text-sm text-yellow-400 font-semibold flex items-center gap-2">
+                      <FaExchangeAlt />
+                      Modo edición activado
+                    </p>
+
+                    <p className="text-xs text-zinc-500 mt-2">
+                      Usa las flechas para mover una foto o la X roja para eliminarla.
+                    </p>
+
+                  </div>
+                )}
+
+              </section>
+
+              {/* ================================================= */}
+              {/* FOTOS FINALES */}
+              {/* ================================================= */}
+
+              {(editandoFotos
+                ? fotosFinalesEdit.length > 0
+                : fotosFinales(proyectoActivo).length > 0) && (
+
+                <Seccion
+                  titulo="Fotografías del trabajo realizado"
+                  icon={<FaImages />}
+                  modoOscuro={modoOscuro}
+                >
+
+                  <p className="text-sm text-zinc-500 mb-4">
+                    Evidencia final cargada por Wealth al cerrar el trabajo.
+                  </p>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+
+                    {(editandoFotos
+                      ? fotosFinalesEdit
+                      : fotosFinales(proyectoActivo)
+                    ).map((imagen, index) => (
+
+                      <div
+                        key={imagen}
+                        className="relative"
+                      >
+
+                        <div className="relative">
+
+                          <img
+                            src={imagen}
+                            alt={`Resultado ${index + 1}`}
+                            onClick={() => {
+                              if (!editandoFotos) {
+                                abrirGaleria(
+                                  fotosFinales(proyectoActivo),
+                                  index
+                                );
+                              }
+                            }}
+                            className={`w-full aspect-square object-cover rounded-2xl border transition ${
+                              editandoFotos
+                                ? "border-green-500/40"
+                                : "border-green-500/20 cursor-zoom-in hover:border-green-500/60"
+                            }`}
+                          />
+
+                          {editandoFotos && (
+                            <>
+
+                              <div className="absolute top-3 left-3 bg-green-600 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
+                                FINAL
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  eliminarFotoExpediente(imagen)
+                                }
+                                className="absolute top-3 right-3 z-20 w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 border border-red-400 text-white flex items-center justify-center shadow-xl transition"
+                                title="Eliminar fotografía"
+                              >
+                                <FaTimes />
+                              </button>
+
+                            </>
+                          )}
+
+                        </div>
+
+                        {editandoFotos && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              moverFinalAReferencia(imagen)
+                            }
+                            className="w-full mt-2 bg-zinc-800 hover:bg-yellow-500 hover:text-black border border-zinc-700 px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
+                          >
+                            <FaExchangeAlt />
+                            Pasar a referencias
+                          </button>
+                        )}
+
+                      </div>
+
+                    ))}
+
+                  </div>
+
                 </Seccion>
-              </div>
+
+              )}
+
+              {editandoFotos &&
+                fotosFinalesEdit.length === 0 && (
+
+                  <Seccion
+                    titulo="Fotografías del trabajo realizado"
+                    icon={<FaImages />}
+                    modoOscuro={modoOscuro}
+                  >
+
+                    <div className="border border-dashed border-zinc-700 rounded-2xl p-8 text-center">
+
+                      <FaImages className="mx-auto text-zinc-700 text-4xl" />
+
+                      <p className="text-zinc-500 mt-3">
+                        Actualmente no hay fotografías finales.
+                      </p>
+
+                      <p className="text-xs text-zinc-600 mt-1">
+                        Puedes mover fotografías desde referencias.
+                      </p>
+
+                    </div>
+
+                  </Seccion>
+
+                )}
+
+              {/* ================================================= */}
+              {/* REFERENCIAS */}
+              {/* ================================================= */}
+
+              {(editandoFotos
+                ? referenciasEdit.length > 0
+                : referencias(proyectoActivo).length > 0) && (
+
+                <Seccion
+                  titulo="Imágenes originales y referencias"
+                  icon={<FaImages />}
+                  modoOscuro={modoOscuro}
+                >
+
+                  <p className="text-sm text-zinc-500 mb-4">
+                    Fotografías y referencias que formaron parte de la solicitud original.
+                  </p>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+                    {(editandoFotos
+                      ? referenciasEdit
+                      : referencias(proyectoActivo)
+                    ).map((imagen, index) => (
+
+                      <div
+                        key={imagen}
+                        className="relative"
+                      >
+
+                        <div className="relative">
+
+                          <img
+                            src={imagen}
+                            alt={`Referencia ${index + 1}`}
+                            onClick={() => {
+                              if (!editandoFotos) {
+                                abrirGaleria(
+                                  referencias(proyectoActivo),
+                                  index
+                                );
+                              }
+                            }}
+                            className={`w-full aspect-square object-cover rounded-2xl border transition ${
+                              editandoFotos
+                                ? "border-yellow-500/40"
+                                : "border-zinc-800 cursor-zoom-in hover:border-yellow-500/50"
+                            }`}
+                          />
+
+                          {editandoFotos && (
+                            <>
+
+                              <div className="absolute top-3 left-3 bg-yellow-500 text-black text-[11px] font-bold px-2.5 py-1 rounded-full">
+                                REFERENCIA
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  eliminarFotoExpediente(imagen)
+                                }
+                                className="absolute top-3 right-3 z-20 w-9 h-9 rounded-full bg-red-600 hover:bg-red-500 border border-red-400 text-white flex items-center justify-center shadow-xl transition"
+                                title="Eliminar fotografía"
+                              >
+                                <FaTimes />
+                              </button>
+
+                            </>
+                          )}
+
+                        </div>
+
+                        {editandoFotos && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              moverReferenciaAFinal(imagen)
+                            }
+                            className="w-full mt-2 bg-zinc-800 hover:bg-green-600 border border-zinc-700 px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
+                          >
+                            <FaExchangeAlt />
+                            Pasar a trabajo final
+                          </button>
+                        )}
+
+                      </div>
+
+                    ))}
+
+                  </div>
+
+                </Seccion>
+
+              )}
+
+              {editandoFotos &&
+                referenciasEdit.length === 0 && (
+
+                  <Seccion
+                    titulo="Imágenes originales y referencias"
+                    icon={<FaImages />}
+                    modoOscuro={modoOscuro}
+                  >
+
+                    <div className="border border-dashed border-zinc-700 rounded-2xl p-8 text-center">
+
+                      <FaImages className="mx-auto text-zinc-700 text-4xl" />
+
+                      <p className="text-zinc-500 mt-3">
+                        Actualmente no hay fotografías de referencia.
+                      </p>
+
+                      <p className="text-xs text-zinc-600 mt-1">
+                        Puedes mover fotografías desde trabajo realizado.
+                      </p>
+
+                    </div>
+
+                  </Seccion>
+
+                )}
+
+              {/* ================================================= */}
+              {/* HISTORIAL */}
+              {/* ================================================= */}
+
+              {proyectoActivo.historialPropuestas?.length > 0 && (
+
+                <Seccion
+                  titulo="Historial de propuestas"
+                  icon={<FaHistory />}
+                  modoOscuro={modoOscuro}
+                >
+
+                  <div className="space-y-3">
+
+                    {proyectoActivo.historialPropuestas.map(
+                      (propuesta, index) => (
+
+                        <div
+                          key={index}
+                          className="bg-black border border-zinc-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                        >
+
+                          <div>
+
+                            <p className="font-bold">
+                              Propuesta #
+                              {propuesta.version || index + 1}
+                            </p>
+
+                            <p className="text-xs text-zinc-500 mt-1">
+                              {propuesta.estadoAnterior ||
+                                "Versión anterior"}{" "}
+                              ·{" "}
+                              {formatearFecha(
+                                propuesta.fecha,
+                                true
+                              )}
+                            </p>
+
+                          </div>
+
+                          <p className="text-yellow-500 font-bold">
+                            {moneda(propuesta.precioTotal)}
+                          </p>
+
+                        </div>
+
+                      )
+                    )}
+
+                  </div>
+
+                </Seccion>
+
+              )}
+
+              {/* ================================================= */}
+              {/* POSTVENTA */}
+              {/* ================================================= */}
+
+              <Seccion
+                titulo="Postventa, garantía y reclamos"
+                icon={<FaShieldAlt />}
+                modoOscuro={modoOscuro}
+              >
+
+                <div
+                  className={`border rounded-2xl p-5 ${
+                    modoOscuro
+                      ? "bg-zinc-900 border-zinc-700"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
+
+                  <p className="text-sm text-zinc-400">
+                    Registra cualquier llamada, reclamo, visita,
+                    reparación, ajuste o seguimiento posterior.
+                    Estas notas son administrativas y quedan dentro
+                    del expediente del trabajo.
+                  </p>
+
+                  {errorNota && (
+                    <div className="mt-4 bg-red-500/10 border border-red-500/30 text-red-300 rounded-xl p-3 text-sm">
+                      {errorNota}
+                    </div>
+                  )}
+
+                  {mensajeNota && (
+                    <div className="mt-4 bg-green-500/10 border border-green-500/30 text-green-300 rounded-xl p-3 text-sm">
+                      {mensajeNota}
+                    </div>
+                  )}
+
+                  <div className="grid md:grid-cols-[220px_1fr] gap-4 mt-5">
+
+                    <select
+                      value={tipoSeguimiento}
+                      onChange={(e) =>
+                        setTipoSeguimiento(
+                          e.target.value
+                        )
+                      }
+                      className="bg-black border border-zinc-700 rounded-xl px-4 py-3 outline-none focus:border-yellow-500"
+                    >
+
+                      <option>
+                        Seguimiento
+                      </option>
+
+                      <option>
+                        Reclamo
+                      </option>
+
+                      <option>
+                        Garantía
+                      </option>
+
+                      <option>
+                        Visita técnica
+                      </option>
+
+                      <option>
+                        Reparación
+                      </option>
+
+                      <option>
+                        Ajuste
+                      </option>
+
+                      <option>
+                        Otro
+                      </option>
+
+                    </select>
+
+                    <textarea
+                      rows="4"
+                      value={notaPostventa}
+                      onChange={(e) =>
+                        setNotaPostventa(
+                          e.target.value
+                        )
+                      }
+                      placeholder="Ej: Cliente reporta que una puerta necesita ajuste. Se agenda visita..."
+                      className="bg-black border border-zinc-700 rounded-xl px-4 py-3 outline-none focus:border-yellow-500 resize-y"
+                    />
+
+                  </div>
+
+                  <div className="flex justify-end mt-4">
+
+                    <button
+                      type="button"
+                      disabled={guardandoNota}
+                      onClick={guardarSeguimiento}
+                      className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50 transition"
+                    >
+                      <FaSave />
+
+                      {guardandoNota
+                        ? "Guardando..."
+                        : "Guardar seguimiento"}
+                    </button>
+
+                  </div>
+
+                </div>
+
+                {proyectoActivo.seguimientosPostventa?.length > 0 && (
+
+                  <div className="mt-5 space-y-3">
+
+                    {[...proyectoActivo.seguimientosPostventa]
+                      .sort((a, b) => {
+                        const fa =
+                          a.fecha?.toMillis?.() || 0;
+
+                        const fb =
+                          b.fecha?.toMillis?.() || 0;
+
+                        return fb - fa;
+                      })
+                      .map((registro, index) => (
+
+                        <div
+                          key={index}
+                          className="bg-black border border-zinc-800 rounded-2xl p-5"
+                        >
+
+                          <div className="flex flex-wrap justify-between gap-3">
+
+                            <span className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 text-xs font-bold px-3 py-1 rounded-full">
+                              {registro.tipo || "Seguimiento"}
+                            </span>
+
+                            <span className="text-xs text-zinc-500">
+                              {formatearFecha(
+                                registro.fecha,
+                                true
+                              )}
+                            </span>
+
+                          </div>
+
+                          <p className="text-zinc-300 mt-3 whitespace-pre-wrap">
+                            {registro.nota}
+                          </p>
+
+                        </div>
+
+                      ))}
+
+                  </div>
+
+                )}
+
+              </Seccion>
+
             </div>
+
           </div>
-        )}
+
+        </div>
+      )}
 
       {/* ================================================= */}
       {/* GALERÍA */}
       {/* ================================================= */}
 
       {galeriaOpen &&
-        imagenesGaleria.length >
-          0 && (
+        imagenesGaleria.length > 0 && (
+
           <div
             className="fixed inset-0 z-[120] bg-black/95 flex items-center justify-center"
-
             onClick={() =>
               setGaleriaOpen(false)
             }
@@ -2311,77 +2377,68 @@ function ProyectosTerminadosAdmin() {
 
             <button
               type="button"
-
               onClick={() =>
                 setGaleriaOpen(false)
               }
-
               className="absolute top-5 right-5 w-12 h-12 bg-zinc-900 border border-zinc-700 rounded-xl flex items-center justify-center text-white z-20"
             >
               <FaTimes />
             </button>
 
-            {imagenesGaleria.length >
-              1 && (
+            {imagenesGaleria.length > 1 && (
+
               <button
                 type="button"
-
                 onClick={(e) => {
                   e.stopPropagation();
 
                   anterior();
                 }}
-
                 className="absolute left-4 md:left-8 text-white text-5xl z-20"
               >
                 ‹
               </button>
+
             )}
 
             <img
-              src={
-                imagenesGaleria[
-                  imagenActual
-                ]
-              }
-
+              src={imagenesGaleria[imagenActual]}
               alt="Expediente"
-
               className="max-w-[90%] max-h-[90%] object-contain rounded-2xl"
-
               onClick={(e) =>
                 e.stopPropagation()
               }
             />
 
-            {imagenesGaleria.length >
-              1 && (
+            {imagenesGaleria.length > 1 && (
+
               <button
                 type="button"
-
                 onClick={(e) => {
                   e.stopPropagation();
 
                   siguiente();
                 }}
-
                 className="absolute right-4 md:right-8 text-white text-5xl z-20"
               >
                 ›
               </button>
+
             )}
 
-            {imagenesGaleria.length >
-              1 && (
+            {imagenesGaleria.length > 1 && (
+
               <div className="absolute bottom-5 bg-zinc-900 border border-zinc-700 text-sm px-4 py-2 rounded-full">
                 {imagenActual + 1} /{" "}
-                {
-                  imagenesGaleria.length
-                }
+                {imagenesGaleria.length}
               </div>
+
             )}
+
           </div>
+
         )}
+
     </div>
   );
 }
@@ -2405,6 +2462,7 @@ function DatoCard({
           : "text-gray-600"
       }`}
     >
+
       <span className="text-yellow-500">
         {icon}
       </span>
@@ -2412,6 +2470,7 @@ function DatoCard({
       <span className="break-all">
         {texto}
       </span>
+
     </div>
   );
 }
@@ -2420,10 +2479,10 @@ function Seccion({
   titulo,
   icon,
   children,
-  modoOscuro,
 }) {
   return (
     <section>
+
       <div className="flex items-center gap-3 mb-4">
 
         <span className="w-10 h-10 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center">
@@ -2433,9 +2492,11 @@ function Seccion({
         <h3 className="text-xl font-bold">
           {titulo}
         </h3>
+
       </div>
 
       {children}
+
     </section>
   );
 }
@@ -2458,11 +2519,13 @@ function Detalle({
             : "text-gray-500"
         } text-sm flex items-center gap-2`}
       >
+
         <span className="text-yellow-500">
           {icon}
         </span>
 
         {titulo}
+
       </div>
 
       <div
@@ -2474,6 +2537,7 @@ function Detalle({
       >
         {valor}
       </div>
+
     </div>
   );
 }
@@ -2493,6 +2557,7 @@ function CajaInfo({
           : "bg-gray-50 border-gray-200"
       }`}
     >
+
       <p
         className={`text-xs ${
           modoOscuro
@@ -2506,6 +2571,7 @@ function CajaInfo({
       <p className="font-bold mt-1 break-words">
         {valor}
       </p>
+
     </div>
   );
 }
@@ -2525,6 +2591,7 @@ function CajaFecha({
           : "bg-gray-50 border-gray-200"
       }`}
     >
+
       <p
         className={`text-xs ${
           modoOscuro
@@ -2538,6 +2605,7 @@ function CajaFecha({
       <p className="text-sm font-semibold mt-1">
         {fecha}
       </p>
+
     </div>
   );
 }
