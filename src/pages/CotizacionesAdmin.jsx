@@ -806,6 +806,18 @@ function CotizacionesAdmin() {
     }
   };
 
+  const obtenerFechaEventoHistorial = (cotizacion, tipos = []) => {
+    const historial = Array.isArray(cotizacion?.historial)
+      ? cotizacion.historial
+      : [];
+
+    const evento = [...historial]
+      .filter((item) => item?.fecha && tipos.includes(item?.tipo))
+      .sort((a, b) => obtenerMillis(a.fecha) - obtenerMillis(b.fecha))[0];
+
+    return evento?.fecha || null;
+  };
+
   const obtenerHistorialVisible = (cotizacion) => {
     const eventos = Array.isArray(cotizacion?.historial)
       ? [...cotizacion.historial]
@@ -1213,6 +1225,16 @@ function CotizacionesAdmin() {
         fechaActualizacion: serverTimestamp(),
       };
 
+      // Guardamos también fechas directas para que el expediente
+      // terminado pueda mostrar la cronología sin depender solo del historial.
+      if (estado === "confirmada_admin") {
+        datos.fechaConfirmacionAdmin = serverTimestamp();
+      }
+
+      if (estado === "en_proceso") {
+        datos.fechaInicioProyecto = serverTimestamp();
+      }
+
       if (evento) {
         datos.historial = arrayUnion(
           crearEventoHistorial(
@@ -1298,6 +1320,7 @@ function CotizacionesAdmin() {
 
         fechaInicioInstalacion: inicio.trim(),
         fechaFinInstalacion: fin.trim(),
+        fechaInstalacion: serverTimestamp(),
 
         vistoPorAdmin: true,
         vistoPorCliente: false,
@@ -1611,7 +1634,60 @@ function CotizacionesAdmin() {
 
           imagenesTrabajoFinal: fotosTrabajoFinal,
 
+          // Información económica completa del expediente
           precioFinal: obtenerPrecio(cotizacion),
+          precioTotal: obtenerPrecio(cotizacion),
+          presupuestoAdmin: obtenerPrecio(cotizacion),
+
+          porcentajeAnticipo:
+            cotizacion.propuestaActual?.porcentajeAnticipo ??
+            cotizacion.porcentajeAnticipo ??
+            50,
+
+          anticipo:
+            cotizacion.propuestaActual?.anticipo ??
+            cotizacion.anticipo ??
+            cotizacion.montoAnticipo ??
+            null,
+
+          montoAnticipo:
+            cotizacion.propuestaActual?.anticipo ??
+            cotizacion.montoAnticipo ??
+            cotizacion.anticipo ??
+            null,
+
+          saldo:
+            cotizacion.propuestaActual?.saldo ??
+            cotizacion.saldo ??
+            cotizacion.saldoPendiente ??
+            null,
+
+          saldoPendiente:
+            cotizacion.propuestaActual?.saldo ??
+            cotizacion.saldoPendiente ??
+            cotizacion.saldo ??
+            null,
+
+          tiempoEstimado:
+            cotizacion.propuestaActual?.tiempoEstimado ??
+            cotizacion.tiempoEstimado ??
+            "",
+
+          garantia:
+            cotizacion.propuestaActual?.garantia ??
+            cotizacion.garantia ??
+            "",
+
+          observaciones:
+            cotizacion.propuestaActual?.observaciones ??
+            cotizacion.observacionesAdmin ??
+            cotizacion.observaciones ??
+            "",
+
+          versionPropuesta:
+            cotizacion.propuestaActual?.version ??
+            cotizacion.versionPropuesta ??
+            1,
 
           propuestaActual: cotizacion.propuestaActual || null,
 
@@ -1619,6 +1695,30 @@ function CotizacionesAdmin() {
             obtenerFechaEntregaWealth(cotizacion),
 
           historial: historialFinal,
+
+          // Cronología completa. También recupera fechas desde el historial
+          // para cotizaciones creadas antes de estos campos directos.
+          fechaSolicitud:
+            cotizacion.fechaSolicitud ||
+            cotizacion.fecha ||
+            obtenerFechaEventoHistorial(cotizacion, ["solicitud_creada"]) ||
+            null,
+
+          fechaConfirmacionAdmin:
+            cotizacion.fechaConfirmacionAdmin ||
+            obtenerFechaEventoHistorial(cotizacion, ["trabajo_confirmado"]) ||
+            null,
+
+          fechaInicioProyecto:
+            cotizacion.fechaInicioProyecto ||
+            obtenerFechaEventoHistorial(cotizacion, ["trabajo_iniciado"]) ||
+            null,
+
+          fechaInstalacion:
+            cotizacion.fechaInstalacion ||
+            cotizacion.fechaInicioInstalacion ||
+            obtenerFechaEventoHistorial(cotizacion, ["instalacion_programada"]) ||
+            null,
 
           fechaInicioInstalacion:
             cotizacion.fechaInicioInstalacion || null,

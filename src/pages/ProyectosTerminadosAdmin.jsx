@@ -387,6 +387,203 @@ function ProyectosTerminadosAdmin() {
     }
   };
 
+  const obtenerMillis = (fecha) => {
+    if (!fecha) return 0;
+
+    try {
+      if (typeof fecha.toMillis === "function") {
+        return fecha.toMillis();
+      }
+
+      if (typeof fecha.toDate === "function") {
+        return fecha.toDate().getTime();
+      }
+
+      return new Date(fecha).getTime() || 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const fechaDesdeHistorial = (proyecto, tipos = []) => {
+    const historial = Array.isArray(proyecto?.historial)
+      ? proyecto.historial
+      : [];
+
+    const evento = [...historial]
+      .filter((item) => item?.fecha && tipos.includes(item?.tipo))
+      .sort((a, b) => obtenerMillis(a.fecha) - obtenerMillis(b.fecha))[0];
+
+    return evento?.fecha || null;
+  };
+
+  const fechaSolicitudProyecto = (proyecto) =>
+    proyecto?.fechaSolicitud ||
+    proyecto?.fecha ||
+    fechaDesdeHistorial(proyecto, ["solicitud_creada"]);
+
+  const fechaConfirmacionProyecto = (proyecto) =>
+    proyecto?.fechaConfirmacionAdmin ||
+    fechaDesdeHistorial(proyecto, ["trabajo_confirmado"]);
+
+  const fechaInicioProyecto = (proyecto) =>
+    proyecto?.fechaInicioProyecto ||
+    fechaDesdeHistorial(proyecto, ["trabajo_iniciado"]);
+
+  const fechaInstalacionProyecto = (proyecto) =>
+    proyecto?.fechaInstalacion ||
+    proyecto?.fechaInicioInstalacion ||
+    fechaDesdeHistorial(proyecto, ["instalacion_programada"]);
+
+  const fechaFinalizacionProyecto = (proyecto) =>
+    proyecto?.fechaFinalizacion ||
+    fechaDesdeHistorial(proyecto, ["trabajo_finalizado"]);
+
+  const editarImportes = async () => {
+    if (!proyectoActivo) return;
+
+    const precioActual =
+      proyectoActivo.precioTotal ??
+      proyectoActivo.precioFinal ??
+      proyectoActivo.presupuestoAdmin ??
+      "";
+
+    const nuevoPrecioTexto = window.prompt(
+      "Nuevo precio total del trabajo:",
+      String(precioActual || "")
+    );
+
+    if (nuevoPrecioTexto === null) return;
+
+    const nuevoPrecio = Number(nuevoPrecioTexto);
+
+    if (!nuevoPrecio || nuevoPrecio <= 0) {
+      window.alert("Ingresa un precio válido.");
+      return;
+    }
+
+    const porcentajeActual =
+      Number(
+        proyectoActivo.porcentajeAnticipo ??
+          proyectoActivo.propuestaActual?.porcentajeAnticipo ??
+          50
+      ) || 50;
+
+    const nuevoPorcentajeTexto = window.prompt(
+      "Porcentaje de anticipo:",
+      String(porcentajeActual)
+    );
+
+    if (nuevoPorcentajeTexto === null) return;
+
+    const nuevoPorcentaje = Number(nuevoPorcentajeTexto);
+
+    if (
+      Number.isNaN(nuevoPorcentaje) ||
+      nuevoPorcentaje < 0 ||
+      nuevoPorcentaje > 100
+    ) {
+      window.alert("El porcentaje debe estar entre 0 y 100.");
+      return;
+    }
+
+    const nuevoAnticipo = (nuevoPrecio * nuevoPorcentaje) / 100;
+    const nuevoSaldo = nuevoPrecio - nuevoAnticipo;
+
+    const confirmar = window.confirm(
+      `Se actualizará el expediente a:\n\nPrecio: ${moneda(
+        nuevoPrecio
+      )}\nAnticipo: ${moneda(nuevoAnticipo)}\nSaldo: ${moneda(
+        nuevoSaldo
+      )}\n\n¿Guardar cambios?`
+    );
+
+    if (!confirmar) return;
+
+    try {
+      const batch = writeBatch(db);
+
+      const proyectoRef = doc(
+        db,
+        "proyectosClientes",
+        proyectoActivo.id
+      );
+
+      batch.update(proyectoRef, {
+        precioTotal: nuevoPrecio,
+        precioFinal: nuevoPrecio,
+        presupuestoAdmin: nuevoPrecio,
+        porcentajeAnticipo: nuevoPorcentaje,
+        anticipo: nuevoAnticipo,
+        montoAnticipo: nuevoAnticipo,
+        saldo: nuevoSaldo,
+        saldoPendiente: nuevoSaldo,
+        fechaActualizacion: Timestamp.now(),
+      });
+
+      const cotizacionId =
+        proyectoActivo.cotizacionId || proyectoActivo.id;
+
+      const cotizacionExiste = cotizaciones.some(
+        (c) => c.id === cotizacionId
+      );
+
+      if (cotizacionExiste) {
+        const cotizacionRef = doc(
+          db,
+          "cotizaciones",
+          cotizacionId
+        );
+
+        batch.update(cotizacionRef, {
+          precioTotal: nuevoPrecio,
+          presupuestoAdmin: nuevoPrecio,
+          porcentajeAnticipo: nuevoPorcentaje,
+          anticipo: nuevoAnticipo,
+          montoAnticipo: nuevoAnticipo,
+          saldo: nuevoSaldo,
+          saldoPendiente: nuevoSaldo,
+          "propuestaActual.precioTotal": nuevoPrecio,
+          "propuestaActual.porcentajeAnticipo": nuevoPorcentaje,
+          "propuestaActual.anticipo": nuevoAnticipo,
+          "propuestaActual.saldo": nuevoSaldo,
+          fechaActualizacion: Timestamp.now(),
+        });
+      }
+
+      await batch.commit();
+
+      setProyectoActivo((actual) => ({
+        ...actual,
+        precioTotal: nuevoPrecio,
+        precioFinal: nuevoPrecio,
+        presupuestoAdmin: nuevoPrecio,
+        porcentajeAnticipo: nuevoPorcentaje,
+        anticipo: nuevoAnticipo,
+        montoAnticipo: nuevoAnticipo,
+        saldo: nuevoSaldo,
+        saldoPendiente: nuevoSaldo,
+        propuestaActual: {
+          ...(actual?.propuestaActual || {}),
+          precioTotal: nuevoPrecio,
+          porcentajeAnticipo: nuevoPorcentaje,
+          anticipo: nuevoAnticipo,
+          saldo: nuevoSaldo,
+        },
+      }));
+
+      setMensajeGeneral(
+        "✅ Precio, anticipo y saldo actualizados correctamente."
+      );
+    } catch (error) {
+      console.error("Error actualizando importes:", error);
+
+      window.alert(
+        "No se pudieron actualizar los importes. Revisa la consola."
+      );
+    }
+  };
+
   // ======================================================
   // FOTOS FINALES
   // ======================================================
@@ -1424,7 +1621,11 @@ function ProyectosTerminadosAdmin() {
                     </p>
 
                     <p className="text-xl font-bold mt-1">
-                      {moneda(proyecto.precioTotal)}
+                      {moneda(
+                        proyecto.precioTotal ??
+                          proyecto.precioFinal ??
+                          proyecto.presupuestoAdmin
+                      )}
                     </p>
 
                   </div>
@@ -1679,7 +1880,9 @@ function ProyectosTerminadosAdmin() {
                   <CajaInfo
                     titulo="Precio total"
                     valor={moneda(
-                      proyectoActivo.precioTotal
+                      proyectoActivo.precioTotal ??
+                        proyectoActivo.precioFinal ??
+                        proyectoActivo.presupuestoAdmin
                     )}
                   />
 
@@ -1726,6 +1929,17 @@ function ProyectosTerminadosAdmin() {
 
                 </div>
 
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={editarImportes}
+                    className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition"
+                  >
+                    <FaEdit />
+                    Editar importes
+                  </button>
+                </div>
+
                 {proyectoActivo.observaciones && (
                   <div className="mt-4 bg-black border border-zinc-800 rounded-2xl p-5">
 
@@ -1757,35 +1971,35 @@ function ProyectosTerminadosAdmin() {
                   <CajaFecha
                     titulo="Solicitud"
                     fecha={formatearFecha(
-                      proyectoActivo.fechaSolicitud
+                      fechaSolicitudProyecto(proyectoActivo)
                     )}
                   />
 
                   <CajaFecha
                     titulo="Confirmación"
                     fecha={formatearFecha(
-                      proyectoActivo.fechaConfirmacionAdmin
+                      fechaConfirmacionProyecto(proyectoActivo)
                     )}
                   />
 
                   <CajaFecha
                     titulo="Inicio"
                     fecha={formatearFecha(
-                      proyectoActivo.fechaInicioProyecto
+                      fechaInicioProyecto(proyectoActivo)
                     )}
                   />
 
                   <CajaFecha
                     titulo="Instalación"
                     fecha={formatearFecha(
-                      proyectoActivo.fechaInstalacion
+                      fechaInstalacionProyecto(proyectoActivo)
                     )}
                   />
 
                   <CajaFecha
                     titulo="Finalización"
                     fecha={formatearFecha(
-                      proyectoActivo.fechaFinalizacion
+                      fechaFinalizacionProyecto(proyectoActivo)
                     )}
                   />
 
