@@ -1930,14 +1930,7 @@ function ProyectosTerminadosAdmin() {
                 </div>
 
                 <div className="mt-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={editarImportes}
-                    className="bg-yellow-500 hover:bg-yellow-400 text-black px-5 py-3 rounded-xl font-bold flex items-center gap-2 transition"
-                  >
-                    <FaEdit />
-                    Editar importes
-                  </button>
+                  
                 </div>
 
                 {proyectoActivo.observaciones && (
