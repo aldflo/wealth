@@ -18,7 +18,10 @@ import {
   FaDraftingCompass,
 } from "react-icons/fa";
 
-import { db } from "../firebase.config";
+import {
+  auth,
+  db,
+} from "../firebase.config";
 
 import {
   collection,
@@ -52,10 +55,6 @@ function WealthVyA() {
 
   const TIEMPO_ROTACION =
     8000;
-
-  // ======================================================
-  // SERVICIOS
-  // ======================================================
 
   const servicios = [
     {
@@ -161,10 +160,6 @@ function WealthVyA() {
     },
   ];
 
-  // ======================================================
-  // FIRESTORE
-  // ======================================================
-
   useEffect(() => {
     const q = query(
       collection(
@@ -268,10 +263,6 @@ function WealthVyA() {
 
   }, []);
 
-  // ======================================================
-  // PAGINACIÓN
-  // ======================================================
-
   const totalPaginas =
     Math.ceil(
       proyectos.length /
@@ -283,10 +274,6 @@ function WealthVyA() {
       indiceInicio /
         PROYECTOS_VISIBLES
     );
-
-  // ======================================================
-  // ROTACIÓN
-  // ======================================================
 
   useEffect(() => {
     if (
@@ -331,10 +318,6 @@ function WealthVyA() {
     proyectos,
   ]);
 
-  // ======================================================
-  // PROYECTOS VISIBLES
-  // ======================================================
-
   const proyectosVisibles =
     useMemo(
       () => {
@@ -378,10 +361,6 @@ function WealthVyA() {
       ]
     );
 
-  // ======================================================
-  // ANTERIOR
-  // ======================================================
-
   const proyectosAnteriores =
     () => {
       if (
@@ -418,10 +397,6 @@ function WealthVyA() {
       );
     };
 
-  // ======================================================
-  // SIGUIENTE
-  // ======================================================
-
   const proyectosSiguientes =
     () => {
       if (
@@ -452,52 +427,84 @@ function WealthVyA() {
     };
 
   // ======================================================
-  // COTIZAR
+  // COTIZACIÓN / LOGIN
   // ======================================================
+
+  const irACotizacion = (
+    proyecto = null
+  ) => {
+    const proyectoSeleccionado =
+      proyecto
+        ? {
+            id:
+              proyecto.id,
+
+            nombre:
+              proyecto.nombre,
+
+            descripcion:
+              proyecto.descripcion,
+
+            categoria:
+              proyecto.categoria,
+
+            imagen:
+              proyecto.imagen,
+
+            imagenes:
+              proyecto.imagenes ||
+              [],
+          }
+        : null;
+
+    if (auth.currentUser) {
+      navigate(
+        "/crear-cotizacion",
+        {
+          state: proyectoSeleccionado
+            ? {
+                proyecto:
+                  proyectoSeleccionado,
+              }
+            : null,
+        }
+      );
+
+      return;
+    }
+
+    navigate(
+      "/login",
+      {
+        state: {
+          redirectTo:
+            "/crear-cotizacion",
+
+          redirectState:
+            proyectoSeleccionado
+              ? {
+                  proyecto:
+                    proyectoSeleccionado,
+                }
+              : null,
+        },
+      }
+    );
+  };
 
   const solicitarCotizacion =
     (
       proyecto
     ) => {
-      navigate(
-        "/crear-cotizacion",
-
-        {
-          state: {
-            proyecto: {
-              id:
-                proyecto.id,
-
-              nombre:
-                proyecto.nombre,
-
-              descripcion:
-                proyecto.descripcion,
-
-              categoria:
-                proyecto.categoria,
-
-              imagen:
-                proyecto.imagen,
-
-              imagenes:
-                proyecto.imagenes ||
-                [],
-            },
-          },
-        }
+      irACotizacion(
+        proyecto
       );
     };
-
-  // ======================================================
-  // RENDER
-  // ======================================================
 
   return (
     <div
       className={`
         min-h-screen
-
         transition-colors
         duration-300
 
@@ -515,18 +522,12 @@ function WealthVyA() {
       `}
     >
 
-      {/* ================================================= */}
-      {/* HERO SIEMPRE NEGRO */}
-      {/* ================================================= */}
-
       <section
         className="
           relative
           overflow-hidden
-
           bg-black
           text-white
-
           border-b
           border-zinc-900
         "
@@ -536,7 +537,6 @@ function WealthVyA() {
           className="
             absolute
             inset-0
-
             bg-gradient-to-r
             from-black
             via-zinc-950
@@ -547,19 +547,13 @@ function WealthVyA() {
         <div
           className="
             absolute
-
             -right-32
             -top-32
-
             w-[420px]
             h-[420px]
-
             rounded-full
-
             blur-3xl
-
             bg-yellow-500/[0.05]
-
             pointer-events-none
           "
         />
@@ -568,14 +562,11 @@ function WealthVyA() {
           className="
             relative
             z-10
-
             max-w-7xl
             mx-auto
-
             px-5
             md:px-8
             lg:px-10
-
             py-12
             md:py-16
           "
@@ -583,39 +574,12 @@ function WealthVyA() {
 
           <div className="max-w-5xl">
 
-            <p
-              className="
-                text-yellow-500
-
-                uppercase
-
-                tracking-[0.3em]
-
-                text-xs
-                font-semibold
-
-                mb-3
-              "
-            >
+            <p className="text-yellow-500 uppercase tracking-[0.3em] text-xs font-semibold mb-3">
               Wealth V&A
             </p>
 
-            <h1
-              className="
-                text-4xl
-                sm:text-5xl
-                md:text-6xl
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold leading-[1.05] tracking-tight max-w-4xl text-white">
 
-                font-bold
-
-                leading-[1.05]
-                tracking-tight
-
-                max-w-4xl
-
-                text-white
-              "
-            >
               Vidrio, aluminio{" "}
 
               <span className="text-yellow-500">
@@ -624,125 +588,75 @@ function WealthVyA() {
 
             </h1>
 
-            <p
-              className="
-                text-zinc-300
-
-                text-base
-                md:text-lg
-
-                leading-relaxed
-
-                max-w-3xl
-
-                mt-4
-              "
-            >
+            <p className="text-zinc-300 text-base md:text-lg leading-relaxed max-w-3xl mt-4">
               Especialistas en fabricación e instalación de vidrio
               templado, aluminio arquitectónico y soluciones modernas
               para viviendas y proyectos comerciales.
             </p>
 
-            <div
-              className="
-                flex
-                flex-col
-                sm:flex-row
-
-                gap-3
-
-                mt-6
-              "
-            >
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
 
               <button
                 type="button"
 
                 onClick={() =>
-                  navigate(
-                    "/crear-cotizacion"
-                  )
+                  irACotizacion()
                 }
 
                 className="
                   border
                   border-yellow-500/50
-
                   bg-black
                   text-yellow-400
-
                   px-4
                   py-2.5
-
                   rounded-xl
-
                   font-medium
-
                   flex
                   items-center
                   justify-center
                   gap-2
-
                   transition-all
                   duration-200
-
                   hover:border-yellow-500
                   hover:bg-yellow-500/10
                   hover:-translate-y-[1px]
                 "
               >
-
                 <FaFileInvoiceDollar />
-
                 Solicitar cotización
-
                 <FaArrowRight />
-
               </button>
 
               <button
                 type="button"
-
                 onClick={() =>
                   navigate(
                     "/proyectos"
                   )
                 }
-
                 className="
                   border
                   border-zinc-600
-
                   bg-black
-
                   text-zinc-300
-
                   px-4
                   py-2.5
-
                   rounded-xl
-
                   font-medium
-
                   flex
                   items-center
                   justify-center
                   gap-2
-
                   transition-all
                   duration-200
-
                   hover:border-yellow-500/60
                   hover:text-yellow-400
-
                   hover:-translate-y-[1px]
                 "
               >
-
                 <FaImages />
-
                 Ver proyectos
-
               </button>
 
             </div>
@@ -753,42 +667,13 @@ function WealthVyA() {
 
       </section>
 
-      {/* ================================================= */}
-      {/* CONTENIDO */}
-      {/* ================================================= */}
-
-      <main
-        className="
-          max-w-7xl
-          mx-auto
-
-          px-5
-          md:px-8
-          lg:px-10
-        "
-      >
-
-        {/* ================================================= */}
-        {/* SERVICIOS */}
-        {/* ================================================= */}
+      <main className="max-w-7xl mx-auto px-5 md:px-8 lg:px-10">
 
         <section className="pt-10 pb-8">
 
           <div className="mb-6">
 
-            <p
-              className="
-                text-xs
-
-                uppercase
-
-                tracking-[0.25em]
-
-                text-yellow-500
-
-                font-semibold
-              "
-            >
+            <p className="text-xs uppercase tracking-[0.25em] text-yellow-500 font-semibold">
               Soluciones especializadas
             </p>
 
@@ -796,11 +681,8 @@ function WealthVyA() {
               className={`
                 text-3xl
                 md:text-4xl
-
                 font-bold
-
                 mt-2
-
                 ${
                   modoOscuro
                     ? "text-white"
@@ -814,9 +696,7 @@ function WealthVyA() {
             <p
               className={`
                 mt-2
-
                 max-w-2xl
-
                 ${
                   modoOscuro
                     ? "text-zinc-400"
@@ -830,16 +710,7 @@ function WealthVyA() {
 
           </div>
 
-          <div
-            className="
-              grid
-
-              md:grid-cols-2
-              lg:grid-cols-3
-
-              gap-4
-            "
-          >
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
 
             {servicios.map(
               (
@@ -853,18 +724,12 @@ function WealthVyA() {
 
                   className={`
                     group
-
                     border
-
                     hover:border-yellow-500/50
-
                     rounded-2xl
-
                     p-5
-
                     transition-all
                     duration-300
-
                     hover:-translate-y-[2px]
 
                     ${
@@ -882,35 +747,9 @@ function WealthVyA() {
                   `}
                 >
 
-                  <div
-                    className="
-                      flex
-                      items-start
-                      gap-4
-                    "
-                  >
+                  <div className="flex items-start gap-4">
 
-                    <div
-                      className="
-                        w-12
-                        h-12
-
-                        shrink-0
-
-                        rounded-xl
-
-                        bg-yellow-500/10
-
-                        border
-                        border-yellow-500/20
-
-                        text-yellow-500
-
-                        flex
-                        items-center
-                        justify-center
-                      "
-                    >
+                    <div className="w-12 h-12 shrink-0 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center">
                       {
                         servicio.icon
                       }
@@ -920,9 +759,7 @@ function WealthVyA() {
                       className={`
                         text-lg
                         md:text-xl
-
                         font-bold
-
                         leading-tight
 
                         ${
@@ -939,13 +776,7 @@ function WealthVyA() {
 
                   </div>
 
-                  <div
-                    className="
-                      mt-4
-
-                      space-y-1.5
-                    "
-                  >
+                  <div className="mt-4 space-y-1.5">
 
                     {servicio.descripcion.map(
                       (
@@ -961,7 +792,6 @@ function WealthVyA() {
                             flex
                             items-start
                             gap-2.5
-
                             text-sm
 
                             ${
@@ -972,20 +802,7 @@ function WealthVyA() {
                           `}
                         >
 
-                          <span
-                            className="
-                              w-1.5
-                              h-1.5
-
-                              rounded-full
-
-                              bg-yellow-500
-
-                              mt-2
-
-                              shrink-0
-                            "
-                          />
+                          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-2 shrink-0" />
 
                           <span>
                             {
@@ -1007,8 +824,6 @@ function WealthVyA() {
 
         </section>
 
-        {/* DIVISION */}
-
         <div
           className={`
             border-t
@@ -1021,42 +836,13 @@ function WealthVyA() {
           `}
         />
 
-        {/* ================================================= */}
-        {/* PROYECTOS */}
-        {/* ================================================= */}
-
         <section className="py-8">
 
-          <div
-            className="
-              flex
-              flex-col
-
-              lg:flex-row
-              lg:items-end
-              lg:justify-between
-
-              gap-4
-
-              mb-6
-            "
-          >
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
 
             <div>
 
-              <p
-                className="
-                  text-xs
-
-                  uppercase
-
-                  tracking-[0.25em]
-
-                  text-yellow-500
-
-                  font-semibold
-                "
-              >
+              <p className="text-xs uppercase tracking-[0.25em] text-yellow-500 font-semibold">
                 Nuestro trabajo
               </p>
 
@@ -1064,9 +850,7 @@ function WealthVyA() {
                 className={`
                   text-3xl
                   md:text-4xl
-
                   font-bold
-
                   mt-2
 
                   ${
@@ -1096,24 +880,14 @@ function WealthVyA() {
 
             </div>
 
-            <div
-              className="
-                flex
-                flex-wrap
-                items-center
-                gap-2
-              "
-            >
+            <div className="flex flex-wrap items-center gap-2">
 
               <div
                 className={`
                   border
-
                   rounded-xl
-
                   px-4
                   py-2.5
-
                   text-sm
 
                   ${
@@ -1155,16 +929,12 @@ function WealthVyA() {
               {proyectos.length >
                 PROYECTOS_VISIBLES && (
                 <>
-
                   <button
                     type="button"
-
                     onClick={
                       proyectosAnteriores
                     }
-
                     aria-label="Proyectos anteriores"
-
                     className={botonCuadrado(
                       modoOscuro
                     )}
@@ -1174,32 +944,26 @@ function WealthVyA() {
 
                   <button
                     type="button"
-
                     onClick={
                       proyectosSiguientes
                     }
-
                     aria-label="Siguientes proyectos"
-
                     className={botonCuadrado(
                       modoOscuro
                     )}
                   >
                     <FaChevronRight />
                   </button>
-
                 </>
               )}
 
               <button
                 type="button"
-
                 onClick={() =>
                   navigate(
                     "/proyectos"
                   )
                 }
-
                 className={`
                   ${botonBase(
                     modoOscuro
@@ -1221,18 +985,13 @@ function WealthVyA() {
                   hover:text-yellow-500
                 `}
               >
-
                 Ver todos
-
                 <FaArrowRight />
-
               </button>
 
             </div>
 
           </div>
-
-          {/* SIN PROYECTOS */}
 
           {proyectos.length ===
           0 ? (
@@ -1240,11 +999,8 @@ function WealthVyA() {
             <div
               className={`
                 border
-
                 rounded-2xl
-
                 py-10
-
                 text-center
 
                 ${
@@ -1265,7 +1021,6 @@ function WealthVyA() {
               <FaBuilding
                 className={`
                   text-4xl
-
                   mx-auto
 
                   ${
@@ -1279,9 +1034,7 @@ function WealthVyA() {
               <h3
                 className={`
                   font-bold
-
                   text-lg
-
                   mt-4
 
                   ${
@@ -1297,7 +1050,6 @@ function WealthVyA() {
               <p
                 className={`
                   text-sm
-
                   mt-1
 
                   ${
@@ -1321,12 +1073,9 @@ function WealthVyA() {
 
               className="
                 grid
-
                 grid-cols-1
                 md:grid-cols-3
-
                 gap-4
-
                 animate-[fadeIn_.4s_ease]
               "
             >
@@ -1342,18 +1091,12 @@ function WealthVyA() {
 
                     className={`
                       group
-
                       border
-
                       hover:border-yellow-500/50
-
                       rounded-2xl
-
                       overflow-hidden
-
                       transition-all
                       duration-300
-
                       hover:-translate-y-[2px]
 
                       ${
@@ -1383,16 +1126,11 @@ function WealthVyA() {
                       className="
                         relative
                         block
-
                         w-full
-
                         h-52
                         md:h-56
-
                         overflow-hidden
-
                         bg-zinc-900
-
                         text-left
                       "
                     >
@@ -1413,28 +1151,16 @@ function WealthVyA() {
                           className="
                             w-full
                             h-full
-
                             object-cover
-
                             transition-transform
                             duration-500
-
                             group-hover:scale-105
                           "
                         />
 
                       ) : (
 
-                        <div
-                          className="
-                            w-full
-                            h-full
-
-                            flex
-                            items-center
-                            justify-center
-                          "
-                        >
+                        <div className="w-full h-full flex items-center justify-center">
 
                           <FaBuilding className="text-zinc-700 text-5xl" />
 
@@ -1444,65 +1170,16 @@ function WealthVyA() {
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
-                      <div
-                        className="
-                          absolute
+                      <div className="absolute top-3 left-3 flex flex-wrap gap-2">
 
-                          top-3
-                          left-3
-
-                          flex
-                          flex-wrap
-
-                          gap-2
-                        "
-                      >
-
-                        <span
-                          className="
-                            bg-black/80
-
-                            text-white
-
-                            backdrop-blur
-
-                            border
-                            border-white/10
-
-                            px-2.5
-                            py-1
-
-                            rounded-full
-
-                            text-[11px]
-                          "
-                        >
+                        <span className="bg-black/80 text-white backdrop-blur border border-white/10 px-2.5 py-1 rounded-full text-[11px]">
                           {proyecto.categoria ||
                             "Aluminios y Vidrios"}
                         </span>
 
                         {proyecto.destacado && (
 
-                          <span
-                            className="
-                              bg-yellow-500
-
-                              text-black
-
-                              px-2.5
-                              py-1
-
-                              rounded-full
-
-                              text-[11px]
-
-                              font-bold
-
-                              flex
-                              items-center
-                              gap-1
-                            "
-                          >
+                          <span className="bg-yellow-500 text-black px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1">
 
                             <FaStar
                               size={
@@ -1525,9 +1202,7 @@ function WealthVyA() {
                       <h3
                         className={`
                           text-xl
-
                           font-bold
-
                           line-clamp-2
 
                           ${
@@ -1545,11 +1220,8 @@ function WealthVyA() {
                       <p
                         className={`
                           text-sm
-
                           mt-2
-
                           line-clamp-2
-
                           min-h-[40px]
 
                           ${
@@ -1569,9 +1241,7 @@ function WealthVyA() {
                           flex
                           items-center
                           gap-2
-
                           text-xs
-
                           mt-4
 
                           ${
@@ -1591,16 +1261,7 @@ function WealthVyA() {
 
                       </div>
 
-                      <div
-                        className="
-                          grid
-                          grid-cols-2
-
-                          gap-2.5
-
-                          mt-5
-                        "
-                      >
+                      <div className="grid grid-cols-2 gap-2.5 mt-5">
 
                         <button
                           type="button"
@@ -1632,11 +1293,8 @@ function WealthVyA() {
                             hover:text-blue-500
                           `}
                         >
-
                           Ver
-
                           <FaArrowRight />
-
                         </button>
 
                         <button
@@ -1654,18 +1312,13 @@ function WealthVyA() {
                             )}
 
                             border-yellow-500/50
-
                             text-yellow-500
-
                             hover:border-yellow-500
                             hover:bg-yellow-500/10
                           `}
                         >
-
                           <FaFileInvoiceDollar />
-
                           Cotizar
-
                         </button>
 
                       </div>
@@ -1680,22 +1333,10 @@ function WealthVyA() {
 
           )}
 
-          {/* INDICADORES */}
-
           {proyectos.length >
             PROYECTOS_VISIBLES && (
 
-            <div
-              className="
-                flex
-                items-center
-                justify-center
-
-                gap-2
-
-                mt-6
-              "
-            >
+            <div className="flex items-center justify-center gap-2 mt-6">
 
               {Array.from({
                 length:
@@ -1726,9 +1367,7 @@ function WealthVyA() {
 
                     className={`
                       h-2
-
                       rounded-full
-
                       transition-all
                       duration-300
 
@@ -1763,28 +1402,19 @@ function WealthVyA() {
 
         </section>
 
-        {/* ================================================= */}
-        {/* CTA */}
-        {/* ================================================= */}
-
         <section className="pb-10">
 
           <div
             className={`
               border
-
               rounded-2xl
-
               p-5
               md:p-6
-
               flex
               flex-col
               md:flex-row
-
               md:items-center
               md:justify-between
-
               gap-4
 
               ${
@@ -1808,7 +1438,6 @@ function WealthVyA() {
                 className={`
                   text-xl
                   md:text-2xl
-
                   font-bold
 
                   ${
@@ -1824,7 +1453,6 @@ function WealthVyA() {
               <p
                 className={`
                   text-sm
-
                   mt-1
 
                   ${
@@ -1844,9 +1472,7 @@ function WealthVyA() {
               type="button"
 
               onClick={() =>
-                navigate(
-                  "/crear-cotizacion"
-                )
+                irACotizacion()
               }
 
               className={`
@@ -1855,22 +1481,15 @@ function WealthVyA() {
                 )}
 
                 border-yellow-500/50
-
                 text-yellow-500
-
                 hover:border-yellow-500
                 hover:bg-yellow-500/10
-
                 shrink-0
               `}
             >
-
               <FaFileInvoiceDollar />
-
               Solicitar cotización
-
               <FaArrowRight />
-
             </button>
 
           </div>
@@ -1883,33 +1502,21 @@ function WealthVyA() {
   );
 }
 
-// ======================================================
-// BOTONES
-// ======================================================
-
 const botonBase = (
   modoOscuro
 ) => `
   border
-
   px-4
   py-2.5
-
   rounded-xl
-
   font-medium
-
   flex
   items-center
   justify-center
-
   gap-2
-
   transition-all
   duration-200
-
   hover:-translate-y-[1px]
-
   active:translate-y-0
 
   ${
@@ -1923,27 +1530,18 @@ const botonBaseCompacto = (
   modoOscuro
 ) => `
   border
-
   px-3
   py-2.5
-
   rounded-xl
-
   text-sm
-
   font-medium
-
   flex
   items-center
   justify-center
-
   gap-2
-
   transition-all
   duration-200
-
   hover:-translate-y-[1px]
-
   active:translate-y-0
 
   ${
@@ -1958,18 +1556,13 @@ const botonCuadrado = (
 ) => `
   w-10
   h-10
-
   border
-
   rounded-xl
-
   flex
   items-center
   justify-center
-
   transition-all
   duration-200
-
   hover:text-yellow-500
   hover:border-yellow-500/60
 

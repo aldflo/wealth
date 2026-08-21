@@ -16,7 +16,10 @@ import {
   FaChevronRight,
 } from "react-icons/fa";
 
-import { db } from "../firebase.config";
+import {
+  auth,
+  db,
+} from "../firebase.config";
 
 import {
   collection,
@@ -345,37 +348,75 @@ function WealthConstrucciones() {
     };
 
   // ======================================================
-  // COTIZAR
+  // IR A COTIZACIÓN / LOGIN
   // ======================================================
 
-  const solicitarCotizacion =
-    (proyecto) => {
+  const irACotizacion = (
+    proyecto = null
+  ) => {
+    const proyectoSeleccionado =
+      proyecto
+        ? {
+            id:
+              proyecto.id,
+
+            nombre:
+              proyecto.nombre,
+
+            descripcion:
+              proyecto.descripcion,
+
+            categoria:
+              proyecto.categoria,
+
+            imagen:
+              proyecto.imagen,
+
+            imagenes:
+              proyecto.imagenes ||
+              [],
+          }
+        : null;
+
+    if (auth.currentUser) {
       navigate(
         "/crear-cotizacion",
         {
-          state: {
-            proyecto: {
-              id:
-                proyecto.id,
-
-              nombre:
-                proyecto.nombre,
-
-              descripcion:
-                proyecto.descripcion,
-
-              categoria:
-                proyecto.categoria,
-
-              imagen:
-                proyecto.imagen,
-
-              imagenes:
-                proyecto.imagenes ||
-                [],
-            },
-          },
+          state: proyectoSeleccionado
+            ? {
+                proyecto:
+                  proyectoSeleccionado,
+              }
+            : null,
         }
+      );
+
+      return;
+    }
+
+    navigate(
+      "/login",
+      {
+        state: {
+          redirectTo:
+            "/crear-cotizacion",
+
+          redirectState:
+            proyectoSeleccionado
+              ? {
+                  proyecto:
+                    proyectoSeleccionado,
+                }
+              : null,
+        },
+      }
+    );
+  };
+
+  const solicitarCotizacion =
+    (proyecto) => {
+      irACotizacion(
+        proyecto
       );
     };
 
@@ -507,9 +548,7 @@ function WealthConstrucciones() {
               <button
                 type="button"
                 onClick={() =>
-                  navigate(
-                    "/crear-cotizacion"
-                  )
+                  irACotizacion()
                 }
                 className="
                   border
@@ -584,10 +623,6 @@ function WealthConstrucciones() {
         </div>
       </section>
 
-      {/* ================================================= */}
-      {/* CONTENIDO */}
-      {/* ================================================= */}
-
       <main
         className="
           max-w-7xl
@@ -601,15 +636,7 @@ function WealthConstrucciones() {
 
           <div className="mb-6">
 
-            <p
-              className="
-                text-xs
-                uppercase
-                tracking-[0.25em]
-                text-yellow-500
-                font-semibold
-              "
-            >
+            <p className="text-xs uppercase tracking-[0.25em] text-yellow-500 font-semibold">
               Lo que hacemos
             </p>
 
@@ -619,7 +646,6 @@ function WealthConstrucciones() {
                 md:text-4xl
                 font-bold
                 mt-2
-
                 ${
                   modoOscuro
                     ? "text-white"
@@ -634,7 +660,6 @@ function WealthConstrucciones() {
               className={`
                 mt-2
                 max-w-2xl
-
                 ${
                   modoOscuro
                     ? "text-zinc-400"
@@ -649,14 +674,7 @@ function WealthConstrucciones() {
             </p>
           </div>
 
-          <div
-            className="
-              grid
-              md:grid-cols-2
-              lg:grid-cols-3
-              gap-4
-            "
-          >
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {servicios.map(
               (
                 servicio,
@@ -681,28 +699,8 @@ function WealthConstrucciones() {
                     }
                   `}
                 >
-                  <div
-                    className="
-                      flex
-                      items-start
-                      gap-4
-                    "
-                  >
-                    <div
-                      className="
-                        w-12
-                        h-12
-                        shrink-0
-                        rounded-xl
-                        bg-yellow-500/10
-                        border
-                        border-yellow-500/20
-                        text-yellow-500
-                        flex
-                        items-center
-                        justify-center
-                      "
-                    >
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 shrink-0 rounded-xl bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 flex items-center justify-center">
                       {
                         servicio.icon
                       }
@@ -714,7 +712,6 @@ function WealthConstrucciones() {
                         md:text-xl
                         font-bold
                         leading-tight
-
                         ${
                           modoOscuro
                             ? "text-white"
@@ -742,7 +739,6 @@ function WealthConstrucciones() {
                             items-start
                             gap-2.5
                             text-sm
-
                             ${
                               modoOscuro
                                 ? "text-zinc-400"
@@ -750,16 +746,7 @@ function WealthConstrucciones() {
                             }
                           `}
                         >
-                          <span
-                            className="
-                              w-1.5
-                              h-1.5
-                              rounded-full
-                              bg-yellow-500
-                              mt-2
-                              shrink-0
-                            "
-                          />
+                          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 mt-2 shrink-0" />
 
                           <span>
                             {
@@ -780,7 +767,6 @@ function WealthConstrucciones() {
         <div
           className={`
             border-t
-
             ${
               modoOscuro
                 ? "border-zinc-900"
@@ -789,32 +775,13 @@ function WealthConstrucciones() {
           `}
         />
 
-        {/* PROYECTOS */}
-
         <section className="py-8">
 
-          <div
-            className="
-              flex
-              flex-col
-              lg:flex-row
-              lg:items-end
-              lg:justify-between
-              gap-4
-              mb-6
-            "
-          >
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-6">
+
             <div>
 
-              <p
-                className="
-                  text-xs
-                  uppercase
-                  tracking-[0.25em]
-                  text-yellow-500
-                  font-semibold
-                "
-              >
+              <p className="text-xs uppercase tracking-[0.25em] text-yellow-500 font-semibold">
                 Nuestro trabajo
               </p>
 
@@ -824,7 +791,6 @@ function WealthConstrucciones() {
                   md:text-4xl
                   font-bold
                   mt-2
-
                   ${
                     modoOscuro
                       ? "text-white"
@@ -838,7 +804,6 @@ function WealthConstrucciones() {
               <p
                 className={`
                   mt-2
-
                   ${
                     modoOscuro
                       ? "text-zinc-400"
@@ -851,14 +816,8 @@ function WealthConstrucciones() {
               </p>
             </div>
 
-            <div
-              className="
-                flex
-                flex-wrap
-                items-center
-                gap-2
-              "
-            >
+            <div className="flex flex-wrap items-center gap-2">
+
               <div
                 className={`
                   border
@@ -866,7 +825,6 @@ function WealthConstrucciones() {
                   px-4
                   py-2.5
                   text-sm
-
                   ${
                     modoOscuro
                       ? "bg-zinc-950 border-zinc-800 text-zinc-400"
@@ -960,7 +918,6 @@ function WealthConstrucciones() {
                 rounded-2xl
                 py-10
                 text-center
-
                 ${
                   modoOscuro
                     ? "bg-zinc-950 border-zinc-800"
@@ -972,7 +929,6 @@ function WealthConstrucciones() {
                 className={`
                   text-4xl
                   mx-auto
-
                   ${
                     modoOscuro
                       ? "text-zinc-700"
@@ -986,7 +942,6 @@ function WealthConstrucciones() {
                   font-bold
                   text-lg
                   mt-4
-
                   ${
                     modoOscuro
                       ? "text-white"
@@ -1002,7 +957,6 @@ function WealthConstrucciones() {
                 className={`
                   text-sm
                   mt-1
-
                   ${
                     modoOscuro
                       ? "text-zinc-500"
@@ -1017,13 +971,7 @@ function WealthConstrucciones() {
           ) : (
             <div
               key={indiceInicio}
-              className="
-                grid
-                grid-cols-1
-                md:grid-cols-3
-                gap-4
-                animate-[fadeIn_.4s_ease]
-              "
+              className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-[fadeIn_.4s_ease]"
             >
               {proyectosVisibles.map(
                 (proyecto) => (
@@ -1040,7 +988,6 @@ function WealthConstrucciones() {
                       transition-all
                       duration-300
                       hover:-translate-y-[2px]
-
                       ${
                         modoOscuro
                           ? "bg-zinc-950 border-zinc-800"
@@ -1055,16 +1002,7 @@ function WealthConstrucciones() {
                           `/proyecto/${proyecto.id}`
                         )
                       }
-                      className="
-                        relative
-                        block
-                        w-full
-                        h-52
-                        md:h-56
-                        overflow-hidden
-                        bg-zinc-900
-                        text-left
-                      "
+                      className="relative block w-full h-52 md:h-56 overflow-hidden bg-zinc-900 text-left"
                     >
                       {proyecto.imagen ? (
                         <img
@@ -1075,79 +1013,30 @@ function WealthConstrucciones() {
                             proyecto.nombre
                           }
                           loading="lazy"
-                          className="
-                            w-full
-                            h-full
-                            object-cover
-                            transition-transform
-                            duration-500
-                            group-hover:scale-105
-                          "
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <div
-                          className="
-                            w-full
-                            h-full
-                            flex
-                            items-center
-                            justify-center
-                          "
-                        >
+                        <div className="w-full h-full flex items-center justify-center">
                           <FaBuilding className="text-zinc-700 text-5xl" />
                         </div>
                       )}
 
                       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
 
-                      <div
-                        className="
-                          absolute
-                          top-3
-                          left-3
-                          flex
-                          flex-wrap
-                          gap-2
-                        "
-                      >
-                        <span
-                          className="
-                            bg-black/80
-                            text-white
-                            backdrop-blur
-                            border
-                            border-white/10
-                            px-2.5
-                            py-1
-                            rounded-full
-                            text-[11px]
-                          "
-                        >
+                      <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+
+                        <span className="bg-black/80 text-white backdrop-blur border border-white/10 px-2.5 py-1 rounded-full text-[11px]">
                           {proyecto.categoria ||
                             "Construcciones"}
                         </span>
 
                         {proyecto.destacado && (
-                          <span
-                            className="
-                              bg-yellow-500
-                              text-black
-                              px-2.5
-                              py-1
-                              rounded-full
-                              text-[11px]
-                              font-bold
-                              flex
-                              items-center
-                              gap-1
-                            "
-                          >
+                          <span className="bg-yellow-500 text-black px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1">
                             <FaStar
                               size={
                                 10
                               }
                             />
-
                             Destacado
                           </span>
                         )}
@@ -1161,7 +1050,6 @@ function WealthConstrucciones() {
                           text-xl
                           font-bold
                           line-clamp-2
-
                           ${
                             modoOscuro
                               ? "text-white"
@@ -1180,7 +1068,6 @@ function WealthConstrucciones() {
                           mt-2
                           line-clamp-2
                           min-h-[40px]
-
                           ${
                             modoOscuro
                               ? "text-zinc-400"
@@ -1200,7 +1087,6 @@ function WealthConstrucciones() {
                           gap-2
                           text-xs
                           mt-4
-
                           ${
                             modoOscuro
                               ? "text-zinc-500"
@@ -1216,14 +1102,8 @@ function WealthConstrucciones() {
                         </span>
                       </div>
 
-                      <div
-                        className="
-                          grid
-                          grid-cols-2
-                          gap-2.5
-                          mt-5
-                        "
-                      >
+                      <div className="grid grid-cols-2 gap-2.5 mt-5">
+
                         <button
                           type="button"
                           onClick={() =>
@@ -1235,19 +1115,16 @@ function WealthConstrucciones() {
                             ${botonBaseCompacto(
                               modoOscuro
                             )}
-
                             ${
                               modoOscuro
                                 ? "border-zinc-600 text-zinc-300"
                                 : "border-gray-300 text-gray-700"
                             }
-
                             hover:border-blue-500/60
                             hover:text-blue-500
                           `}
                         >
                           Ver
-
                           <FaArrowRight />
                         </button>
 
@@ -1262,16 +1139,13 @@ function WealthConstrucciones() {
                             ${botonBaseCompacto(
                               modoOscuro
                             )}
-
                             border-yellow-500/50
                             text-yellow-500
-
                             hover:border-yellow-500
                             hover:bg-yellow-500/10
                           `}
                         >
                           <FaFileInvoiceDollar />
-
                           Cotizar
                         </button>
                       </div>
@@ -1284,15 +1158,8 @@ function WealthConstrucciones() {
 
           {proyectos.length >
             PROYECTOS_VISIBLES && (
-            <div
-              className="
-                flex
-                items-center
-                justify-center
-                gap-2
-                mt-6
-              "
-            >
+            <div className="flex items-center justify-center gap-2 mt-6">
+
               {Array.from({
                 length:
                   totalPaginas,
@@ -1315,7 +1182,6 @@ function WealthConstrucciones() {
                       rounded-full
                       transition-all
                       duration-300
-
                       ${
                         paginaActual ===
                         index
@@ -1332,8 +1198,6 @@ function WealthConstrucciones() {
           )}
         </section>
 
-        {/* CTA */}
-
         <section className="pb-10">
 
           <div
@@ -1342,15 +1206,12 @@ function WealthConstrucciones() {
               rounded-2xl
               p-5
               md:p-6
-
               flex
               flex-col
               md:flex-row
               md:items-center
               md:justify-between
-
               gap-4
-
               ${
                 modoOscuro
                   ? "border-zinc-800 bg-zinc-950"
@@ -1359,13 +1220,11 @@ function WealthConstrucciones() {
             `}
           >
             <div>
-
               <h2
                 className={`
                   text-xl
                   md:text-2xl
                   font-bold
-
                   ${
                     modoOscuro
                       ? "text-white"
@@ -1380,7 +1239,6 @@ function WealthConstrucciones() {
                 className={`
                   text-sm
                   mt-1
-
                   ${
                     modoOscuro
                       ? "text-zinc-500"
@@ -1397,28 +1255,21 @@ function WealthConstrucciones() {
             <button
               type="button"
               onClick={() =>
-                navigate(
-                  "/crear-cotizacion"
-                )
+                irACotizacion()
               }
               className={`
                 ${botonBase(
                   modoOscuro
                 )}
-
                 border-yellow-500/50
                 text-yellow-500
-
                 hover:border-yellow-500
                 hover:bg-yellow-500/10
-
                 shrink-0
               `}
             >
               <FaFileInvoiceDollar />
-
               Solicitar cotización
-
               <FaArrowRight />
             </button>
           </div>
@@ -1428,10 +1279,6 @@ function WealthConstrucciones() {
     </div>
   );
 }
-
-// ======================================================
-// BOTONES
-// ======================================================
 
 const botonBase = (
   modoOscuro
