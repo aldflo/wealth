@@ -993,42 +993,85 @@ const buscarGaleriaRelacionadaTodos = (
       )
     : galeria;
 
+  /*
+    La galería se ordena por bloques de 3 imágenes por grupo.
+
+    Ejemplo:
+    - 3 Protectores
+    - 3 Canceles
+    - 3 Ventanales
+    - 3 Domos
+    - etc.
+
+    Si un grupo tiene más de 3 imágenes, después de recorrer
+    los demás grupos volvemos a ese grupo para mostrar las
+    siguientes 3. Así se recorre TODA la galería sin quedarse
+    mostrando solamente la primera subcategoría.
+  */
+
+  const gruposConImagenes = grupos
+    .map((grupo) => ({
+      grupo,
+      imagenes: Array.isArray(grupo.imagenes)
+        ? grupo.imagenes.filter(Boolean)
+        : [],
+    }))
+    .filter(
+      ({ imagenes }) =>
+        imagenes.length > 0
+    );
+
   const items = [];
 
-  grupos.forEach((grupo) => {
-    const imagenes = Array.isArray(
-      grupo.imagenes
+  const maxImagenes = Math.max(
+    0,
+    ...gruposConImagenes.map(
+      ({ imagenes }) => imagenes.length
     )
-      ? grupo.imagenes
-      : [];
+  );
 
-    imagenes.forEach((imagen, index) => {
-      if (!imagen) {
-        return;
+  for (
+    let inicio = 0;
+    inicio < maxImagenes;
+    inicio += RESULTADOS_POR_BLOQUE
+  ) {
+    gruposConImagenes.forEach(
+      ({ grupo, imagenes }) => {
+        const bloqueGrupo = imagenes.slice(
+          inicio,
+          inicio + RESULTADOS_POR_BLOQUE
+        );
+
+        bloqueGrupo.forEach(
+          (imagen, indexLocal) => {
+            const indexReal =
+              inicio + indexLocal;
+
+            items.push({
+              id: `${grupo.id}_${indexReal}`,
+              grupoId: grupo.id,
+              type: "galeria",
+              title:
+                grupo.subcategoria ||
+                grupo.nombre ||
+                "Referencia Wealth",
+              img: imagen,
+              descripcion:
+                grupo.descripcion ||
+                "Referencia disponible en nuestra galería.",
+              categoria:
+                normalizarCategoriaGaleria(
+                  grupo.categoria || ""
+                ),
+              subcategoria:
+                grupo.subcategoria || "",
+              route: "/galeria",
+            });
+          }
+        );
       }
-
-      items.push({
-        id: `${grupo.id}_${index}`,
-        grupoId: grupo.id,
-        type: "galeria",
-        title:
-          grupo.subcategoria ||
-          grupo.nombre ||
-          "Referencia Wealth",
-        img: imagen,
-        descripcion:
-          grupo.descripcion ||
-          "Referencia disponible en nuestra galería.",
-        categoria:
-          normalizarCategoriaGaleria(
-            grupo.categoria || ""
-          ),
-        subcategoria:
-          grupo.subcategoria || "",
-        route: "/galeria",
-      });
-    });
-  });
+    );
+  }
 
   return items;
 };
@@ -1500,10 +1543,15 @@ export default function ChatIA() {
         contextoVisual.consulta || ""
       ) === normalizarTexto(consulta);
 
-    const offset =
+    let offset =
       continuar && mismaBusqueda
         ? contextoVisual?.offset || 0
         : 0;
+
+    // Si ya llegamos al final, volvemos a empezar.
+    if (offset >= todos.length) {
+      offset = 0;
+    }
 
     const bloque = todos.slice(
       offset,
@@ -1537,10 +1585,12 @@ export default function ChatIA() {
 
     const actions = [];
 
-    if (hayMas) {
+    if (todos.length > RESULTADOS_POR_BLOQUE) {
       actions.push({
         type: "mostrar-mas-galeria",
-        label: "➕ Mostrar 3 más",
+        label: hayMas
+          ? "➕ Mostrar 3 más"
+          : "🔄 Volver a empezar",
       });
     }
 
@@ -1637,10 +1687,15 @@ export default function ChatIA() {
         contextoVisual.consulta || ""
       ) === normalizarTexto(consulta);
 
-    const offset =
+    let offset =
       continuar && mismaBusqueda
         ? contextoVisual?.offset || 0
         : 0;
+
+    // Si ya llegamos al final, volvemos a empezar.
+    if (offset >= todos.length) {
+      offset = 0;
+    }
 
     const bloque = todos.slice(
       offset,
@@ -1674,10 +1729,12 @@ export default function ChatIA() {
 
     const actions = [];
 
-    if (hayMas) {
+    if (todos.length > RESULTADOS_POR_BLOQUE) {
       actions.push({
         type: "mostrar-mas-proyectos",
-        label: "➕ Mostrar 3 más",
+        label: hayMas
+          ? "➕ Mostrar 3 más"
+          : "🔄 Volver a empezar",
       });
     }
 
@@ -1978,33 +2035,49 @@ export default function ChatIA() {
 
     /* =========================================
        GALERÍA
+       ROTACIÓN AUTOMÁTICA
     ========================================= */
 
     if (
       catalogoReady &&
       esIntencionGaleria(cleanText)
     ) {
+      const continuarGaleria =
+        contextoVisual?.tipo === "galeria";
+
       await responderGaleria(
         newMessages,
         cleanText,
-        nuevaMemoria
+        nuevaMemoria,
+        {
+          continuar: continuarGaleria,
+        }
       );
+
       return;
     }
 
     /* =========================================
        PROYECTOS
+       ROTACIÓN AUTOMÁTICA
     ========================================= */
 
     if (
       catalogoReady &&
       esIntencionProyectos(cleanText)
     ) {
+      const continuarProyectos =
+        contextoVisual?.tipo === "proyectos";
+
       await responderProyectos(
         newMessages,
         cleanText,
-        nuevaMemoria
+        nuevaMemoria,
+        {
+          continuar: continuarProyectos,
+        }
       );
+
       return;
     }
 
